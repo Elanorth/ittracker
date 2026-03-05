@@ -6,3 +6,4 @@ msal
 werkzeug
 reportlab
 weasyprint
+gunicorn
