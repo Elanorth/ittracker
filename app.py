@@ -60,27 +60,21 @@ def dashboard():
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
-        # HTML form, JSON veya query string — hepsini destekle
         if request.is_json:
             data = request.get_json()
         else:
             data = request.form
-
         username = (data.get("username") or "").strip().lower()
         password = data.get("password") or ""
-
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             session["user_id"] = user.id
             if request.is_json:
                 return jsonify({"ok": True, "user": user.to_dict()})
             return redirect(url_for("dashboard"))
-
-        # Hatalı giriş
         if request.is_json:
             return jsonify({"ok": False, "error": "Hatalı kullanıcı adı veya şifre"}), 401
         return render_template("login.html", error="Hatalı kullanıcı adı veya şifre")
-
     return render_template("login.html")
 
 @app.route("/logout")
@@ -187,13 +181,12 @@ def create_task():
     period   = data.get("period","Tek Seferlik")
     deadline_raw = data.get("deadline")
     deadline = datetime.fromisoformat(deadline_raw).date() if deadline_raw else None
-    # Rutin görev: deadline verilmemişse next_due'yu hesapla
     next_due = None
     if category == "routine" and period != "Tek Seferlik":
+        from models.database import _next_due_date
         next_due = _next_due_date(period)
         if not deadline:
             deadline = next_due
-    # Checklist JSON
     cl_raw = data.get("checklist", "[]")
     if isinstance(cl_raw, list): cl_raw = _json.dumps(cl_raw)
     cl_items = _json.loads(cl_raw) if isinstance(cl_raw, str) else []
@@ -248,6 +241,7 @@ def update_task(task_id):
     if "checklist_done" in data:
         cld = data["checklist_done"] if isinstance(data["checklist_done"], list) else _json.loads(data["checklist_done"])
         task.checklist_done = _json.dumps(cld)
+    if "project_status" in data: task.project_status = data["project_status"]
     db.session.commit()
     return jsonify(task.to_dict())
 
@@ -395,7 +389,6 @@ def download_report():
     user=db.session.get(User, session["user_id"]); month=request.args.get("month",date.today().month,type=int); year=request.args.get("year",date.today().year,type=int)
     tasks=Task.query.filter(Task.user_id==user.id,db.extract("month",Task.created_at)==month,db.extract("year",Task.created_at)==year).all()
     pdf=generate_monthly_pdf(user,tasks,month,year)
-    # inline=True ile yeni sekmede önizle, as_attachment=False
     resp = send_file(pdf, mimetype="application/pdf", as_attachment=False,
                      download_name=f"IT_Rapor_{user.username}_{year}_{month:02d}.pdf")
     resp.headers["Content-Disposition"] = f"inline; filename=IT_Rapor_{user.username}_{year}_{month:02d}.pdf"
@@ -419,7 +412,6 @@ def me(): return jsonify(db.session.get(User, session["user_id"]).to_dict())
 def update_me():
     user = db.session.get(User, session["user_id"])
     data = request.get_json()
-    # username: benzersizlik kontrolü
     if "username" in data:
         new_u = data["username"].strip().lower()
         if not new_u:
@@ -431,14 +423,12 @@ def update_me():
     for field in ("email", "full_name", "role"):
         if field in data and data[field]:
             setattr(user, field, data[field])
-    # Şifre değişimi
     if data.get("password"):
         if len(data["password"]) < 6:
             return jsonify({"error": "Şifre en az 6 karakter olmalı"}), 400
         user.set_password(data["password"])
     db.session.commit()
     return jsonify(user.to_dict())
-
 
 @app.route("/api/settings/smtp", methods=["GET", "POST"])
 @login_required
@@ -452,7 +442,6 @@ def smtp_settings():
             "smtp_pass":  "••••••" if os.environ.get("SMTP_PASS") else "",
         })
     data = request.get_json() or {}
-    # .env dosyasını oku, güncelle, yaz
     try:
         if os.path.exists(env_path):
             with open(env_path, "r", encoding="utf-8") as f:
@@ -465,7 +454,6 @@ def smtp_settings():
         if data.get("smtp_user"): updates["SMTP_USER"] = data["smtp_user"]
         if data.get("smtp_pass") and data["smtp_pass"] != "••••••":
             updates["SMTP_PASS"] = data["smtp_pass"]
-        # Mevcut satırları güncelle
         new_lines = []
         updated_keys = set()
         for line in lines:
@@ -479,13 +467,11 @@ def smtp_settings():
                 updated_keys.add(key)
             else:
                 new_lines.append(line)
-        # Yeni key varsa ekle
         for key, val in updates.items():
             if key not in updated_keys:
                 new_lines.append(f"{key}={val}\n")
         with open(env_path, "w", encoding="utf-8") as f:
             f.writelines(new_lines)
-        # Bellekteki env'i de güncelle
         for key, val in updates.items():
             os.environ[key] = val
         return jsonify({"ok": True, "updated": list(updates.keys())})
