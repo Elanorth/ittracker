@@ -1,4 +1,4 @@
-"""Veritabanı Modelleri v2 — User, Task, Firm, Team, Invitation, ConfigBackup"""
+"""Veritabanı Modelleri v3 — TaskCompletion + project_status"""
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -31,23 +31,22 @@ import json as _json
 from datetime import timedelta, date as _date
 
 def _next_due_date(period: str, from_date=None) -> _date:
-    """Periyota göre bir sonraki deadline tarihini hesapla."""
+    """Periyota göre bir sonraki deadline tarihini hesapla (gösterim amaçlı)."""
     base = from_date or _date.today()
     if period == "Günlük":
         return base + timedelta(days=1)
     if period == "Haftalık":
-        # Gelecek Pazartesi
-        days_ahead = 7 - base.weekday()  # weekday(): 0=Pzt
+        days_ahead = 7 - base.weekday()
         if days_ahead == 0: days_ahead = 7
         return base + timedelta(days=days_ahead)
     if period == "Aylık":
-        # Gelecek ayın 1'i
         if base.month == 12:
             return _date(base.year + 1, 1, 1)
         return _date(base.year, base.month + 1, 1)
     if period == "Yıllık":
         return _date(base.year + 1, 1, 1)
     return None  # Tek Seferlik
+
 
 class Task(db.Model):
     __tablename__ = "tasks"
@@ -62,12 +61,15 @@ class Task(db.Model):
     deadline       = db.Column(db.Date, nullable=True)
     is_done        = db.Column(db.Boolean, default=False)
     completed_at   = db.Column(db.DateTime, nullable=True)
-    last_completed = db.Column(db.DateTime, nullable=True)   # rutin: son tamamlanma
-    next_due       = db.Column(db.Date, nullable=True)       # rutin: bir sonraki vade
-    checklist      = db.Column(db.Text, default="[]")        # JSON ["adım1", "adım2"]
-    checklist_done = db.Column(db.Text, default="[]")        # JSON [true, false]
+    last_completed = db.Column(db.DateTime, nullable=True)
+    next_due       = db.Column(db.Date, nullable=True)
+    checklist      = db.Column(db.Text, default="[]")
+    checklist_done = db.Column(db.Text, default="[]")
+    project_status = db.Column(db.Text, default="")   # Proje durum notu
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     backups        = db.relationship("ConfigBackup", backref="task", lazy=True)
+    completions    = db.relationship("TaskCompletion", backref="task", lazy=True,
+                                     cascade="all, delete-orphan")
 
     def get_checklist(self):
         try: return _json.loads(self.checklist or "[]")
@@ -77,27 +79,22 @@ class Task(db.Model):
         try: return _json.loads(self.checklist_done or "[]")
         except: return []
 
-    def complete_recurring(self):
-        """Rutin görevi tamamla: son tamamlanmayı kaydet, bir sonraki periyoda sıfırla."""
-        now = datetime.utcnow()
-        self.last_completed = now
-        self.completed_at   = now
-        nd = _next_due_date(self.period)
-        if nd:
-            self.next_due = nd
-            self.deadline = nd
-            self.is_done  = False          # sıfırla
-            # checklist sıfırla
-            cl = self.get_checklist()
-            self.checklist_done = _json.dumps([False] * len(cl))
-        else:
-            self.is_done = True            # Tek Seferlik: gerçekten kapat
-
-    def to_dict(self):
-        cl   = self.get_checklist()
-        cld  = self.get_checklist_done()
-        # checklist_done uzunluğunu eşitle
+    def to_dict(self, month=None, year=None):
+        cl  = self.get_checklist()
+        cld = self.get_checklist_done()
         while len(cld) < len(cl): cld.append(False)
+
+        # Rutin görevlerde is_done, o aya ait TaskCompletion kaydından gelir
+        is_done      = self.is_done
+        completed_at = self.completed_at.isoformat() if self.completed_at else None
+
+        if self.category == "routine" and self.period != "Tek Seferlik" and month and year:
+            comp = TaskCompletion.query.filter_by(
+                task_id=self.id, year=year, month=month
+            ).first()
+            is_done      = comp is not None
+            completed_at = comp.completed_at.isoformat() if comp else None
+
         return {
             "id": self.id, "user_id": self.user_id, "title": self.title,
             "category": self.category, "period": self.period,
@@ -105,13 +102,28 @@ class Task(db.Model):
             "deadline": self.deadline.isoformat() if self.deadline else None,
             "next_due": self.next_due.isoformat() if self.next_due else None,
             "last_completed": self.last_completed.isoformat() if self.last_completed else None,
-            "is_done": self.is_done,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "is_done": is_done,
+            "completed_at": completed_at,
             "created_at": self.created_at.isoformat(),
             "has_backup": len(self.backups) > 0,
             "checklist": cl,
             "checklist_done": cld,
+            "project_status": self.project_status or "",
         }
+
+
+class TaskCompletion(db.Model):
+    """Rutin görevlerin aylık tamamlanma kaydı.
+    Bir rutin görev her ay için en fazla bir tane tamamlanma kaydına sahip olabilir."""
+    __tablename__ = "task_completions"
+    id           = db.Column(db.Integer, primary_key=True)
+    task_id      = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    year         = db.Column(db.Integer, nullable=False)
+    month        = db.Column(db.Integer, nullable=False)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    __table_args__ = (db.UniqueConstraint("task_id", "year", "month", name="uq_task_month"),)
+
 
 class ConfigBackup(db.Model):
     """Firmware/güncelleme öncesi yüklenen config dosyaları"""
@@ -171,7 +183,17 @@ class Invitation(db.Model):
 
 def init_db():
     import os
+    from sqlalchemy import inspect, text
     db.create_all()
+
+    # Migration: mevcut tasks tablosuna project_status sütunu ekle
+    inspector = inspect(db.engine)
+    cols = [c["name"] for c in inspector.get_columns("tasks")]
+    if "project_status" not in cols:
+        db.session.execute(text("ALTER TABLE tasks ADD COLUMN project_status TEXT DEFAULT ''"))
+        db.session.commit()
+        print("✅ Migration: project_status sütunu eklendi")
+
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")
         ass = Firm(name="Assos",     slug="assos")

@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from functools import wraps
 from datetime import datetime, date, timedelta
 import json as _json
-from models.database import db, User, Task, Firm, Team, Invitation, ConfigBackup, init_db, _next_due_date
+from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, init_db, _next_due_date
 from services.report import generate_monthly_pdf
 from services.mailer import send_report_email, send_invite_email
 from services.storage import save_backup_file
@@ -72,7 +72,6 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             session["user_id"] = user.id
-            _tick_recurring(user.id)   # periyot sıfırlama kontrolü
             if request.is_json:
                 return jsonify({"ok": True, "user": user.to_dict()})
             return redirect(url_for("dashboard"))
@@ -127,33 +126,7 @@ def auth_callback():
         user.o365_id = o365_id; user.full_name = name; db.session.commit()
     session["user_id"] = user.id
     session["o365_token"] = result.get("access_token")
-    _tick_recurring(user.id)
     return redirect(url_for("dashboard"))
-
-# ── RECURRING TICK ──
-def _tick_recurring(user_id):
-    """Login'de: vadesi geçmiş rutin görevleri yeni periyoda sıfırla."""
-    today = date.today()
-    routines = Task.query.filter_by(user_id=user_id, category="routine").filter(
-        Task.period != "Tek Seferlik",
-        Task.is_done == False,
-        Task.next_due != None,
-        Task.next_due < today
-    ).all()
-    for t in routines:
-        nd = _next_due_date(t.period)
-        if nd:
-            t.next_due = nd
-            t.deadline = nd
-    if routines:
-        db.session.commit()
-
-@app.route("/api/tasks/tick", methods=["POST"])
-@login_required
-def manual_tick():
-    """Manuel periyot sıfırlama (isteğe bağlı frontend tetikleyici)."""
-    _tick_recurring(session["user_id"])
-    return jsonify({"ok": True})
 
 # ── TASKS ──
 @app.route("/api/tasks", methods=["GET"])
@@ -162,12 +135,46 @@ def get_tasks():
     uid   = session["user_id"]
     month = request.args.get("month", date.today().month, type=int)
     year  = request.args.get("year",  date.today().year,  type=int)
-    created_match  = db.and_(db.extract("month",Task.created_at)==month, db.extract("year",Task.created_at)==year)
-    deadline_match = db.and_(Task.deadline!=None, db.extract("month",Task.deadline)==month, db.extract("year",Task.deadline)==year)
-    q = Task.query.filter(Task.user_id==uid, db.or_(created_match, deadline_match))
-    if request.args.get("firm"): q = q.filter_by(firm=request.args["firm"])
-    if request.args.get("category"): q = q.filter_by(category=request.args["category"])
-    return jsonify([t.to_dict() for t in q.order_by(Task.created_at.desc()).all()])
+    firm_filter     = request.args.get("firm")
+    category_filter = request.args.get("category")
+
+    result = []
+
+    # 1) Rutin görevler: her ayın görünümünde listelenir, tamamlanma o aya özel
+    if not category_filter or category_filter == "routine":
+        rq = Task.query.filter_by(user_id=uid, category="routine")
+        if firm_filter: rq = rq.filter_by(firm=firm_filter)
+        result += rq.order_by(Task.created_at.desc()).all()
+
+    # 2) Proje görevleri: tamamlanmamışlar her ayda görünür;
+    #    tamamlanmışlar yalnızca tamamlandıkları ayda görünür
+    if not category_filter or category_filter == "project":
+        pq = Task.query.filter_by(user_id=uid, category="project")
+        if firm_filter: pq = pq.filter_by(firm=firm_filter)
+        for t in pq.order_by(Task.created_at.desc()).all():
+            if not t.is_done:
+                result.append(t)
+            elif t.completed_at:
+                if t.completed_at.month == month and t.completed_at.year == year:
+                    result.append(t)
+
+    # 3) Diğer görevler (support, infra, backup, other): o aya ait olanlar
+    if not category_filter or category_filter not in ("routine", "project"):
+        created_match  = db.and_(db.extract("month", Task.created_at)==month,
+                                  db.extract("year",  Task.created_at)==year)
+        deadline_match = db.and_(Task.deadline!=None,
+                                  db.extract("month", Task.deadline)==month,
+                                  db.extract("year",  Task.deadline)==year)
+        oq = Task.query.filter(
+            Task.user_id==uid,
+            Task.category.notin_(["routine", "project"]),
+            db.or_(created_match, deadline_match)
+        )
+        if firm_filter:     oq = oq.filter_by(firm=firm_filter)
+        if category_filter: oq = oq.filter_by(category=category_filter)
+        result += oq.order_by(Task.created_at.desc()).all()
+
+    return jsonify([t.to_dict(month=month, year=year) for t in result])
 
 @app.route("/api/tasks", methods=["POST"])
 @login_required
@@ -209,10 +216,21 @@ def update_task(task_id):
     task = Task.query.filter_by(id=task_id, user_id=session["user_id"]).first_or_404()
     data = request.get_json()
     if "is_done" in data:
-        if data["is_done"] and task.category == "routine" and task.period != "Tek Seferlik":
-            task.complete_recurring()
+        if task.category == "routine" and task.period != "Tek Seferlik":
+            # Rutin görevler: TaskCompletion kaydı oluştur/sil
+            month = data.get("month", date.today().month)
+            year  = data.get("year",  date.today().year)
+            comp  = TaskCompletion.query.filter_by(task_id=task.id, year=year, month=month).first()
+            if data["is_done"] and not comp:
+                db.session.add(TaskCompletion(
+                    task_id=task.id, year=year, month=month,
+                    completed_by=session["user_id"]
+                ))
+                task.last_completed = datetime.utcnow()
+            elif not data["is_done"] and comp:
+                db.session.delete(comp)
         else:
-            task.is_done = data["is_done"]
+            task.is_done     = data["is_done"]
             task.completed_at = datetime.utcnow() if data["is_done"] else None
     if "title"    in data: task.title    = data["title"]
     if "category" in data: task.category = data["category"]
@@ -256,15 +274,47 @@ def download_backup(bid):
 @app.route("/api/stats")
 @login_required
 def stats():
-    uid = session["user_id"]; month = request.args.get("month",date.today().month,type=int); year = request.args.get("year",date.today().year,type=int)
-    tasks = Task.query.filter(Task.user_id==uid, db.extract("month",Task.created_at)==month, db.extract("year",Task.created_at)==year).all()
-    total = len(tasks); done = sum(1 for t in tasks if t.is_done)
+    uid   = session["user_id"]
+    month = request.args.get("month", date.today().month, type=int)
+    year  = request.args.get("year",  date.today().year,  type=int)
+
+    # Aynı mantık: rutin + proje (aktif) + ay bazlı diğer
+    created_match  = db.and_(db.extract("month", Task.created_at)==month,
+                              db.extract("year",  Task.created_at)==year)
+    deadline_match = db.and_(Task.deadline!=None,
+                              db.extract("month", Task.deadline)==month,
+                              db.extract("year",  Task.deadline)==year)
+    routines = Task.query.filter_by(user_id=uid, category="routine").all()
+    projects = Task.query.filter_by(user_id=uid, category="project").filter(
+        db.or_(Task.is_done==False,
+               db.and_(Task.completed_at!=None,
+                       db.extract("month", Task.completed_at)==month,
+                       db.extract("year",  Task.completed_at)==year))
+    ).all()
+    others   = Task.query.filter(Task.user_id==uid,
+                                  Task.category.notin_(["routine","project"]),
+                                  db.or_(created_match, deadline_match)).all()
+
+    tasks = routines + projects + others
+
+    # Rutin is_done: TaskCompletion'dan
+    completed_ids = {c.task_id for c in TaskCompletion.query.filter_by(year=year, month=month).all()}
+    def _is_done(t):
+        if t.category == "routine" and t.period != "Tek Seferlik":
+            return t.id in completed_ids
+        return t.is_done
+
+    total = len(tasks)
+    done  = sum(1 for t in tasks if _is_done(t))
     by_cat={};by_team={};by_firm={}
     for t in tasks:
-        by_cat[t.category]=by_cat.get(t.category,0)+1
-        by_team[t.team]=by_team.get(t.team,0)+1
-        by_firm[t.firm]=by_firm.get(t.firm,0)+1
-    return jsonify({"total":total,"done":done,"pending":total-done,"overdue":sum(1 for t in tasks if not t.is_done and t.deadline and t.deadline<date.today()),"by_category":by_cat,"by_team":by_team,"by_firm":by_firm,"completion_rate":round(done/total*100,1) if total else 0})
+        by_cat[t.category]  = by_cat.get(t.category,  0) + 1
+        by_team[t.team]     = by_team.get(t.team,     0) + 1
+        by_firm[t.firm]     = by_firm.get(t.firm,     0) + 1
+    overdue = sum(1 for t in tasks if not _is_done(t) and t.deadline and t.deadline < date.today())
+    return jsonify({"total":total,"done":done,"pending":total-done,"overdue":overdue,
+                    "by_category":by_cat,"by_team":by_team,"by_firm":by_firm,
+                    "completion_rate":round(done/total*100,1) if total else 0})
 
 # ── FIRMS & TEAMS ──
 @app.route("/api/firms")
