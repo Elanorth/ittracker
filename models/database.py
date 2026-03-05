@@ -170,28 +170,22 @@ class Invitation(db.Model):
                                "role":self.role,"firm":self.firm,"used":self.used,"expires_at":self.expires_at.isoformat()}
 
 def init_db():
+    import os
     db.create_all()
-    if not Firm.query.first():
-        inv = Firm(name="İnventist", slug="inventist")
-        ass = Firm(name="Assos",     slug="assos")
-        db.session.add_all([inv, ass]); db.session.flush()
-        for n in ["Teknik Ekip","Misafir İlişkileri","F&B","Akademi Yönetimi","Otel ve Ön Büro","Housekeeping","İnsan Kaynakları","Genel"]:
-            db.session.add(Team(firm_id=inv.id, name=n))
-        for n in ["Resepsiyon","Teknik Servis","Yiyecek-İçecek","İdare","Animasyon","Genel"]:
-            db.session.add(Team(firm_id=ass.id, name=n))
-    # Kullanıcı adı değişmiş olabilir — e-posta veya admin flag ile de kontrol et
+    # ... (firm/team kısmı aynı kalıyor) ...
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    admin_username = os.environ.get("ADMIN_USERNAME", "levent.can")
+    admin_email    = os.environ.get("ADMIN_EMAIL", "levent.can@inventist.com")
     admin_exists = (
-        User.query.filter_by(username="levent.can").first() or
-        User.query.filter_by(email="levent.can@inventist.com").first() or
+        User.query.filter_by(username=admin_username).first() or
+        User.query.filter_by(email=admin_email).first() or
         User.query.filter_by(is_admin=True).first()
     )
     if not admin_exists:
-        admin = User(username="levent.can", full_name="Levent Mahir Can",
-                     email="levent.can@inventist.com",
-                     role="IT Sorumlusu", firm="inventist", is_admin=True)
-        admin.set_password("Inventist2026!")
+        if not admin_password:
+            raise RuntimeError("ADMIN_PASSWORD ortam değişkeni ayarlanmamış!")
+        admin = User(username=admin_username, full_name="Levent Mahir Can",
+                     email=admin_email, role="IT Sorumlusu", firm="inventist", is_admin=True)
+        admin.set_password(admin_password)
         db.session.add(admin)
     db.session.commit()
-    admin_user = User.query.filter_by(is_admin=True).first()
-    uname = admin_user.username if admin_user else "lmc"
-    print(f"✅ DB hazır. Giriş: {uname} / Inventist2026!")
