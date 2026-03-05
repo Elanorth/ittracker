@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT//TRACKER · v2</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0f1419;
+  --surface2: #161d26;
+  --surface3: #1e2733;
+  --border: #242d38;
+  --border2: #2e3a47;
+  --accent: #00e5c0;
+  --accent-dim: rgba(0,229,192,.1);
+  --accent2: #ff5f3d;
+  --accent2-dim: rgba(255,95,61,.1);
+  --accent3: #7f6cf7;
+  --accent3-dim: rgba(127,108,247,.1);
+  --gold: #f4b942;
+  --gold-dim: rgba(244,185,66,.1);
+  --green: #34d058;
+  --green-dim: rgba(52,208,88,.1);
+  --danger: #f85149;
+  --text: #dce6f0;
+  --text-muted: #6b7e93;
+  --text-dim: #3d4f61;
+  --radius: 10px;
+  --sidebar-w: 230px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+/* ═══════ BACKGROUND NOISE ═══════ */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4;}
+
+/* ═══════ SIDEBAR ═══════ */
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:100;
+}
+.logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
+.logo-mark{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.logo-hex{width:28px;height:28px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;}
+.logo-text{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--accent);letter-spacing:2px;}
+.logo-sub{font-size:10px;color:var(--text-muted);letter-spacing:.5px;}
+
+.user-block{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.avatar{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;font-family:'IBM Plex Mono',monospace;}
+.user-name{font-size:13px;font-weight:600;}
+.user-role{font-size:10px;color:var(--text-muted);margin-top:1px;}
+.o365-badge{display:inline-flex;align-items:center;gap:4px;background:var(--accent3-dim);border:1px solid rgba(127,108,247,.2);border-radius:4px;padding:2px 7px;font-size:9px;color:var(--accent3);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+
+nav{padding:12px 0;flex:1;overflow-y:auto;}
+.nav-section{padding:6px 18px 4px;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;font-family:'IBM Plex Mono',monospace;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 18px;
+  font-size:13px;color:var(--text-muted);cursor:pointer;transition:.12s;text-decoration:none;
+  border-left:2px solid transparent;position:relative;
+}
+.nav-item:hover{color:var(--text);background:var(--surface2);}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-dim);}
+.nav-item.admin-item.active{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim);}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--accent2);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;font-family:'IBM Plex Mono',monospace;}
+
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+.o365-login-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text-muted);font-size:12px;cursor:pointer;transition:.15s;font-family:'Syne',sans-serif;}
+.o365-login-btn:hover{border-color:var(--accent3);color:var(--accent3);}
+.o365-icon{width:16px;height:16px;display:grid;grid-template-columns:1fr 1fr;gap:1px;}
+.o365-icon div{border-radius:1px;}
+
+/* ═══════ MAIN ═══════ */
+.main{margin-left:var(--sidebar-w);padding:28px 32px;position:relative;z-index:1;}
+
+/* ═══════ TOPBAR ═══════ */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;}
+.page-title{font-size:22px;font-weight:700;letter-spacing:-.3px;}
+.page-title span{color:var(--accent);}
+.page-sub{font-size:12px;color:var(--text-muted);margin-top:4px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.date-chip{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted);}
+
+/* ═══════ DATE DISPLAY (büyük) ═══════ */
+.date-display{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;text-align:center;min-width:130px;}
+.date-display .date-day{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--accent);line-height:1;}
+.date-display .date-full{font-size:10px;color:var(--text-muted);margin-top:3px;letter-spacing:.3px;}
+
+/* ═══════ YENİ GÖREV BUTONU (büyük) ═══════ */
+.btn-new-task{padding:10px 20px;font-size:13px;font-weight:700;border-radius:9px;}
+
+/* ═══════ BİLDİRİM ZİLİ ═══════ */
+.notif-wrap{position:relative;}
+.notif-btn{width:40px;height:40px;border-radius:10px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:.15s;position:relative;}
+.notif-btn:hover{border-color:var(--accent3);background:var(--accent3-dim);}
+.notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--accent2);border-radius:50%;border:2px solid var(--bg);animation:notifPulse 2s infinite;}
+@keyframes notifPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.7}}
+
+/* ═══════ BİLDİRİM DROPDOWN ═══════ */
+.notif-dropdown{position:absolute;top:calc(100% + 10px);right:0;width:380px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:500;overflow:hidden;animation:dropDown .15s ease;}
+@keyframes dropDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.notif-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.notif-title-label{font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:.8px;color:var(--text-muted);}
+.notif-clear-btn{font-size:10px;color:var(--accent3);cursor:pointer;}
+.notif-clear-btn:hover{text-decoration:underline;}
+.notif-list{max-height:360px;overflow-y:auto;}
+.notif-item{padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:.1s;display:flex;gap:12px;align-items:flex-start;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item:hover{background:var(--surface2);}
+.notif-item.unread{background:var(--surface2);}
+.notif-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.notif-icon.ndanger{background:var(--accent2-dim);}
+.notif-icon.nwarn{background:var(--gold-dim);}
+.notif-icon.ninfo{background:var(--accent-dim);}
+.notif-body-title{font-size:12px;font-weight:600;margin-bottom:2px;line-height:1.3;}
+.notif-body-meta{font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;}
+.notif-tag{display:inline-flex;align-items:center;margin-top:4px;padding:1px 7px;border-radius:4px;font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+.notif-tag.late{background:var(--accent2-dim);color:var(--accent2);}
+.notif-tag.due{background:var(--gold-dim);color:var(--gold);}
+.notif-tag.upcoming{background:var(--accent-dim);color:var(--accent);}
+.mail-sent-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent2-dim);border:1px solid rgba(248,81,73,.2);border-radius:4px;padding:1px 6px;font-size:9px;color:var(--accent2);font-family:'IBM Plex Mono',monospace;margin-left:5px;}
+.notif-empty{padding:32px;text-align:center;font-size:12px;color:var(--text-muted);}
+.notif-footer-link{padding:10px 18px;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--accent3);cursor:pointer;}
+.notif-footer-link:hover{background:var(--surface2);}
+
+/* ═══════ ZAMANLANMIŞ GÖREVLER ═══════ */
+.sched-head{display:grid;grid-template-columns:22px 1fr 120px 100px 130px;gap:12px;align-items:center;padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.sched-head span{font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;}
+.sched-row{display:grid;grid-template-columns:22px 1fr 120px 100px 130px;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);transition:.1s;}
+.sched-row:last-child{border-bottom:none;}
+.sched-row:hover{background:var(--surface2);}
+.sched-row.row-overdue{background:rgba(248,81,73,.04);}
+.sched-row.row-due{background:rgba(244,185,66,.04);}
+.next-run-chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:5px;font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;white-space:nowrap;}
+.next-run-chip.overdue{background:var(--accent2-dim);color:var(--accent2);border:1px solid rgba(248,81,73,.2);}
+.next-run-chip.today{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(244,185,66,.2);}
+.next-run-chip.upcoming{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(0,229,192,.2);}
+.next-run-chip.done{background:var(--green-dim);color:var(--green);border:1px solid rgba(52,208,88,.2);}
+.period-badge{display:inline-flex;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+
+/* ═══════ ALARM TOGGLE ═══════ */
+.alarm-toggle{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-muted);cursor:pointer;user-select:none;}
+.alarm-switch{width:28px;height:16px;background:var(--surface3);border-radius:8px;position:relative;transition:.2s;border:1px solid var(--border2);flex-shrink:0;}
+.alarm-switch.on{background:var(--accent);}
+.alarm-switch::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;background:#fff;border-radius:50%;transition:.2s;}
+.alarm-switch.on::after{left:14px;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.12s;font-family:'Syne',sans-serif;letter-spacing:.2px;}
+.btn-primary{background:var(--accent);color:#080c10;}
+.btn-primary:hover{background:#00cfad;}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text-muted);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--accent2-dim);border:1px solid rgba(255,95,61,.25);color:var(--accent2);}
+.btn-danger:hover{background:var(--accent2);color:#fff;}
+.btn-gold{background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold);}
+.btn-gold:hover{background:var(--gold);color:#080c10;}
+.btn-sm{padding:5px 11px;font-size:11px;}
+
+/* ═══════ KPI ROW ═══════ */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;animation:fadeUp .35s ease both;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.c-teal::after{background:var(--accent);}
+.kpi.c-green::after{background:var(--green);}
+.kpi.c-orange::after{background:var(--accent2);}
+.kpi.c-purple::after{background:var(--accent3);}
+.kpi.c-gold::after{background:var(--gold);}
+.kpi-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;}
+.kpi-value{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:700;line-height:1;}
+.kpi-sub{font-size:10px;color:var(--text-muted);margin-top:6px;}
+.kpi-icon{position:absolute;top:14px;right:14px;font-size:18px;opacity:.2;}
+
+/* ═══════ GRID ═══════ */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.grid-3{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px;}
+.grid-3r{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-bottom:18px;}
+.grid-3r{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-bottom:18px;}
+
+/* ═══════ CARD ═══════ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);animation:fadeUp .3s ease both;}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;letter-spacing:.8px;color:var(--text-muted);text-transform:uppercase;}
+.card-body{padding:18px;}
+
+/* ═══════ TASK LIST ═══════ */
+.task-item{
+  display:grid;grid-template-columns:22px 1fr auto auto;gap:12px;align-items:start;
+  padding:11px 0;border-bottom:1px solid var(--border);
+}
+.task-item:last-child{border-bottom:none;}
+.cb{width:16px;height:16px;border:1.5px solid var(--border2);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.12s;margin-top:2px;}
+.cb:hover{border-color:var(--accent);}
+.cb.done{background:var(--green);border-color:var(--green);}
+.cb.done::after{content:'✓';font-size:9px;color:#080c10;font-weight:900;}
+.task-title{font-size:13px;font-weight:500;line-height:1.4;}
+.task-title.done{text-decoration:line-through;color:var(--text-muted);}
+.task-meta{font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.6px;font-family:'IBM Plex Mono',monospace;}
+.tag.routine{background:var(--accent-dim);color:var(--accent);}
+.tag.support{background:var(--accent3-dim);color:var(--accent3);}
+.tag.infra{background:var(--accent2-dim);color:var(--accent2);}
+.tag.backup{background:var(--gold-dim);color:var(--gold);}
+.tag.other{background:var(--surface3);color:var(--text-muted);}
+.firm-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:3px;font-size:9px;font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.firm-chip.inventist{background:rgba(0,229,192,.08);color:var(--accent);border:1px solid rgba(0,229,192,.15);}
+.firm-chip.assos{background:rgba(244,185,66,.08);color:var(--gold);border:1px solid rgba(244,185,66,.15);}
+.dl-badge{font-size:9px;font-family:'IBM Plex Mono',monospace;padding:3px 7px;border-radius:4px;white-space:nowrap;align-self:start;margin-top:2px;}
+.dl-badge.ok{background:var(--green-dim);color:var(--green);}
+.dl-badge.warn{background:var(--gold-dim);color:var(--gold);}
+.dl-badge.late{background:var(--accent2-dim);color:var(--accent2);}
+.backup-icon{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:var(--gold);cursor:pointer;}
+.backup-icon:hover{color:var(--gold);}
+
+/* ═══════ TABS ═══════ */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);}
+.tab{padding:7px 14px;font-size:11px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:.12s;font-family:'IBM Plex Mono',monospace;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ═══════ CHARTS ═══════ */
+.chart-wrap{display:flex;align-items:center;justify-content:center;padding:8px 0;}
+.chart-legend{display:flex;flex-direction:column;gap:7px;margin-left:18px;}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:11px;}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:90px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
+.bar-num{font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;}
+.bar-inner{width:100%;position:relative;display:flex;align-items:flex-end;}
+.progress-wrap{margin:7px 0;}
+.progress-label{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:5px;font-family:'IBM Plex Mono',monospace;}
+.progress-bar{background:var(--surface3);border-radius:10px;height:5px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:10px;transition:width .5s;}
+
+/* ═══════ FORM ═══════ */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;font-family:'IBM Plex Mono',monospace;}
+.form-control{
+  background:var(--surface2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);padding:9px 12px;font-size:13px;font-family:'Syne',sans-serif;
+  outline:none;transition:.12s;width:100%;
+}
+.form-control:focus{border-color:var(--accent);background:var(--surface3);}
+.form-control::placeholder{color:var(--text-dim);}
+select.form-control option{background:var(--surface2);}
+textarea.form-control{resize:vertical;min-height:64px;}
+.form-hint{font-size:10px;color:var(--text-muted);margin-top:3px;}
+
+/* ═══════ UPLOAD ZONE ═══════ */
+.upload-zone{
+  border:2px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;
+  cursor:pointer;transition:.15s;position:relative;
+}
+.upload-zone:hover{border-color:var(--gold);background:var(--gold-dim);}
+.upload-zone.has-file{border-color:var(--gold);background:var(--gold-dim);}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-icon{font-size:24px;margin-bottom:6px;}
+.upload-label{font-size:12px;color:var(--text-muted);}
+.upload-label strong{color:var(--gold);}
+.upload-filename{font-size:11px;color:var(--gold);font-family:'IBM Plex Mono',monospace;margin-top:6px;}
+
+/* ═══════ PENDING ═══════ */
+.pending-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.pending-item:last-child{border-bottom:none;}
+.pending-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:var(--gold-dim);}
+
+/* ═══════ USER TABLE (admin) ═══════ */
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;}
+.data-table td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border);}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:var(--surface2);}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;}
+.status-dot.active{background:var(--green);}
+.status-dot.pending{background:var(--gold);}
+.status-dot.inactive{background:var(--text-muted);}
+
+/* ═══════ INVITE FORM ═══════ */
+.invite-box{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-top:16px;}
+
+/* ═══════ SETTINGS SECTION ═══════ */
+.settings-list{display:flex;flex-direction:column;gap:0;}
+.settings-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.settings-item:last-child{border-bottom:none;}
+.settings-item-label{font-size:13px;font-weight:500;}
+.settings-item-sub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.pill-tag{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:11px;margin:3px;cursor:pointer;transition:.12s;}
+.pill-tag:hover{border-color:var(--danger);color:var(--danger);}
+.pill-tag .rm{font-size:12px;color:var(--text-muted);}
+.pill-add{background:var(--surface2);border:1px dashed var(--border2);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;transition:.12s;display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);}
+.pill-add:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ═══════ MODAL ═══════ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:500;animation:fadeIn .15s ease;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:26px;width:500px;max-width:95vw;}
+.modal-title{font-family:'IBM Plex Mono',monospace;font-size:14px;margin-bottom:18px;color:var(--text);}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+/* ═══════ TOAST ═══════ */
+.toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:1000;}
+.toast{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;font-size:12px;min-width:260px;display:flex;align-items:center;gap:10px;animation:toastIn .2s ease;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+.toast.ok{border-left:3px solid var(--green);}
+.toast.err{border-left:3px solid var(--danger);}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ═══════ O365 LOGIN PAGE ═══════ */
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+.login-card{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:48px 40px;width:420px;text-align:center;}
+.login-logo{margin-bottom:32px;}
+.login-logo .logo-text{font-size:18px;}
+.login-title{font-size:22px;font-weight:700;margin-bottom:8px;}
+.login-sub{font-size:13px;color:var(--text-muted);margin-bottom:36px;}
+.o365-btn{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  width:100%;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:10px;padding:14px 20px;font-size:14px;font-weight:600;
+  cursor:pointer;transition:.15s;color:var(--text);font-family:'Syne',sans-serif;
+  margin-bottom:12px;
+}
+.o365-btn:hover{border-color:var(--accent3);color:var(--accent3);}
+.login-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--text-muted);font-size:11px;}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.login-form .form-control{margin-bottom:10px;}
+
+/* ═══════ PAGE SECTIONS ═══════ */
+.page-section{display:none;}
+.page-section.active{display:block;}
+.hidden{display:none!important;}
+
+/* ═══════ ANIMATIONS ═══════ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.kpi:nth-child(1){animation-delay:.04s}.kpi:nth-child(2){animation-delay:.08s}.kpi:nth-child(3){animation-delay:.12s}.kpi:nth-child(4){animation-delay:.16s}.kpi:nth-child(5){animation-delay:.2s}
+
+/* ═══════ SCROLLBAR ═══════ */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── Checklist ── */
+.checklist-item { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface2); border-radius:6px; font-size:12px; }
+.checklist-cb { width:16px; height:16px; border:2px solid var(--border); border-radius:4px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:.15s; }
+.checklist-cb.checked { background:var(--accent); border-color:var(--accent); }
+.checklist-cb.checked::after { content:'✓'; color:#000; font-size:10px; font-weight:700; }
+.checklist-label { flex:1; }
+.checklist-label.done { text-decoration:line-through; color:var(--text-muted); }
+.checklist-rm { color:var(--text-dim); cursor:pointer; font-size:14px; padding:0 4px; opacity:.5; }
+.checklist-rm:hover { opacity:1; color:var(--danger); }
+.checklist-progress { height:3px; background:var(--surface3); border-radius:2px; margin-top:6px; overflow:hidden; }
+.checklist-progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .3s; }
+/* Rutin bilgi kutusu animasyonu */
+@keyframes fadeInDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+#routine-info-box { animation: fadeInDown .2s ease; }
+
+/* ── Zamanlanmış 3-bölüm ── */
+.sched-section-empty { padding:16px 18px; font-size:12px; color:var(--text-muted); text-align:center; }
+.sched-row-upcoming  { opacity:.55; }
+.sched-row-upcoming:hover { opacity:.85; }
+.sched-done-row { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center;
+  padding:10px 18px; border-bottom:1px solid var(--border); }
+.sched-done-title { font-size:12px; font-weight:500; text-decoration:line-through; color:var(--text-muted); }
+.sched-done-meta  { font-size:10px; color:var(--text-dim); margin-top:2px; }
+.sched-upcoming-row { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center;
+  padding:10px 18px; border-bottom:1px solid var(--border); }
+.sched-upcoming-title { font-size:12px; font-weight:500; color:var(--text-muted); }
+.sched-upcoming-meta  { font-size:10px; color:var(--text-dim); margin-top:2px; }
+.opens-in-chip { background:var(--surface3); color:var(--text-muted); border-radius:10px;
+  padding:2px 10px; font-size:10px; white-space:nowrap; }
+.last-done-chip { background:rgba(63,185,80,.12); color:var(--green); border-radius:10px;
+  padding:2px 10px; font-size:10px; white-space:nowrap; }
+.sched-collapse { overflow:hidden; transition:max-height .25s ease; }
+.sched-collapse.collapsed { max-height:0 !important; }
+</style>
+</head>
+<body>
+
+<!-- ╔══════════════════════════════════════╗
+     ║          O365 LOGIN PAGE             ║
+     ╚══════════════════════════════════════╝ -->
+<div id="login-screen" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:var(--bg);position:fixed;inset:0;z-index:999;">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px">
+        <div class="logo-hex" style="width:36px;height:36px"></div>
+        <div class="logo-text" style="font-size:18px">IT//TRACKER</div>
+      </div>
+      <div class="logo-sub" style="text-align:center">İnventist & Assos · Görev Yönetim Sistemi</div>
+    </div>
+    <div class="login-title">Hoş Geldiniz</div>
+    <div class="login-sub">Devam etmek için Office 365 hesabınızla giriş yapın veya kullanıcı adı & şifrenizi kullanın.</div>
+    
+    <button class="o365-btn" onclick="o365Login()">
+      <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Microsoft 365 ile Giriş Yap
+    </button>
+
+    <div class="login-divider">ya da</div>
+
+    <div class="login-form">
+      <input class="form-control" id="login-user" placeholder="Kullanıcı adı" style="margin-bottom:10px;">
+      <input class="form-control" id="login-pass" type="password" placeholder="Şifre" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter')manualLogin()">
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="manualLogin()">Giriş Yap</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔══════════════════════════════════════╗
+     ║              SIDEBAR                 ║
+     ╚══════════════════════════════════════╝ -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">
+      <div class="logo-hex"></div>
+      <div class="logo-text">IT//TRACKER</div>
+    </div>
+    <div class="logo-sub">İnventist & Assos · v2.0</div>
+  </div>
+
+  <div class="user-block">
+    <div class="avatar" id="sb-avatar">LM</div>
+    <div>
+      <div class="user-name" id="sb-name">Levent Mahir Can</div>
+      <div class="user-role" id="sb-role">IT Sorumlusu</div>
+      <div class="o365-badge" id="sb-o365" style="display:none">⬡ O365 Bağlı</div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-section">Ana Menü</div>
+    <a class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
+    <a class="nav-item" onclick="showPage('tasks')"><span class="nav-icon">☰</span>Tüm Görevler</a>
+    <a class="nav-item" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Zamanlanmış Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
+    <a class="nav-item" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
+    <div class="nav-section" style="margin-top:8px">Yönetim</div>
+    <a class="nav-item admin-item" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
+    <a class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="/logout" class="o365-login-btn" style="margin-bottom:8px;color:var(--danger);border-color:rgba(248,81,73,.3);" onmouseover="this.style.borderColor='var(--danger)'" onmouseout="this.style.borderColor='rgba(248,81,73,.3)'">
+      <span style="font-size:14px">⎋</span> Çıkış Yap
+    </a>
+    <button class="o365-login-btn" onclick="showLoginScreen()">
+      <svg width="14" height="14" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      O365 Hesabı Bağla
+    </button>
+  </div>
+</aside>
+
+<!-- ╔══════════════════════════════════════╗
+     ║               MAIN                   ║
+     ╚══════════════════════════════════════╝ -->
+<main class="main">
+
+<!-- ─── DASHBOARD ─── -->
+<div id="page-dashboard" class="page-section active">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Günaydın, <span id="dash-name">Levent</span> 👋</div>
+      <div class="page-sub">Perşembe · 26 Şubat 2026 · Şubat ayında 3 gün kaldı</div>
+    </div>
+    <div class="topbar-right">
+      <div class="notif-wrap" id="notif-wrap">
+        <div class="notif-btn" onclick="toggleNotifDropdown()" title="Bildirimler">
+          🔔
+          <div class="notif-dot" id="notif-dot" style="display:none"></div>
+        </div>
+        <div class="notif-dropdown hidden" id="notif-dropdown">
+          <div class="notif-header">
+            <span class="notif-title-label">BİLDİRİMLER</span>
+            <span class="notif-clear-btn" onclick="clearAllNotifs()">Tümünü temizle</span>
+          </div>
+          <div class="notif-list" id="notif-list"></div>
+          <div class="notif-footer-link" onclick="showPage('scheduled');closeNotifDropdown()">Zamanlanmış Görevlere Git →</div>
+        </div>
+      </div>
+      <div class="date-display">
+        <div class="date-day" id="topbar-date-day"></div>
+        <div class="date-full" id="topbar-date-full"></div>
+      </div>
+      <button class="btn btn-primary btn-new-task" onclick="showPage('add')">＋ Yeni Görev</button>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi c-teal"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
+    <div class="kpi c-green"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
+    <div class="kpi c-orange"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
+    <div class="kpi c-purple"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
+    <div class="kpi c-gold"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+  </div>
+
+  <div class="grid-3">
+    <!-- TODAY TASKS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">BUGÜNÜN GÖREVLERİ</div>
+        <div class="tabs" style="border:none;margin:0">
+          <div class="tab active" id="tab-all" onclick="filterTasks('all')">Tümü</div>
+          <div class="tab" id="tab-open" onclick="filterTasks('open')">Açık</div>
+          <div class="tab" id="tab-done" onclick="filterTasks('done')">Bitti</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding-top:6px" id="task-list-body"></div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <!-- PIE CHART -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">KATEGORİ DAĞILIMI</div></div>
+        <div class="card-body">
+          <div class="chart-wrap">
+            <svg width="130" height="130" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3.4"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent)" stroke-width="3.4" stroke-dasharray="38 62" stroke-dashoffset="25" transform="rotate(-90 18 18)"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent3)" stroke-width="3.4" stroke-dasharray="25 75" stroke-dashoffset="-13" transform="rotate(-90 18 18)"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent2)" stroke-width="3.4" stroke-dasharray="20 80" stroke-dashoffset="-38" transform="rotate(-90 18 18)"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--gold)" stroke-width="3.4" stroke-dasharray="17 83" stroke-dashoffset="-58" transform="rotate(-90 18 18)"/>
+              <text x="18" y="19" text-anchor="middle" fill="var(--text)" font-size="5.5" font-family="IBM Plex Mono" font-weight="700">71%</text>
+              <text x="18" y="22.5" text-anchor="middle" fill="var(--text-muted)" font-size="3">tamamlandı</text>
+            </svg>
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Rutin (38%)</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div>Destek (25%)</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Altyapı (20%)</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Backup (17%)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FIRMA DAĞILIMI -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">FİRMA DAĞILIMI</div></div>
+        <div class="card-body">
+          <div class="progress-wrap">
+            <div class="progress-label"><span>İnventist</span><span style="color:var(--accent)">16 görev</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:67%;background:var(--accent)"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Assos</span><span style="color:var(--gold)">8 görev</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:33%;background:var(--gold)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YAKLAŞAN RUTİN GÖREVLER -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">YAKLAŞAN RUTİN</div>
+          <span class="nav-badge" id="dash-sched-count" style="background:var(--accent3)">0</span>
+        </div>
+        <div class="card-body" style="padding-top:6px" id="dash-upcoming-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">HAFTALIK YÜKLENME</div></div>
+      <div class="card-body">
+        <div class="bar-chart" id="bar-chart"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 2px">
+          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">PAZARTESİ</span>
+          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">SALI</span>
+          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">ÇARŞAMBA</span>
+          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">PERŞEMBE</span>
+          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">CUMA</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">EKİP BAZINDA TALEPLER</div></div>
+      <div class="card-body" id="team-bars"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ZAMANLANMIŞ GÖREVLER ─── -->
+<div id="page-scheduled" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Zamanlanmış <span>Görevler</span></div>
+      <div class="page-sub">Rutin kategorideki tekrarlayan görevler · Alarm yönetimi</div>
+    </div>
+    <div class="topbar-right">
+      <div class="date-display">
+        <div class="date-day" id="sched-date-day"></div>
+        <div class="date-full" id="sched-date-full"></div>
+      </div>
+      <button class="btn btn-primary btn-new-task" onclick="showPage('add');document.getElementById('new-cat').value='routine';onCatChange()">＋ Rutin Görev Ekle</button>
+    </div>
+  </div>
+
+  <!-- KPI'lar -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px" id="sched-kpi-row"></div>
+
+  <div class="grid-3r" style="margin-bottom:0">
+    <!-- Sol: özet + filtreler -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">PERİYOT DAĞILIMI</div></div>
+        <div class="card-body" id="sched-period-dist"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">FİLTRE</div></div>
+        <div class="card-body">
+          <div style="margin-bottom:10px">
+            <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Periyot</label>
+            <select class="form-control" style="font-size:12px" id="sf-period" onchange="renderScheduledList()">
+              <option value="">Tümü</option>
+              <option value="Günlük">Günlük</option>
+              <option value="Haftalık">Haftalık</option>
+              <option value="Aylık">Aylık</option>
+              <option value="Yıllık">Yıllık</option>
+            </select>
+          </div>
+          <div style="margin-bottom:10px">
+            <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Firma</label>
+            <select class="form-control" style="font-size:12px" id="sf-firm" onchange="renderScheduledList()">
+              <option value="">Tümü</option>
+              <option value="inventist">İnventist</option>
+              <option value="assos">Assos</option>
+            </select>
+          </div>
+          <div style="margin-bottom:10px">
+            <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Durum</label>
+            <select class="form-control" style="font-size:12px" id="sf-status" onchange="renderScheduledList()">
+              <option value="">Tümü</option>
+              <option value="overdue">Gecikti</option>
+              <option value="due">Bugün / Yakın</option>
+              <option value="ok">Zamanında</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border2)">
+            <div style="font-size:18px">📧</div>
+            <div>
+              <div style="font-size:11px;font-weight:600">Mail Alarm</div>
+              <div style="font-size:9px;color:var(--text-muted);margin-top:1px">3+ gün gecikince SMTP ile otomatik mail</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sağ: 3 bölümlü liste -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- AKTİF DÖNEM -->
+      <div class="card">
+        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('active')">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--accent)">▶</span> AKTİF DÖNEM
+            <span id="sched-badge-active" style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
+          </div>
+          <span id="sched-count-label" style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">0 kayıt</span>
+        </div>
+        <div id="sched-section-active">
+          <div class="sched-head">
+            <span></span><span>GÖREV</span><span>SON TARİH</span><span>PERİYOT</span><span>ALARM</span>
+          </div>
+          <div id="sched-list-body"></div>
+        </div>
+      </div>
+
+      <!-- TAMAMLANDI -->
+      <div class="card">
+        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('done')">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--green)">✓</span> BU PERİYOT TAMAMLANDI
+            <span id="sched-badge-done" style="background:var(--green);color:#000;border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
+          </div>
+        </div>
+        <div id="sched-section-done">
+          <div id="sched-list-done" style="padding:0 2px"></div>
+        </div>
+      </div>
+
+      <!-- GELECEK DÖNEM -->
+      <div class="card">
+        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('upcoming')">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--text-muted)">📅</span> GELECEK DÖNEM
+            <span id="sched-badge-upcoming" style="background:var(--surface3);color:var(--text-muted);border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
+          </div>
+        </div>
+        <div id="sched-section-upcoming">
+          <div id="sched-list-upcoming" style="padding:0 2px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ─── ALL TASKS ─── -->
+<div id="page-tasks" class="page-section">
+  <div class="topbar">
+    <div><div class="page-title">Tüm <span>Görevler</span></div></div>
+    <button class="btn btn-primary" onclick="showPage('add')">＋ Yeni Görev</button>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="form-control" placeholder="Ara..." style="width:200px;padding:6px 10px;font-size:12px" oninput="filterFullList(this.value)">
+        <select class="form-control" style="width:120px;padding:6px 10px;font-size:12px" onchange="filterFullByFirm(this.value)">
+          <option value="">Tüm Firmalar</option><option value="inventist">İnventist</option><option value="assos">Assos</option>
+        </select>
+        <select class="form-control" style="width:120px;padding:6px 10px;font-size:12px" onchange="filterFullByCat(this.value)">
+          <option value="">Tüm Kategoriler</option><option value="routine">Rutin</option><option value="support">Destek</option><option value="infra">Altyapı</option><option value="backup">Config Backup</option>
+        </select>
+      </div>
+      <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace" id="task-count-label">24 kayıt</span>
+    </div>
+    <div class="card-body" style="padding:0" id="full-task-list"></div>
+  </div>
+</div>
+
+<!-- ─── ADD TASK ─── -->
+<div id="page-add" class="page-section">
+  <div class="topbar">
+    <div><div class="page-title">Yeni <span>Görev</span> Ekle</div></div>
+  </div>
+  <div style="max-width:680px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">GÖREV BİLGİLERİ</div></div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Görev Başlığı</label>
+          <input class="form-control" id="new-title" placeholder="Görev açıklamasını girin...">
+        </div>
+
+        <!-- FIRMA + EKİP cascading -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Firma</label>
+            <select class="form-control" id="new-firm" onchange="updateTeamOptions()">
+              <option value="">— Firma Seçin —</option>
+              <option value="inventist">İnventist</option>
+              <option value="assos">Assos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>İlgili Ekip / Kullanıcı</label>
+            <select class="form-control" id="new-team" disabled>
+              <option value="">— Önce Firma Seçin —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kategori</label>
+            <select class="form-control" id="new-cat" onchange="onCatChange()">
+              <option value="">— Kategori Seçin —</option>
+              <option value="routine">Rutin</option>
+              <option value="support">Destek Talebi</option>
+              <option value="infra">Altyapı</option>
+              <option value="backup">Config Backup</option>
+              <option value="other">Diğer</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Periyot</label>
+            <select class="form-control" id="new-period">
+              <option>Günlük</option><option>Haftalık</option><option>Aylık</option><option>Yıllık</option><option>Tek Seferlik</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Rutin görev için: bitiş tarihi gizli, otomatik hesaplanır -->
+        <div class="form-row" id="deadline-row">
+          <div class="form-group">
+            <label>Başlangıç Tarihi</label>
+            <input class="form-control" id="new-start" type="date">
+            <div class="form-hint">Varsayılan: bugün</div>
+          </div>
+          <div class="form-group" id="deadline-group">
+            <label>Bitiş / Son Tarih</label>
+            <input class="form-control" id="new-deadline" type="date">
+            <div class="form-hint" id="deadline-hint">Aşılırsa geciken olarak işaretlenir</div>
+          </div>
+        </div>
+
+        <!-- Rutin görev bilgi kutusu (category=routine seçilince görünür) -->
+        <div id="routine-info-box" class="hidden" style="background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.25);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <span style="font-size:18px">🔁</span>
+            <div>
+              <div style="font-weight:600;color:var(--accent);margin-bottom:4px">Rutin Görev — Otomatik Yenileme</div>
+              <div style="color:var(--text-muted);line-height:1.6" id="routine-info-text">
+                Bu görev tamamlandıkça bir sonraki periyotta otomatik sıfırlanacak.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Notlar</label>
+          <input class="form-control" id="new-notes" placeholder="Kısa not...">
+        </div>
+
+        <!-- Checklist (rutin görevler için opsiyonel) -->
+        <div id="checklist-section" class="hidden" style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label style="margin:0">Kontrol Listesi <span style="font-size:10px;color:var(--text-muted)">(opsiyonel)</span></label>
+            <button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:10px" onclick="addChecklistItem()">＋ Adım Ekle</button>
+          </div>
+          <div id="checklist-items" style="display:flex;flex-direction:column;gap:6px"></div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <input class="form-control" id="new-checklist-item" placeholder="Adım ekle... (Enter ile)" style="font-size:12px"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addChecklistItem()}">
+          </div>
+        </div>
+
+        <!-- CONFIG BACKUP SECTION (hidden by default) -->
+        <div id="backup-section" class="hidden" style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="width:3px;height:24px;background:var(--gold);border-radius:2px"></div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--gold)">Config Backup Yükleme</div>
+              <div style="font-size:10px;color:var(--text-muted)">Firmware/güncelleme öncesi config dosyasını yükleyin · Yedekler menüsünden erişebilirsiniz</div>
+            </div>
+          </div>
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="backup-file" accept=".cfg,.conf,.txt,.bin,.xml,.json,.tar,.gz,.zip" onchange="onFileSelected(this)">
+            <div class="upload-icon">💾</div>
+            <div class="upload-label">Dosyayı sürükleyin veya <strong>tıklayın</strong></div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px">.cfg · .conf · .bin · .xml · .txt · .zip</div>
+            <div class="upload-filename" id="upload-filename" style="display:none"></div>
+          </div>
+          <div class="form-group" style="margin-top:10px">
+            <label>Cihaz / Konu</label>
+            <input class="form-control" id="backup-device" placeholder="Örn: Core-Switch-01 · Firmware v5.2.0 öncesi" id="backup-device">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="addTask()">Görevi Kaydet</button>
+          <button class="btn btn-outline" onclick="showPage('dashboard')">İptal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── REPORT ─── -->
+<div id="page-report" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Aylık <span>Rapor</span></div>
+      <div class="page-sub" id="report-sub">Ay seçin ve PDF oluşturun</div>
+    </div>
+    <div class="topbar-right">
+      <select class="form-control" style="width:160px;font-size:12px" id="report-month-sel" onchange="onReportMonthChange()"></select>
+      <button class="btn btn-primary" onclick="sendReportMail()">📧 PDF Mail Gönder</button>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">ÖZET İSTATİSTİKLER</div></div>
+      <div class="card-body" id="report-stats-body">
+        <div style="padding:24px;text-align:center;font-size:12px;color:var(--text-muted)">Ay seçilmesi bekleniyor...</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">MAIL AYARLARI</div></div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Alıcı Mail</label>
+          <input class="form-control" id="report-to" placeholder="ornek@sirket.com">
+          <div class="form-hint">Ayarlar > Hesap bölümünden değiştirilebilir</div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>CC (Yönetici)</label>
+          <input class="form-control" id="report-cc" placeholder="yonetici@sirket.com (opsiyonel)">
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="previewReportPdf()">&#8595; PDF Önizle / İndir</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px" onclick="sendReportMail()">📧 Seçili Aya Ait PDF'i Gönder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MAIL HATA MODAL ─── -->
+<div id="mail-error-modal" class="modal-overlay hidden">
+  <div class="modal" style="width:560px">
+    <div class="modal-title" id="mail-error-title">📧 Mail Gönderim Sonucu</div>
+    <div id="mail-error-body" style="font-size:13px;line-height:1.7;margin-bottom:16px;white-space:pre-wrap"></div>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text-muted)" id="mail-error-hint" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('mail-error-modal').classList.add('hidden')">Kapat</button>
+      <button class="btn btn-primary btn-sm" onclick="showPage('settings');document.getElementById('mail-error-modal').classList.add('hidden')">⚙ SMTP Ayarlarına Git</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─── YEDEKLER ─── -->
+<div id="page-backups" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Config <span>Yedekler</span></div>
+      <div class="page-sub">Yüklenen tüm config backup dosyaları · İndirme ve yönetim</div>
+    </div>
+    <button class="btn btn-gold" onclick="showPage('add');document.getElementById('new-cat').value='backup';onCatChange()">💾 Yeni Backup Ekle</button>
+  </div>
+
+  <div class="grid-3r" style="margin-bottom:18px">
+    <!-- Sol: mini istatistik -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">ÖZET</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Toplam Backup</span><span id="bk-total" style="font-family:'IBM Plex Mono',monospace;color:var(--gold)">0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>İnventist</span><span id="bk-inventist" style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Assos</span><span id="bk-assos" style="font-family:'IBM Plex Mono',monospace;color:var(--gold)">0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Bu ay</span><span id="bk-month" style="font-family:'IBM Plex Mono',monospace;color:var(--green)">0</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">FİLTRE</div></div>
+        <div class="card-body">
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Firma</label>
+            <select class="form-control" style="font-size:12px" onchange="filterBackups()" id="bk-filter-firm">
+              <option value="">Tümü</option>
+              <option value="inventist">İnventist</option>
+              <option value="assos">Assos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ara</label>
+            <input class="form-control" style="font-size:12px" placeholder="Cihaz / başlık..." oninput="filterBackups()" id="bk-search">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sağ: backup listesi -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">BACKUP KAYITLARI</div>
+        <span id="bk-count-label" style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">0 kayıt</span>
+      </div>
+      <div id="backup-list-body" style="padding:0 18px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ADMIN PANEL ─── -->
+<div id="page-admin" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Kullanıcı <span>Yönetimi</span></div>
+      <div class="page-sub">Sisteme kayıtlı tüm IT personeli · Admin yetkisi gerektirir</div>
+    </div>
+    <button class="btn btn-gold" onclick="openInviteModal()">✉ Kullanıcı Davet Et</button>
+  </div>
+
+  <div class="grid-3r">
+    <!-- STATS -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">KULLANICI ÖZET</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Toplam Kullanıcı</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">4</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Aktif</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--green)">3</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Bekleyen Davet</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--gold)">1</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>O365 Bağlı</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--accent3)">2</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">ROL DAĞILIMI</div></div>
+        <div class="card-body">
+          <div class="progress-wrap"><div class="progress-label"><span>IT Sorumlusu</span><span style="color:var(--accent)">1</span></div><div class="progress-bar"><div class="progress-fill" style="width:25%;background:var(--accent)"></div></div></div>
+          <div class="progress-wrap"><div class="progress-label"><span>IT Yardımcısı</span><span style="color:var(--accent3)">2</span></div><div class="progress-bar"><div class="progress-fill" style="width:50%;background:var(--accent3)"></div></div></div>
+          <div class="progress-wrap"><div class="progress-label"><span>Yönetici (Read)</span><span style="color:var(--gold)">1</span></div><div class="progress-bar"><div class="progress-fill" style="width:25%;background:var(--gold)"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USER TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">KAYITLI KULLANICILAR</div>
+        <input class="form-control" placeholder="Kullanıcı ara..." style="width:180px;padding:5px 10px;font-size:11px">
+      </div>
+      <div class="card-body" style="padding:0;overflow-x:auto">
+        <table class="data-table" id="user-table">
+          <thead>
+            <tr>
+              <th>KULLANICI</th>
+              <th>ROL</th>
+              <th>FİRMA</th>
+              <th>O365</th>
+              <th>DURUM</th>
+              <th>İŞLEM</th>
+            </tr>
+          </thead>
+          <tbody id="user-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SETTINGS ─── -->
+<div id="page-settings" class="page-section">
+  <div class="topbar">
+    <div><div class="page-title"><span>Ayarlar</span></div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px">
+
+    <!-- Kullanıcı Ayarları -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">KULLANICI BİLGİLERİ</div></div>
+      <div class="card-body">
+        <div class="form-row"><div class="form-group"><label>Ad Soyad</label><input class="form-control" id="set-fullname" value="Levent Mahir Can"></div><div class="form-group"><label>Kullanici Adi</label><input class="form-control" id="set-username" value="lmc"></div></div>
+        <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="set-email" value="levent.can@inventist.com"></div>
+        <div class="form-group" style="margin-bottom:12px"><label>Yeni Sifre (bos birakırsanız degismez)</label><input class="form-control" id="set-password" type="password" placeholder="••••••••"></div>
+        <div class="form-group" style="margin-bottom:16px"><label>Rol</label><select class="form-control" id="set-role"><option>IT Sorumlusu</option><option>IT Yardımcısı</option><option>Yönetici</option></select></div>
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px">
+          <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent3);margin-bottom:4px">⬡ Office 365 Entegrasyonu</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Hesabınızı Microsoft 365 ile senkronize edin</div>
+          <button class="btn btn-outline btn-sm" onclick="showToast('ok','O365 OAuth sayfasına yönlendiriliyorsunuz...')">Microsoft ile Bağlan</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveUserSettings()">Kaydet</button>
+      </div>
+    </div>
+
+    <!-- Firma Yönetimi -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">FİRMA YÖNETİMİ</div></div>
+      <div class="card-body">
+        <div style="margin-bottom:18px">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <div class="firm-chip inventist">İnventist</div> Ekipleri
+          </div>
+          <div id="inventist-teams-display"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input class="form-control" id="inventist-new-team" placeholder="Yeni ekip adı..." style="font-size:12px;padding:6px 10px">
+            <button class="btn btn-outline btn-sm" onclick="addTeam('inventist')">＋ Ekle</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:14px">
+          <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <div class="firm-chip assos">Assos</div> Ekipleri
+          </div>
+          <div id="assos-teams-display"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input class="form-control" id="assos-new-team" placeholder="Yeni ekip adı..." style="font-size:12px;padding:6px 10px">
+            <button class="btn btn-outline btn-sm" onclick="addTeam('assos')">＋ Ekle</button>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <button class="btn btn-primary btn-sm" onclick="saveTeams()">Degisiklikleri Kaydet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mail & Rapor -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">RAPOR AYARLARI</div></div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:12px"><label>SMTP Sunucu</label><input class="form-control" id="smtp-host" value="smtp.office365.com" placeholder="smtp.office365.com"></div>
+        <div class="form-row"><div class="form-group"><label>SMTP Port</label><input class="form-control" id="smtp-port" value="587"></div><div class="form-group"><label>Gönderen Mail</label><input class="form-control" id="smtp-user" placeholder="it@inventist.com"></div></div>
+        <div class="form-group" style="margin-bottom:12px"><label>Şifre / App Password</label><input class="form-control" id="smtp-pass" type="password" placeholder="••••••••"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn btn-primary btn-sm" onclick="saveSmtpSettings()">Kaydet</button>
+          <button class="btn btn-outline btn-sm" onclick="testSmtp()">Bağlantıyı Test Et</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Config Backup -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">CONFIG BACKUP AYARLARI</div></div>
+      <div class="card-body">
+        <div class="form-group" style="margin-bottom:12px"><label>Backup Depolama Yolu</label><input class="form-control" value="/srv/it_tracker/backups" placeholder="/srv/backups"></div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>İzin Verilen Dosya Türleri</label>
+          <div id="backup-types-display" style="margin:6px 0"></div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input class="form-control" id="backup-new-type" placeholder=".cfg" style="font-size:12px;padding:6px 10px;width:100px">
+            <button class="btn btn-outline btn-sm" onclick="addBackupType()">＋</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Maks. Dosya Boyutu (MB)</label>
+          <input class="form-control" value="50" type="number">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showToast('ok','Backup ayarları kaydedildi')">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+
+<!-- ─── EDIT TASK MODAL ─── -->
+<div id="edit-task-modal" class="modal-overlay hidden">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">&#9998; Gorevi Duzenle</div>
+    <input type="hidden" id="edit-task-id">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Gorev Basligi</label>
+      <input class="form-control" id="edit-task-title">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Firma</label>
+        <select class="form-control" id="edit-task-firm" onchange="updateEditTeamOptions()">
+          <option value="inventist">Inventist</option>
+          <option value="assos">Assos</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ekip</label>
+        <select class="form-control" id="edit-task-team"></select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Kategori</label>
+        <select class="form-control" id="edit-task-cat">
+          <option value="routine">Rutin</option>
+          <option value="support">Destek Talebi</option>
+          <option value="infra">Altyapi</option>
+          <option value="backup">Config Backup</option>
+          <option value="other">Diger</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Periyot</label>
+        <select class="form-control" id="edit-task-period">
+          <option>Günlük</option><option>Haftalık</option><option>Aylık</option><option>Yıllık</option><option>Tek Seferlik</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Son Tarih</label>
+        <input class="form-control" id="edit-task-deadline" type="date">
+      </div>
+      <div class="form-group">
+        <label>Durum</label>
+        <select class="form-control" id="edit-task-done">
+          <option value="false">Devam Ediyor</option>
+          <option value="true">Tamamlandi</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:4px">
+      <label>Notlar</label>
+      <textarea class="form-control" id="edit-task-notes" style="min-height:60px"></textarea>
+    </div>
+    <!-- Son tamamlanma (rutin görevlerde gösterilir) -->
+    <div id="edit-last-completed-row" class="hidden" style="background:rgba(0,212,170,.07);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--text-muted)">
+      🕐 Son tamamlanma: <span id="edit-last-completed-val" style="color:var(--accent);font-weight:600"></span>
+    </div>
+    <!-- Checklist (rutin görevlerde) -->
+    <div id="edit-checklist-section" class="hidden" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="margin:0;font-size:12px">Kontrol Listesi</label>
+        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:10px" onclick="addEditChecklistItem()">＋ Adım</button>
+      </div>
+      <div id="edit-checklist-items" style="display:flex;flex-direction:column;gap:5px"></div>
+      <input class="form-control" id="edit-new-checklist-item" placeholder="Yeni adım..." style="font-size:11px;margin-top:6px"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();addEditChecklistItem()}">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" onclick="deleteTask()">Sil</button>
+      <button class="btn btn-outline btn-sm" onclick="closeEditTaskModal()">İptal</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEditTask()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EDIT USER MODAL ─── -->
+<div id="edit-user-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-title">&#9998; Kullanıcı Düzenle</div>
+    <input type="hidden" id="edit-user-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Ad Soyad</label>
+        <input class="form-control" id="edit-user-name">
+      </div>
+      <div class="form-group">
+        <label>Kullanici Adi</label>
+        <input class="form-control" id="edit-user-username">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Mail Adresi</label>
+      <input class="form-control" id="edit-user-email">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Rol</label>
+        <select class="form-control" id="edit-user-role">
+          <option>IT Sorumlusu</option>
+          <option>IT Yardımcısı</option>
+          <option>Yönetici (Read)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Firma</label>
+        <select class="form-control" id="edit-user-firm">
+          <option value="inventist">Inventist</option>
+          <option value="assos">Assos</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Durum</label>
+      <select class="form-control" id="edit-user-status">
+        <option value="active">Aktif</option>
+        <option value="pending">Bekliyor</option>
+        <option value="inactive">Pasif</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeEditUserModal()">Iptal</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEditUser()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── INVITE MODAL ─── -->
+<div id="invite-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-title">✉ Kullanıcı Davet Et</div>
+    <div class="form-group" style="margin-bottom:12px"><label>Ad Soyad</label><input class="form-control" id="inv-name" placeholder="Ahmet Yılmaz"></div>
+    <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="inv-email" placeholder="ahmet@inventist.com"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Rol</label><select class="form-control" id="inv-role"><option>IT Yardımcısı</option><option>IT Sorumlusu</option><option>Yönetici (Read)</option></select></div>
+      <div class="form-group"><label>Firma</label><select class="form-control" id="inv-firm"><option value="inventist">İnventist</option><option value="assos">Assos</option></select></div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:4px;font-size:11px;color:var(--text-muted)">
+      Kullanıcıya davet maili gönderilecek. Giriş için Microsoft 365 veya şifre oluşturabilecekler.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">İptal</button>
+      <button class="btn btn-gold btn-sm" onclick="sendInvite()">✉ Davet Gönder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST CONTAINER ─── -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  SABİT VERİLER
+// ══════════════════════════════════════════════════════════
+const FIRMS = {
+  inventist: { label: 'İnventist', cls: 'inventist',
+    teams: ['Teknik Ekip','Misafir İlişkileri','F&B','Akademi Yönetimi','Otel ve Ön Büro','Housekeeping','İnsan Kaynakları','Genel'] },
+  assos: { label: 'Assos', cls: 'assos',
+    teams: ['Resepsiyon','Teknik Servis','Yiyecek-İçecek','İdare','Animasyon','Genel'] }
+};
+const BACKUP_TYPES = ['.cfg','.conf','.txt','.bin','.xml','.json','.tar','.zip'];
+const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
+const CAT_LABELS = {routine:'Rutin',support:'Destek',infra:'Altyapı',backup:'Config Backup',other:'Diğer'};
+
+// ── Uygulama durumu ──
+let tasks = [];       // API'den yüklenir
+let USERS = [];       // API'den yüklenir
+let currentUser = {}; // /api/me
+
+// ══════════════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════════════
+function showLoginScreen() { document.getElementById('login-screen').style.display = 'flex'; }
+function o365Login() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('sb-o365').style.display = 'inline-flex';
+  showToast('ok','Microsoft 365 hesabı başarıyla bağlandı');
+}
+function manualLogin() {
+  const u = document.getElementById('login-user').value;
+  const p = document.getElementById('login-pass').value;
+  fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u,password:p}) })
+    .then(r => r.json()).then(d => {
+      if (d.ok) { document.getElementById('login-screen').style.display = 'none'; loadApp(); }
+      else showToast('err', d.error || 'Hatalı kullanıcı adı veya şifre');
+    }).catch(() => { document.getElementById('login-screen').style.display = 'none'; loadApp(); });
+}
+
+// ══════════════════════════════════════════════════════════
+//  UYGULAMA YÜKLEME — API'den tüm veriyi çek
+// ══════════════════════════════════════════════════════════
+async function loadApp() {
+  try {
+    const me = await fetch('/api/me').then(r => r.json());
+    currentUser = me;
+    document.getElementById('sb-name').textContent = me.full_name || me.username;
+    document.getElementById('sb-role').textContent = me.role || '';
+    document.getElementById('sb-avatar').textContent = (me.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    if (me.o365_linked) document.getElementById('sb-o365').style.display = 'inline-flex';
+  } catch(e) { console.warn('Me yüklenemedi', e); }
+
+  await loadTasks();
+  setDateDisplay('topbar-date-day', 'topbar-date-full');
+  renderDashboard();
+  setTimeout(() => buildNotifications(), 400);
+}
+
+async function loadTasks(month, year) {
+  try {
+    const now = new Date();
+    const m = month || now.getMonth() + 1;
+    const y = year  || now.getFullYear();
+    // Tüm görevleri çek — ay filtresi olmadan (dashboard ve listeler için)
+    const res = await fetch('/api/tasks?month=' + m + '&year=' + y);
+    const data = await res.json();
+    // API alanlarını frontend formatına normalize et
+    tasks = data.map(normalizeTask);
+  } catch(e) { console.error('Görevler yüklenemedi:', e); tasks = []; }
+}
+
+// API to_dict() → frontend format dönüşümü
+function normalizeTask(t) {
+  return {
+    id:       t.id,
+    title:    t.title,
+    cat:      t.category,      // API: category → FE: cat
+    period:   t.period,
+    firm:     t.firm,
+    team:     t.team,
+    notes:    t.notes || '',
+    deadline: t.deadline,
+    done:     t.is_done,       // API: is_done → FE: done
+    startDate: t.created_at ? t.created_at.substring(0,10) : null,
+    backup:         t.has_backup ? '(dosya var)' : null,
+    alarm:          t.alarm !== undefined ? t.alarm : (t.category === 'routine'),
+    mailSent:       t.mail_sent || false,
+    last_completed: t.last_completed || null,
+    next_due:       t.next_due || null,
+    checklist:      t.checklist || [],
+    checklist_done: t.checklist_done || [],
+  };
+}
+
+// ══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+name)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const map = {dashboard:0,tasks:1,scheduled:2,report:3,backups:4,admin:5,settings:6};
+  document.querySelectorAll('.nav-item')[map[name]]?.classList.add('active');
+  if (name==='dashboard') renderDashboard();
+  if (name==='tasks')     { loadTasks().then(() => renderFullList(tasks)); }
+  if (name==='add')       { onCatChange(); }
+  if (name==='backups')   renderBackupList();
+  if (name==='admin')     loadAndRenderUsers();
+  if (name==='settings')  { renderSettingsTeams(); loadSettingsFromServer(); }
+  if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
+  if (name==='report')    initReportPage();
+}
+
+// ══════════════════════════════════════════════════════════
+//  DASHBOARD RENDER
+// ══════════════════════════════════════════════════════════
+function renderDashboard() {
+  const now = new Date();
+  const el = document.getElementById('dash-name');
+  if (el) el.textContent = (currentUser.full_name || '').split(' ')[0] || 'Hoş Geldiniz';
+
+  const total   = tasks.length;
+  const done    = tasks.filter(t => t.done).length;
+  const pending = tasks.filter(t => !t.done).length;
+  const late    = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY).length;
+  const backups = tasks.filter(t => t.cat === 'backup').length;
+  const rate    = total ? Math.round(done/total*100) : 0;
+
+  // KPI kartları — dinamik güncelle
+  const kpiEls = document.querySelectorAll('.kpi-value');
+  const kpiSubs = document.querySelectorAll('.kpi-sub');
+  if (kpiEls[0]) { kpiEls[0].textContent = total; if(kpiSubs[0]) kpiSubs[0].textContent = 'Bu dönem'; }
+  if (kpiEls[1]) { kpiEls[1].textContent = done;  if(kpiSubs[1]) kpiSubs[1].textContent = `%${rate} oran`; }
+  if (kpiEls[2]) { kpiEls[2].textContent = pending; }
+  if (kpiEls[3]) { kpiEls[3].textContent = late; }
+  if (kpiEls[4]) { kpiEls[4].textContent = backups; }
+
+  filterTasks(currentFilter);
+  renderDashUpcoming();
+  renderBars();
+  renderTeamBars();
+}
+
+// ══════════════════════════════════════════════════════════
+//  CASCADING FIRM → TEAM
+// ══════════════════════════════════════════════════════════
+function updateTeamOptions() {
+  const firm = document.getElementById('new-firm').value;
+  const teamSel = document.getElementById('new-team');
+  teamSel.innerHTML = '';
+  if (!firm) { teamSel.innerHTML = '<option>— Önce Firma Seçin —</option>'; teamSel.disabled = true; return; }
+  teamSel.disabled = false;
+  FIRMS[firm].teams.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; teamSel.appendChild(o); });
+}
+
+// ══════════════════════════════════════════════════════════
+//  BACKUP SECTION TOGGLE
+// ══════════════════════════════════════════════════════════
+function onCatChange() {
+  const cat    = document.getElementById('new-cat').value;
+  const period = document.getElementById('new-period').value;
+  const isBackup  = cat === 'backup';
+  const isRoutine = cat === 'routine';
+  const isEmpty   = cat === '';
+
+  // Backup section
+  document.getElementById('backup-section').classList.toggle('hidden', !isBackup);
+  if (isBackup) { document.getElementById('new-period').value = 'Günlük'; document.getElementById('new-period').disabled = true; }
+  else document.getElementById('new-period').disabled = false;
+
+  // Checklist sadece rutin görevde
+  document.getElementById('checklist-section').classList.toggle('hidden', !isRoutine);
+
+  // Rutin bilgi kutusu
+  const infoBox = document.getElementById('routine-info-box');
+  if (infoBox) infoBox.classList.toggle('hidden', !isRoutine);
+
+  // Deadline alanı: rutin + periyotlularda otomatik hesaplanır
+  _updateDeadlineHint();
+}
+
+function _updateDeadlineHint() {
+  const cat    = document.getElementById('new-cat')?.value;
+  const period = document.getElementById('new-period')?.value;
+  const hint   = document.getElementById('deadline-hint');
+  const infoTxt= document.getElementById('routine-info-text');
+  const deadlineGrp = document.getElementById('deadline-group');
+  const isRoutineRecurring = cat === 'routine' && period && period !== 'Tek Seferlik';
+
+  if (deadlineGrp) {
+    deadlineGrp.style.opacity = isRoutineRecurring ? '0.5' : '1';
+  }
+  if (hint) {
+    hint.textContent = isRoutineRecurring
+      ? 'Boş bırakırsanız periyota göre otomatik hesaplanır'
+      : 'Aşılırsa geciken olarak işaretlenir';
+  }
+  if (infoTxt && isRoutineRecurring) {
+    const map = {
+      Günlük:   'Her gün sıfırlanır. Tamamlandığında yarın için otomatik açılır.',
+      Haftalık: 'Her Pazartesi sıfırlanır. Tamamlandığında gelecek haftanın başında açılır.',
+      Aylık:    'Her ayın 1. günü sıfırlanır. Tamamlandığında gelecek ayın başında açılır.',
+      Yıllık:   'Her yılın 1 Ocak tarihinde sıfırlanır.',
+    };
+    infoTxt.textContent = map[period] || 'Tamamlandığında bir sonraki periyoda otomatik geçer.';
+  }
+}
+
+// Periyot değişince de hint'i güncelle
+document.addEventListener('change', e => {
+  if (e.target?.id === 'new-period') _updateDeadlineHint();
+});
+function toggleBackupSection() { onCatChange(); }
+function triggerUpload() { /* input[type=file] zaten tüm alanı kaplıyor */ }
+function onFileSelected(input) {
+  const file = input.files[0]; if (!file) return;
+  const el = document.getElementById('upload-filename');
+  el.textContent = '💾 ' + file.name; el.style.display = 'block';
+  document.getElementById('upload-zone').classList.add('has-file');
+}
+
+// ══════════════════════════════════════════════════════════
+//  TASK HELPERS
+// ══════════════════════════════════════════════════════════
+function dlClass(dl, done) {
+  if (done) return 'ok'; if (!dl) return null;
+  const diff = (new Date(dl) - new Date(TODAY)) / 86400000;
+  return diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
+}
+function dlText(dl, done) {
+  if (!dl) return null; if (done) return 'Tamamlandı';
+  const diff = Math.round((new Date(dl) - new Date(TODAY)) / 86400000);
+  if (diff < 0) return `${Math.abs(diff)}g gecikti`;
+  if (diff === 0) return 'Bugün son!';
+  return `${diff}g kaldı`;
+}
+function catLabel(cat) {
+  return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
+}
+function firmChip(firm) {
+  const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
+  return `<span class="firm-chip ${firm}">${f.label}</span>`;
+}
+function taskRow(t) {
+  const dl = t.deadline ? `<div class="dl-badge ${dlClass(t.deadline,t.done)}">${dlText(t.deadline,t.done)}</div>` : '<div></div>';
+  // Checklist ilerleme çubuğu (rutin görevlerde)
+  let clProgress = '';
+  if (t.cat === 'routine' && t.checklist && t.checklist.length > 0) {
+    const total = t.checklist.length;
+    const done2 = (t.checklist_done||[]).filter(Boolean).length;
+    const pct   = Math.round(done2/total*100);
+    clProgress = `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">
+      Adımlar: ${done2}/${total}
+      <div class="checklist-progress" style="margin-top:3px"><div class="checklist-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  // Son tamamlanma
+  const lcStr = (t.cat === 'routine' && t.last_completed)
+    ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">✓ Son: ${new Date(t.last_completed).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</div>`
+    : '';
+  return `
+  <div class="task-item" id="ti-${t.id}">
+    <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})"></div>
+    <div>
+      <div class="task-title ${t.done?'done':''}">${t.title}</div>
+      <div class="task-meta">${catLabel(t.cat)} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
+      ${clProgress}${lcStr}
+    </div>
+    ${dl}
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <div style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${t.deadline ? formatDateTR(t.deadline) : '—'}</div>
+      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; Düzenle</button>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  DASHBOARD TASK LIST
+// ══════════════════════════════════════════════════════════
+let currentFilter = 'all';
+function filterTasks(f) {
+  currentFilter = f;
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+f)?.classList.add('active');
+  let list = tasks;
+  if (f === 'open') list = tasks.filter(t => !t.done);
+  if (f === 'done') list = tasks.filter(t => t.done);
+  document.getElementById('task-list-body').innerHTML = list.map(taskRow).join('') || '<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">Görev yok</div>';
+}
+
+// ══════════════════════════════════════════════════════════
+//  FULL TASK LIST
+// ══════════════════════════════════════════════════════════
+let _ftFirm = '', _ftCat = '', _ftSearch = '';
+function renderFullList(list) {
+  let l = list || tasks;
+  if (_ftFirm)   l = l.filter(t => t.firm === _ftFirm);
+  if (_ftCat)    l = l.filter(t => t.cat  === _ftCat);
+  if (_ftSearch) l = l.filter(t => t.title.toLowerCase().includes(_ftSearch));
+  const el = document.getElementById('full-task-list');
+  if (el) el.innerHTML = `<div style="padding:4px 18px">${l.map(taskRow).join('')}</div>`;
+  const cnt = document.getElementById('task-count-label');
+  if (cnt) cnt.textContent = `${l.length} kayıt`;
+}
+function filterFullByFirm(v) { _ftFirm = v; renderFullList(); }
+function filterFullByCat(v)  { _ftCat  = v; renderFullList(); }
+function filterFullList(v)   { _ftSearch = v.toLowerCase(); renderFullList(); }
+
+// ══════════════════════════════════════════════════════════
+//  API — GÖREV TOGGLE (checkbox)
+// ══════════════════════════════════════════════════════════
+async function apiToggleTask(id) {
+  const t = tasks.find(t => t.id === id); if (!t) return;
+  const newDone = !t.done;
+  try {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({is_done: newDone})
+    });
+    if (!res.ok) throw new Error('API hatası');
+    const updated = await res.json();
+    const normalized = normalizeTask(updated);
+
+    // Rutin görev tamamlandığında backend is_done=false döner (sıfırlandı)
+    // Kullanıcıya kısa süre "tamamlandı" göster, sonra yeni deadline ile güncelle
+    const wasRoutineComplete = newDone && t.cat === 'routine' && t.period !== 'Tek Seferlik';
+    if (wasRoutineComplete) {
+      // Gerçek veriyle hemen güncelle — geçici done gösterme
+      Object.assign(t, normalized);
+      filterTasks(currentFilter);
+      renderFullList(tasks);
+      renderDashUpcoming();
+      buildNotifications();
+      if (document.getElementById('page-scheduled')?.classList.contains('active')) renderScheduledPage();
+      const nextStr = normalized.next_due ? formatDateTR(normalized.next_due) : '?';
+      showToast('ok', `✓ Tamamlandı — sonraki: ${nextStr}`);
+    } else {
+      Object.assign(t, normalized);
+      filterTasks(currentFilter);
+      renderFullList(tasks);
+      renderDashUpcoming();
+      buildNotifications();
+      if (document.getElementById('page-scheduled')?.classList.contains('active')) renderScheduledPage();
+      if (newDone) showToast('ok', '✓ Tamamlandı');
+    }
+  } catch(e) { showToast('err', 'Güncelleme başarısız: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  API — GÖREV EKLE
+// ══════════════════════════════════════════════════════════
+async function addTask() {
+  const title = document.getElementById('new-title').value.trim();
+  const firm  = document.getElementById('new-firm').value;
+  if (!title) { showToast('err','Görev başlığı boş olamaz'); return; }
+  if (!firm)  { showToast('err','Firma seçmediniz'); return; }
+  const cat = document.getElementById('new-cat').value;
+  const backupFile = document.getElementById('backup-file').files[0];
+  let body, fetchOpts;
+  if (cat === 'backup' && backupFile) {
+    const fd = new FormData();
+    fd.append('title',    title);
+    fd.append('category', cat);
+    fd.append('period',   document.getElementById('new-period').value);
+    fd.append('firm',     firm);
+    fd.append('team',     document.getElementById('new-team').value);
+    fd.append('notes',    document.getElementById('new-notes').value);
+    fd.append('deadline', document.getElementById('new-deadline').value || '');
+    fd.append('backup_file', backupFile);
+    fd.append('backup_device', document.getElementById('backup-device')?.value || '');
+    fetchOpts = { method:'POST', body: fd };
+  } else {
+    const clItems = _getNewChecklistItems();
+    body = {
+      title, category: cat,
+      period:   document.getElementById('new-period').value,
+      firm,     team: document.getElementById('new-team').value,
+      notes:    document.getElementById('new-notes').value,
+      deadline: document.getElementById('new-deadline').value || null,
+      checklist: clItems,
+    };
+    fetchOpts = { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) };
+  }
+  try {
+    const btn = document.querySelector('#page-add .btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = 'Kaydediliyor...'; }
+    const res  = await fetch('/api/tasks', fetchOpts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Kayıt hatası');
+    tasks.unshift(normalizeTask(data));
+    // Formu temizle
+    document.getElementById('new-title').value = '';
+    document.getElementById('new-start').value = TODAY;
+    document.getElementById('new-deadline').value = '';
+    document.getElementById('new-notes').value = '';
+    document.getElementById('backup-file').value = '';
+    document.getElementById('upload-filename').style.display = 'none';
+    document.getElementById('upload-zone').classList.remove('has-file');
+    document.getElementById('new-cat').value = 'routine';
+    document.getElementById('checklist-items').innerHTML = '';
+    document.getElementById('new-checklist-item').value = '';
+    onCatChange();
+    showToast('ok', cat === 'backup' ? 'Config Backup kaydedildi ✓' : 'Görev eklendi ✓');
+    showPage(cat === 'backup' ? 'backups' : 'tasks');
+  } catch(e) {
+    showToast('err', 'Hata: ' + e.message);
+  } finally {
+    const btn = document.querySelector('#page-add .btn-primary');
+    if (btn) { btn.disabled = false; btn.textContent = 'Görevi Kaydet'; }
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHARTS (gerçek veriden)
+// ══════════════════════════════════════════════════════════
+function renderBars() {
+  // Son 5 günün görev sayısı
+  const barEl = document.getElementById('bar-chart');
+  if (!barEl) return;
+  const days = [];
+  for (let i = 4; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().split('T')[0];
+    const dayTasks = tasks.filter(t => t.startDate === ds);
+    days.push({ label: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][d.getDay()], c: dayTasks.length, d: dayTasks.filter(t=>t.done).length });
+  }
+  const max = Math.max(...days.map(d=>d.c), 1);
+  barEl.innerHTML = days.map(d => `
+    <div class="bar-col">
+      <div class="bar-num">${d.c}</div>
+      <div class="bar-inner" style="height:80px">
+        <div style="position:absolute;bottom:0;width:100%;height:${(d.c/max)*80}px;background:var(--surface3);border-radius:4px 4px 0 0"></div>
+        <div style="position:absolute;bottom:0;width:100%;height:${(d.d/max)*80}px;background:var(--accent);border-radius:4px 4px 0 0;opacity:.85"></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderTeamBars() {
+  const el = document.getElementById('team-bars'); if (!el) return;
+  const teamMap = {};
+  tasks.forEach(t => { if (t.team) teamMap[t.team] = (teamMap[t.team]||0) + 1; });
+  const sorted = Object.entries(teamMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if (!sorted.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">Henüz görev yok</div>'; return; }
+  const max = sorted[0][1];
+  const colors = ['var(--accent)','var(--accent3)','var(--accent2)','var(--gold)','var(--green)'];
+  el.innerHTML = sorted.map(([name, n], i) => `
+    <div class="progress-wrap" style="margin:5px 0">
+      <div class="progress-label"><span>${name}</span><span style="color:${colors[i]}">${n}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(n/max)*100}%;background:${colors[i]}"></div></div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  ADMIN — KULLANICI TABLOSU (API'den)
+// ══════════════════════════════════════════════════════════
+async function loadAndRenderUsers() {
+  try {
+    const res = await fetch('/api/admin/users');
+    if (!res.ok) { document.getElementById('user-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Yetkisiz erişim</td></tr>'; return; }
+    USERS = await res.json();
+    renderUserTable();
+  } catch(e) { showToast('err', 'Kullanıcılar yüklenemedi: ' + e.message); }
+}
+
+function renderUserTable() {
+  document.getElementById('user-tbody').innerHTML = USERS.map(u => `
+    <tr>
+      <td><div style="font-weight:600;font-size:12px">${u.full_name}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${u.username}</div></td>
+      <td><span style="font-size:11px">${u.role}</span></td>
+      <td>${firmChip(u.firm)}</td>
+      <td>${u.o365_linked ? '<span style="color:var(--accent3);font-size:11px">⬡ Bağlı</span>' : '<span style="color:var(--text-muted);font-size:11px">—</span>'}</td>
+      <td><span class="status-dot ${u.active?'active':'inactive'}"></span><span style="font-size:11px">${u.active?'Aktif':'Pasif'}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="openEditUser(${u.id})">&#9998; Düzenle</button>
+      </td>
+    </tr>`).join('');
+}
+
+function resendInvite(id) { showToast('ok','Davet maili yeniden gönderildi'); }
+
+// ══════════════════════════════════════════════════════════
+//  INVITE MODAL
+// ══════════════════════════════════════════════════════════
+function openInviteModal() { document.getElementById('invite-modal').classList.remove('hidden'); }
+function closeModal() { document.getElementById('invite-modal').classList.add('hidden'); }
+async function sendInvite() {
+  const name  = document.getElementById('inv-name').value.trim();
+  const email = document.getElementById('inv-email').value.trim();
+  if (!name || !email) { showToast('err','Ad ve mail zorunludur'); return; }
+  try {
+    const res = await fetch('/api/admin/invite', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ full_name:name, email, role:document.getElementById('inv-role').value, firm:document.getElementById('inv-firm').value })
+    });
+    const data = await res.json();
+    if (data.ok) { closeModal(); showToast('ok',`Davet maili ${email} adresine gönderildi ✓`); loadAndRenderUsers(); }
+    else showToast('err', data.error || 'Gönderilemedi');
+  } catch(e) { showToast('err', e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SETTINGS — EKİP YÖNETİMİ (local FIRMS objesi)
+// ══════════════════════════════════════════════════════════
+function renderSettingsTeams() {
+  ['inventist','assos'].forEach(firm => {
+    document.getElementById(`${firm}-teams-display`).innerHTML =
+      FIRMS[firm].teams.map(t => `<span class="pill-tag" onclick="removeTeam('${firm}','${t}')">${t} <span class="rm">×</span></span>`).join('');
+  });
+  renderBackupTypes();
+}
+function addTeam(firm) {
+  const inp = document.getElementById(`${firm}-new-team`); const val = inp.value.trim(); if (!val) return;
+  if (!FIRMS[firm].teams.includes(val)) { FIRMS[firm].teams.push(val); showToast('ok',`"${val}" eklendi`); }
+  inp.value = ''; renderSettingsTeams();
+}
+function removeTeam(firm, team) { FIRMS[firm].teams = FIRMS[firm].teams.filter(t => t !== team); renderSettingsTeams(); showToast('ok',`"${team}" kaldırıldı`); }
+function renderBackupTypes() {
+  document.getElementById('backup-types-display').innerHTML = BACKUP_TYPES.map(t => `<span class="pill-tag" onclick="removeBackupType('${t}')">${t} <span class="rm">×</span></span>`).join('');
+}
+function addBackupType() {
+  const inp = document.getElementById('backup-new-type'); let val = inp.value.trim(); if (!val) return;
+  if (!val.startsWith('.')) val = '.' + val;
+  if (!BACKUP_TYPES.includes(val)) { BACKUP_TYPES.push(val); showToast('ok',`${val} eklendi`); }
+  inp.value = ''; renderBackupTypes();
+}
+function removeBackupType(t) { const idx = BACKUP_TYPES.indexOf(t); if (idx > -1) BACKUP_TYPES.splice(idx,1); renderBackupTypes(); }
+
+// ══════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════
+function showToast(type, msg) {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div'); t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='ok'?'✓':'✗'}</span> ${msg}`;
+  wrap.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+
+// ══════════════════════════════════════════════════════════
+//  TARİH YARDIMCILARI
+// ══════════════════════════════════════════════════════════
+function formatDateTR(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  const aylar = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  return `${parseInt(d)} ${aylar[parseInt(m)-1]} ${y}`;
+}
+function setDateDisplay(dayId, fullId) {
+  const now = new Date();
+  const gunler = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const aylar  = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const de = document.getElementById(dayId); const fe = document.getElementById(fullId);
+  if (de) de.textContent = now.getDate();
+  if (fe) fe.textContent = `${aylar[now.getMonth()]} ${now.getFullYear()} · ${gunler[now.getDay()]}`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  BİLDİRİM SİSTEMİ
+// ══════════════════════════════════════════════════════════
+let notifications = [];
+
+function buildNotifications() {
+  notifications = [];
+  const routines = tasks.filter(t => t.cat === 'routine' && !t.done);
+  routines.forEach(t => {
+    if (!t.deadline) return;
+    const diff = Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000);
+    if (diff < -3) {
+      notifications.push({ id:'n'+t.id, type:'danger', title:t.title,
+        meta:`${Math.abs(diff)} gün gecikti · ${t.team} · ${(FIRMS[t.firm]||{}).label||t.firm}`,
+        tag:'late', tagLabel:`${Math.abs(diff)}g gecikti`, taskId:t.id, read:false, mailSent:t.mailSent||false, diff });
+    } else if (diff <= 0 && diff >= -3) {
+      notifications.push({ id:'n'+t.id, type:'warn', title:t.title,
+        meta: diff===0 ? 'Bugün tamamlanması gereken görev' : `${Math.abs(diff)} gün gecikti`,
+        tag:'due', tagLabel: diff===0?'BUGÜN':'Yakın Gecikme', taskId:t.id, read:false, mailSent:t.mailSent||false, diff });
+    } else if (diff === 1) {
+      notifications.push({ id:'n'+t.id, type:'info', title:t.title,
+        meta:`Yarın tamamlanması gerekiyor · ${t.team}`,
+        tag:'upcoming', tagLabel:'Yarın', taskId:t.id, read:false, mailSent:false, diff });
+    }
+  });
+  updateNotifUI();
+}
+
+function updateNotifUI() {
+  const unread = notifications.filter(n => !n.read).length;
+  const dot = document.getElementById('notif-dot');
+  if (dot) dot.style.display = unread > 0 ? 'block' : 'none';
+  const overdueCount = tasks.filter(t => t.cat==='routine' && !t.done && t.deadline && t.deadline < TODAY).length;
+  const nb = document.getElementById('sched-nav-badge');
+  if (nb) { nb.textContent = overdueCount; nb.style.display = overdueCount > 0 ? 'inline-flex' : 'none'; }
+  renderNotifList();
+}
+
+function renderNotifList() {
+  const el = document.getElementById('notif-list'); if (!el) return;
+  if (!notifications.length) { el.innerHTML = '<div class="notif-empty">🎉 Tüm rutin görevler zamanında!<br>Gecikme veya uyarı yok.</div>'; return; }
+  el.innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.read?'':'unread'}" onclick="notifClick('${n.id}',${n.taskId})">
+      <div class="notif-icon ${n.type==='danger'?'ndanger':n.type==='warn'?'nwarn':'ninfo'}">${n.type==='danger'?'🔴':n.type==='warn'?'⚠️':'🔔'}</div>
+      <div style="flex:1">
+        <div class="notif-body-title">${n.title}</div>
+        <div class="notif-body-meta">${n.meta}</div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:3px">
+          <span class="notif-tag ${n.tag}">${n.tagLabel}</span>
+          ${n.mailSent?'<span class="mail-sent-badge">📧 Mail gönderildi</span>':''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function notifClick(notifId, taskId) {
+  const n = notifications.find(x => x.id === notifId); if (n) n.read = true;
+  updateNotifUI(); closeNotifDropdown(); openEditTask(taskId);
+}
+function clearAllNotifs() { notifications.forEach(n => n.read = true); updateNotifUI(); }
+function toggleNotifDropdown() {
+  const dd = document.getElementById('notif-dropdown'); if (!dd) return;
+  dd.classList.toggle('hidden');
+  if (!dd.classList.contains('hidden')) buildNotifications();
+}
+function closeNotifDropdown() { document.getElementById('notif-dropdown')?.classList.add('hidden'); }
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('notif-wrap');
+  if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
+});
+
+// ══════════════════════════════════════════════════════════
+//  ZAMANLANMIŞ GÖREVLER SAYFASI
+// ══════════════════════════════════════════════════════════
+function renderScheduledPage() {
+  setDateDisplay('sched-date-day', 'sched-date-full');
+  const routines = tasks.filter(t => t.cat === 'routine');
+
+  // Gruplama — renderScheduledList ile birebir aynı mantık
+  const _todayMidnight = new Date(TODAY + 'T00:00:00');
+  let _active = [], _done = [];
+  routines.forEach(t => {
+    const nd = t.next_due       ? new Date(t.next_due + 'T00:00:00') : null;
+    const lc = t.last_completed ? new Date(t.last_completed)          : null;
+    if (lc && nd && nd > _todayMidnight) _done.push(t);
+    else                                  _active.push(t);
+  });
+
+  const overdue  = _active.filter(t => t.deadline && t.deadline < TODAY).length;
+  const dueSoon  = _active.filter(t => t.deadline && t.deadline >= TODAY &&
+    Math.round((new Date(t.deadline)-new Date(TODAY))/86400000) <= 3).length;
+  const done     = _done.length;
+  document.getElementById('sched-kpi-row').innerHTML = `
+    <div class="kpi c-purple" style="animation-delay:.04s"><div class="kpi-icon">🔁</div><div class="kpi-label">Toplam Rutin</div><div class="kpi-value" style="color:var(--accent3)">${routines.length}</div><div class="kpi-sub">Zamanlanmış görev</div></div>
+    <div class="kpi c-orange" style="animation-delay:.08s"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">${overdue}</div><div class="kpi-sub">${overdue>0?'Dikkat gerekiyor':'Gecikme yok'}</div></div>
+    <div class="kpi c-gold"   style="animation-delay:.12s"><div class="kpi-icon">⚡</div><div class="kpi-label">Bugün / Yakın</div><div class="kpi-value" style="color:var(--gold)">${dueSoon}</div><div class="kpi-sub">3 gün içinde bitmeli</div></div>
+    <div class="kpi c-green"  style="animation-delay:.16s"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">${done}</div><div class="kpi-sub">Bu dönem</div></div>`;
+  const periods = {Günlük:0,Haftalık:0,Aylık:0,Yıllık:0};
+  routines.forEach(t => { if (periods[t.period] !== undefined) periods[t.period]++; });
+  const maxP = Math.max(...Object.values(periods), 1);
+  const pColors = {Günlük:'var(--accent3)',Haftalık:'var(--accent)',Aylık:'var(--gold)',Yıllık:'var(--accent2)'};
+  document.getElementById('sched-period-dist').innerHTML = Object.entries(periods).map(([k,v]) => `
+    <div class="progress-wrap" style="margin-bottom:10px">
+      <div class="progress-label"><span>${k}</span><span style="color:${pColors[k]}">${v}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${v/maxP*100}%;background:${pColors[k]}"></div></div>
+    </div>`).join('');
+  renderScheduledList();
+}
+
+function renderScheduledList() {
+  const periodF = document.getElementById('sf-period')?.value || '';
+  const firmF   = document.getElementById('sf-firm')?.value   || '';
+
+  const today = new Date(TODAY);
+  const soon  = new Date(TODAY); soon.setDate(soon.getDate() + 7); // 7 gün içi = aktif
+
+  // Tüm rutin görevleri al
+  let all = tasks.filter(t => t.cat === 'routine');
+  if (periodF) all = all.filter(t => t.period === periodF);
+  if (firmF)   all = all.filter(t => t.firm   === firmF);
+
+  // 3 gruba ayır
+  const active   = [];  // deadline <= bugün+7 VE tamamlanmamış
+  const done     = [];  // last_completed bu periyotta var (is_done=false ama son tamamlanma var)
+  const upcoming = [];  // next_due > bugün+7
+
+  const todayMidnight = new Date(TODAY + 'T00:00:00');
+
+  all.forEach(t => {
+    const nd = t.next_due       ? new Date(t.next_due + 'T00:00:00') : null;
+    const lc = t.last_completed ? new Date(t.last_completed)          : null;
+
+    // Kural 1: TAMAMLANDI (bu periyot bitti)
+    // last_completed var VE next_due ileriye atladı (bugünden büyük)
+    if (lc && nd && nd > todayMidnight) {
+      done.push(t);
+    }
+    // Kural 2: AKTİF — last_completed yok (hiç yapılmamış) VEYA next_due geçti
+    // Yeni eklenen görevler, vadelenenler, gecikenler hepsi buraya
+    else {
+      active.push(t);
+    }
+    // NOT: "Gelecek dönem" artık kullanılmıyor — tüm aktif görevler listede görünür
+    // next_due tarihi zaten görevde gösteriliyor
+  });
+
+  // Sırala
+  active.sort((a,b) => {
+    const da = a.deadline ? new Date(a.deadline) : new Date('9999-01-01');
+    const db2 = b.deadline ? new Date(b.deadline) : new Date('9999-01-01');
+    return da - db2;
+  });
+  upcoming.sort((a,b) => {
+    const da = a.next_due ? new Date(a.next_due) : new Date('9999-01-01');
+    const db2 = b.next_due ? new Date(b.next_due) : new Date('9999-01-01');
+    return da - db2;
+  });
+  done.sort((a,b) => new Date(b.last_completed) - new Date(a.last_completed));
+
+  // Sayaçlar
+  document.getElementById('sched-count-label').textContent = `${active.length} aktif`;
+  _setSchedBadge('active',   active.length,   active.filter(t => t.deadline && t.deadline < TODAY).length > 0 ? 'danger' : 'normal');
+  _setSchedBadge('done',     done.length,     'done');
+  _setSchedBadge('upcoming', upcoming.length, 'upcoming');
+
+  // ── AKTİF ──
+  const activeBody = document.getElementById('sched-list-body');
+  if (activeBody) {
+    if (!active.length) {
+      activeBody.innerHTML = '<div class="sched-section-empty">🎉 Bu dönemde tüm görevler tamamlandı veya henüz vakti gelmedi.</div>';
+    } else {
+      activeBody.innerHTML = active.map(t => _renderSchedRow(t)).join('');
+    }
+  }
+
+  // ── TAMAMLANDI ──
+  const doneBody = document.getElementById('sched-list-done');
+  if (doneBody) {
+    if (!done.length) {
+      doneBody.innerHTML = '<div class="sched-section-empty">Henüz bu periyotta tamamlanan görev yok.</div>';
+    } else {
+      doneBody.innerHTML = done.map(t => {
+        const lcDate = t.last_completed ? new Date(t.last_completed).toLocaleDateString('tr-TR',{day:'numeric',month:'long'}) : '—';
+        const nextDate = t.next_due ? formatDateTR(t.next_due) : '—';
+        return `<div class="sched-done-row">
+          <div>
+            <div class="sched-done-title">${t.title}</div>
+            <div class="sched-done-meta">${firmChip(t.firm)} · ${t.team||''} · ${t.period||''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <span class="last-done-chip">✓ ${lcDate}</span>
+            <span style="font-size:9px;color:var(--text-dim)">Sonraki: ${nextDate}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── GELECEK ──
+  const upcomingBody = document.getElementById('sched-list-upcoming');
+  if (upcomingBody) {
+    if (!upcoming.length) {
+      upcomingBody.innerHTML = '<div class="sched-section-empty">Yakın vadede bekleyen görev yok.</div>';
+    } else {
+      upcomingBody.innerHTML = upcoming.map(t => {
+        const nd = t.next_due ? new Date(t.next_due) : null;
+        const diffDays = nd ? Math.round((nd - new Date(TODAY)) / 86400000) : null;
+        const opensIn = diffDays !== null
+          ? (diffDays === 0 ? 'Bugün açılır' : diffDays === 1 ? 'Yarın açılır' : `${diffDays} gün sonra açılır`)
+          : '—';
+        const lcDate = t.last_completed ? new Date(t.last_completed).toLocaleDateString('tr-TR',{day:'numeric',month:'long'}) : null;
+        return `<div class="sched-upcoming-row">
+          <div>
+            <div class="sched-upcoming-title">${t.title}</div>
+            <div class="sched-upcoming-meta">${firmChip(t.firm)} · ${t.team||''} · ${t.period||''}
+              ${lcDate ? `· <span style="color:var(--accent);font-size:9px">✓ Son: ${lcDate}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <span class="opens-in-chip">📅 ${opensIn}</span>
+            <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998;</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function _setSchedBadge(section, count, type) {
+  const el = document.getElementById('sched-badge-' + section);
+  if (!el) return;
+  el.textContent = count;
+  el.style.display = count > 0 ? 'inline-flex' : 'none';
+  if (type === 'danger') { el.style.background = 'var(--danger)'; el.style.color = '#fff'; }
+  else if (type === 'done') { el.style.background = 'rgba(63,185,80,.2)'; el.style.color = 'var(--green)'; }
+  else if (type === 'upcoming') { el.style.background = 'var(--surface3)'; el.style.color = 'var(--text-muted)'; }
+  else { el.style.background = 'var(--accent)'; el.style.color = '#000'; }
+}
+
+function toggleSchedSection(section) {
+  const el = document.getElementById('sched-section-' + section);
+  if (el) el.classList.toggle('collapsed');
+}
+
+function _renderSchedRow(t) {
+  const diff    = t.deadline ? Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000) : null;
+  const nrClass = t.done ? 'done' : diff === null ? 'upcoming' : diff < 0 ? 'overdue' : diff === 0 ? 'today' : 'upcoming';
+  const nrText  = t.done ? 'Tamamlandı' : diff === null ? '—' : diff < 0 ? `${Math.abs(diff)}g gecikti` : diff === 0 ? 'BUGÜN' : diff === 1 ? 'Yarın' : formatDateTR(t.deadline);
+  const rowClass = t.done ? '' : diff !== null && diff < 0 ? 'row-overdue' : diff !== null && diff <= 1 ? 'row-due' : '';
+  const alarmOn  = t.alarm || false;
+  const pColor = {Günlük:'var(--accent3)',Haftalık:'var(--accent)',Aylık:'var(--gold)',Yıllık:'var(--accent2)','Tek Seferlik':'var(--text-muted)'}[t.period]||'var(--text-muted)';
+  const pBg    = {Günlük:'rgba(127,108,247,.15)',Haftalık:'rgba(0,229,192,.12)',Aylık:'rgba(244,185,66,.12)',Yıllık:'rgba(255,95,61,.12)','Tek Seferlik':'var(--surface2)'}[t.period]||'var(--surface2)';
+  return `
+  <div class="sched-row ${rowClass}" id="sr-${t.id}">
+    <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        ${firmChip(t.firm)} <span>· ${t.team||''}</span>
+      </div>
+    </div>
+    <div>
+      <div class="next-run-chip ${nrClass}">${nrText}</div>
+      ${t.deadline?`<div style="font-size:9px;color:var(--text-dim);margin-top:3px;font-family:'IBM Plex Mono',monospace">${formatDateTR(t.deadline)}</div>`:''}
+    </div>
+    <div><span class="period-badge" style="background:${pBg};color:${pColor}">${t.period}</span></div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label class="alarm-toggle" onclick="toggleAlarm(${t.id})">
+        <div class="alarm-switch ${alarmOn?'on':''}"></div>
+        <span style="font-size:10px;color:var(--text-muted)">${alarmOn?'Açık':'Kapalı'}</span>
+      </label>
+      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; Düzenle</button>
+    </div>
+  </div>`;
+}
+
+
+function toggleAlarm(taskId) {
+  const t = tasks.find(t => t.id === taskId); if (!t) return;
+  t.alarm = !t.alarm;
+  renderScheduledList(); buildNotifications();
+  showToast('ok', t.alarm ? `🔔 Alarm açıldı` : `Alarm kapatıldı`);
+}
+
+function renderDashUpcoming() {
+  const upcoming = tasks.filter(t => t.cat==='routine' && !t.done && t.deadline).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)).slice(0,4);
+  const cnt = document.getElementById('dash-sched-count'); if (cnt) cnt.textContent = upcoming.length;
+  const el = document.getElementById('dash-upcoming-list'); if (!el) return;
+  if (!upcoming.length) { el.innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text-muted);text-align:center">Hepsi zamanında 🎉</div>'; return; }
+  el.innerHTML = upcoming.map(t => {
+    const diff = Math.round((new Date(t.deadline)-new Date(TODAY))/86400000);
+    const cls  = diff<0?'late':diff<=1?'warn':'ok';
+    const txt  = diff<0?`${Math.abs(diff)}g gecikti`:diff===0?'BUGÜN':`${diff}g kaldı`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <div style="flex:1;min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div><div style="font-size:10px;color:var(--text-muted)">${t.period} · ${t.team||''}</div></div>
+      <div class="dl-badge ${cls}" style="margin-left:8px;flex-shrink:0">${txt}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+const TODAY = new Date().toISOString().split('T')[0];
+document.addEventListener('DOMContentLoaded', () => { const s = document.getElementById('new-start'); if (s) s.value = TODAY; });
+const _startEl = document.getElementById('new-start'); if (_startEl) _startEl.value = TODAY;
+
+setDateDisplay('topbar-date-day', 'topbar-date-full');
+loadApp();
+
+// ══════════════════════════════════════════════════════════
+//  EDIT TASK MODAL — API bağlı
+// ══════════════════════════════════════════════════════════
+function openEditTask(id) {
+  const t = tasks.find(t => t.id === id); if (!t) return;
+  document.getElementById('edit-task-id').value       = id;
+  document.getElementById('edit-task-title').value    = t.title;
+  document.getElementById('edit-task-cat').value      = t.cat;
+  document.getElementById('edit-task-period').value   = t.period;
+  document.getElementById('edit-task-deadline').value = t.deadline || '';
+  document.getElementById('edit-task-done').value     = t.done ? 'true' : 'false';
+  document.getElementById('edit-task-notes').value    = t.notes || '';
+  document.getElementById('edit-task-firm').value     = t.firm;
+  updateEditTeamOptions();
+  setTimeout(() => { document.getElementById('edit-task-team').value = t.team; }, 20);
+
+  // Son tamamlanma (rutin görevler)
+  const lcRow = document.getElementById('edit-last-completed-row');
+  const lcVal = document.getElementById('edit-last-completed-val');
+  if (lcRow && t.cat === 'routine' && t.last_completed) {
+    const d = new Date(t.last_completed);
+    lcVal.textContent = d.toLocaleDateString('tr-TR', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    lcRow.classList.remove('hidden');
+  } else if (lcRow) { lcRow.classList.add('hidden'); }
+
+  // Checklist
+  const clSection = document.getElementById('edit-checklist-section');
+  if (clSection) {
+    const isRoutine = t.cat === 'routine';
+    clSection.classList.toggle('hidden', !isRoutine);
+    if (isRoutine) {
+      _loadEditChecklist(t.checklist || [], t.checklist_done || []);
+    }
+  }
+
+  document.getElementById('edit-task-modal').classList.remove('hidden');
+}
+function updateEditTeamOptions() {
+  const firm = document.getElementById('edit-task-firm').value;
+  const sel  = document.getElementById('edit-task-team');
+  sel.innerHTML = '';
+  if (FIRMS[firm]) FIRMS[firm].teams.forEach(name => {
+    const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o);
+  });
+}
+async function saveEditTask() {
+  const id = parseInt(document.getElementById('edit-task-id').value);
+  const body = {
+    title:    document.getElementById('edit-task-title').value.trim(),
+    category: document.getElementById('edit-task-cat').value,
+    period:   document.getElementById('edit-task-period').value,
+    firm:     document.getElementById('edit-task-firm').value,
+    team:     document.getElementById('edit-task-team').value,
+    deadline: document.getElementById('edit-task-deadline').value || null,
+    is_done:  document.getElementById('edit-task-done').value === 'true',
+    notes:    document.getElementById('edit-task-notes').value,
+  };
+  // Checklist verisi (rutin görevlerde)
+  const clSection = document.getElementById('edit-checklist-section');
+  if (clSection && !clSection.classList.contains('hidden')) {
+    const { items, doneArr } = _getEditChecklistData();
+    body.checklist      = items;
+    body.checklist_done = doneArr;
+  }
+  if (!body.title) { showToast('err','Başlık boş olamaz'); return; }
+  try {
+    const res = await fetch(`/api/tasks/${id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'API hatası');
+    const updated = await res.json();
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx > -1) tasks[idx] = normalizeTask(updated);
+    closeEditTaskModal();
+    filterTasks(currentFilter);
+    renderFullList(tasks);
+    renderDashUpcoming();
+    buildNotifications();
+    showToast('ok', 'Görev güncellendi ✓');
+  } catch(e) { showToast('err', 'Güncelleme hatası: ' + e.message); }
+}
+async function deleteTask() {
+  const id = parseInt(document.getElementById('edit-task-id').value);
+  if (!confirm('Bu görevi silmek istediğinizden emin misiniz?')) return;
+  try {
+    const res = await fetch(`/api/tasks/${id}`, { method:'DELETE' });
+    if (!res.ok) throw new Error('Silme hatası');
+    tasks.splice(tasks.findIndex(t => t.id === id), 1);
+    closeEditTaskModal();
+    filterTasks(currentFilter);
+    renderFullList(tasks);
+    renderDashUpcoming();
+    buildNotifications();
+    showToast('ok', 'Görev silindi');
+  } catch(e) { showToast('err', e.message); }
+}
+function closeEditTaskModal() { document.getElementById('edit-task-modal').classList.add('hidden'); }
+
+// ══════════════════════════════════════════════════════════
+//  EDIT USER MODAL — API bağlı
+// ══════════════════════════════════════════════════════════
+function openEditUser(id) {
+  id = parseInt(id);
+  const u = USERS.find(u => u.id === id); if (!u) return;
+  document.getElementById('edit-user-id').value       = id;
+  document.getElementById('edit-user-name').value     = u.full_name || '';
+  document.getElementById('edit-user-username').value = u.username  || '';
+  document.getElementById('edit-user-email').value    = u.email     || '';
+  document.getElementById('edit-user-role').value     = u.role      || '';
+  document.getElementById('edit-user-firm').value     = u.firm      || '';
+  document.getElementById('edit-user-status').value   = u.active ? 'active' : 'inactive';
+  document.getElementById('edit-user-modal').classList.remove('hidden');
+}
+async function saveEditUser() {
+  const id = parseInt(document.getElementById('edit-user-id').value);
+  const status = document.getElementById('edit-user-status').value;
+  const body = {
+    role:     document.getElementById('edit-user-role').value,
+    firm:     document.getElementById('edit-user-firm').value,
+    is_admin: document.getElementById('edit-user-role').value === 'IT Sorumlusu',
+    active:   status === 'active',
+  };
+  try {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'API hatası');
+    closeEditUserModal();
+    await loadAndRenderUsers();
+    showToast('ok', 'Kullanıcı güncellendi ✓');
+  } catch(e) { showToast('err', e.message); }
+}
+function closeEditUserModal() {
+  document.getElementById('edit-user-modal').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════════════════════
+//  YEDEKLER SAYFASI
+// ══════════════════════════════════════════════════════════
+function getBackupTasks() {
+  return tasks.filter(t => t.cat === 'backup' && t.backup);
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+async function renderBackupList() {
+  const body = document.getElementById('backup-list-body');
+
+  // API'den backup listesini çek
+  let backups = [];
+  try {
+    const res = await fetch('/api/backups');
+    if (res.ok) backups = await res.json();
+  } catch(e) { console.error('Backup yüklenemedi:', e); }
+
+  const firmFilter   = document.getElementById('bk-filter-firm')?.value || '';
+  const searchFilter = (document.getElementById('bk-search')?.value || '').toLowerCase();
+
+  let filtered = backups;
+  if (firmFilter)   filtered = filtered.filter(b => b.firm === firmFilter);
+  if (searchFilter) filtered = filtered.filter(b =>
+    (b.task_title||'').toLowerCase().includes(searchFilter) ||
+    (b.filename||'').toLowerCase().includes(searchFilter) ||
+    (b.device||'').toLowerCase().includes(searchFilter)
+  );
+
+  // İstatistikler
+  const nowMonth = new Date().getMonth();
+  document.getElementById('bk-total').textContent     = backups.length;
+  document.getElementById('bk-inventist').textContent = backups.filter(b=>b.firm==='inventist').length;
+  document.getElementById('bk-assos').textContent     = backups.filter(b=>b.firm==='assos').length;
+  document.getElementById('bk-month').textContent     = backups.filter(b => {
+    if (!b.uploaded_at) return false;
+    return new Date(b.uploaded_at).getMonth() === nowMonth;
+  }).length;
+  document.getElementById('bk-count-label').textContent = `${filtered.length} kayıt`;
+
+  if (!body) return;
+  if (!filtered.length) {
+    body.innerHTML = '<div style="padding:32px;text-align:center;font-size:12px;color:var(--text-muted)">Henüz config backup kaydı yok.<br>Yeni Görev Ekle → Config Backup seçerek dosya yükleyebilirsiniz.</div>';
+    return;
+  }
+
+  body.innerHTML = filtered.map(b => {
+    const sizeStr = b.file_size ? (b.file_size > 1024 ? Math.round(b.file_size/1024)+' KB' : b.file_size+' B') : '';
+    const uploadDate = b.uploaded_at ? new Date(b.uploaded_at).toLocaleDateString('tr-TR') : '—';
+    return `
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:13px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:500">${b.task_title || '—'}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${firmChip(b.firm||'')}
+          <span>· ${b.team||''}</span>
+          <span>· ${uploadDate}</span>
+        </div>
+        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;width:fit-content">
+          <span style="font-size:18px">💾</span>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace">${b.filename}</div>
+            <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+b.device:''}</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;min-width:80px">
+        <button class="btn btn-outline btn-sm" style="padding:3px 9px;font-size:10px;width:80px" onclick="openEditTask(${b.task_id})">&#9998; Görev</button>
+        <button class="btn btn-sm" style="padding:3px 9px;font-size:10px;width:80px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" onclick="downloadBackup(${b.id})">&#8595; İndir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterBackups() {
+  renderBackupList();
+}
+
+function downloadBackup(backupId) {
+  window.location.href = '/api/backups/' + backupId + '/download';
+  // NOT USED BELOWn backend endpoint kullan
+  const link = document.createElement('a');
+  link.href = `/api/backups/${taskId}/download`;
+  link.download = t.backup;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+
+
+// ══════════════════════════════════════════════════════════
+//  SETTINGS SAVE — Backend'e bağlı
+// ══════════════════════════════════════════════════════════
+
+// Ayarlar sayfası açılınca sunucudan gerçek verileri yükle
+async function loadSettingsFromServer() {
+  try {
+    // Kullanıcı bilgilerini yükle
+    const uRes = await fetch('/api/me');
+    if (uRes.ok) {
+      const u = await uRes.json();
+      const fn = document.getElementById('set-fullname');
+      const un = document.getElementById('set-username');
+      const em = document.getElementById('set-email');
+      const rl = document.getElementById('set-role');
+      if (fn) fn.value = u.full_name || '';
+      if (un) un.value = u.username  || '';
+      if (em) em.value = u.email     || '';
+      if (rl) {
+        for (const opt of rl.options) {
+          if (opt.value === u.role || opt.text === u.role) {
+            rl.value = opt.value; break;
+          }
+        }
+      }
+    }
+    // SMTP ayarlarını yükle
+    const sRes = await fetch('/api/settings/smtp');
+    if (sRes.ok) {
+      const s = await sRes.json();
+      const sh = document.getElementById('smtp-host');
+      const sp = document.getElementById('smtp-port');
+      const su = document.getElementById('smtp-user');
+      if (sh) sh.value = s.smtp_host || '';
+      if (sp) sp.value = s.smtp_port || '587';
+      if (su) su.value = s.smtp_user || '';
+      // Şifreyi gösterme ama placeholder ile dolu olduğunu belirt
+      const spw = document.getElementById('smtp-pass');
+      if (spw && s.smtp_pass) spw.placeholder = '(kayıtlı — değiştirmek için yazın)';
+    }
+  } catch(e) {
+    console.warn('Ayarlar yüklenemedi:', e);
+  }
+}
+
+async function saveUserSettings() {
+  const fullname = document.getElementById('set-fullname').value.trim();
+  const username = document.getElementById('set-username').value.trim();
+  const email    = document.getElementById('set-email').value.trim();
+  const role     = document.getElementById('set-role').value;
+  const password = document.getElementById('set-password').value;
+  if (!fullname || !username || !email) {
+    showToast('err', 'Ad, kullanici adi ve mail bos olamaz');
+    return;
+  }
+  const body = { full_name: fullname, username, email, role };
+  if (password) body.password = password;
+  try {
+    const res  = await fetch('/api/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast('err', data.error || 'Kayit basarisiz');
+      return;
+    }
+    // Sidebar güncelle
+    document.getElementById('sb-name').textContent = data.full_name;
+    document.getElementById('sb-role').textContent = data.role;
+    const initials = data.full_name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('sb-avatar').textContent = initials;
+    // Şifre alanını temizle
+    document.getElementById('set-password').value = '';
+    // USERS dizisini güncelle
+    const me = USERS.find(u => u.username === 'lmc' || u.id === 1);
+    if (me) { me.name = data.full_name; me.username = data.username; me.email = data.email; me.role = data.role; }
+    showToast('ok', 'Kullanici bilgileri kaydedildi — yeni kullanici adi: ' + data.username);
+    renderUserTable();
+  } catch(e) {
+    showToast('err', 'Sunucu hatasi: ' + e.message);
+  }
+}
+
+async function saveSmtpSettings() {
+  const body = {
+    smtp_host: document.getElementById('smtp-host').value.trim(),
+    smtp_port: document.getElementById('smtp-port').value.trim(),
+    smtp_user: document.getElementById('smtp-user').value.trim(),
+    smtp_pass: document.getElementById('smtp-pass').value,
+  };
+  if (!body.smtp_user) { showToast('err', 'Mail adresi bos olamaz'); return; }
+  try {
+    const res  = await fetch('/api/settings/smtp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('smtp-pass').value = '';
+      document.getElementById('smtp-pass').placeholder = '(kayıtlı — değiştirmek için yazın)';
+      showToast('ok', 'SMTP ayarlari .env dosyasina kaydedildi');
+    } else {
+      showToast('err', data.error || 'Kayit basarisiz');
+    }
+  } catch(e) {
+    showToast('err', 'Sunucu hatasi: ' + e.message);
+  }
+}
+
+async function testSmtp() {
+  showToast('ok', 'SMTP baglantisi test ediliyor...');
+  try {
+    const res  = await fetch('/api/settings/smtp/test', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok && data.ok) showToast('ok', data.message || 'Baglanti basarili');
+    else showToast('err', data.error || 'Baglanti basarisiz');
+  } catch(e) {
+    showToast('err', 'Sunucu hatasi: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RAPOR SAYFASI
+// ══════════════════════════════════════════════════════════
+const MONTH_TR_JS = {1:'Ocak',2:'Şubat',3:'Mart',4:'Nisan',5:'Mayıs',6:'Haziran',
+                     7:'Temmuz',8:'Ağustos',9:'Eylül',10:'Ekim',11:'Kasım',12:'Aralık'};
+const CAT_LABELS_JS = {routine:'Rutin',support:'Destek',infra:'Altyapı',backup:'Config Backup',other:'Diğer'};
+
+// Alıcı mail — oturumda sakla, sayfa yenilenmesinde sıfırlanmaz
+let _reportToMail = '';
+
+function initReportPage() {
+  // Ay seçiciyi doldur (son 12 ay)
+  const sel = document.getElementById('report-month-sel');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    const opt = document.createElement('option');
+    opt.value = `${y}-${m}`;
+    opt.textContent = `${MONTH_TR_JS[m]} ${y}`;
+    sel.appendChild(opt);
+  }
+  // Alıcı mail: daha önce girilmişse onu koru, yoksa /api/me'den çek
+  const toEl = document.getElementById('report-to');
+  if (_reportToMail) {
+    if (toEl) toEl.value = _reportToMail;
+  } else {
+    fetch('/api/me').then(r => r.json()).then(u => {
+      _reportToMail = u.email || '';
+      if (toEl && !toEl.value) toEl.value = _reportToMail;
+    }).catch(() => {});
+  }
+  onReportMonthChange();
+}
+
+// Alıcı mail her değiştiğinde sakla
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'report-to') {
+    _reportToMail = e.target.value;
+  }
+});
+
+function _getSelectedMonthYear() {
+  const sel = document.getElementById('report-month-sel');
+  if (!sel || !sel.value) return null;
+  const [y, m] = sel.value.split('-').map(Number);
+  return { month: m, year: y };
+}
+
+async function onReportMonthChange() {
+  const my = _getSelectedMonthYear();
+  if (!my) return;
+  const sub = document.getElementById('report-sub');
+  if (sub) sub.textContent = `${MONTH_TR_JS[my.month]} ${my.year} · Gerçek veriler yükleniyor...`;
+  const body = document.getElementById('report-stats-body');
+  if (body) body.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--text-muted)">Yükleniyor...</div>';
+  try {
+    const res = await fetch(`/api/tasks?month=${my.month}&year=${my.year}`);
+    const taskList = await res.json();
+    renderReportStats(taskList, my.month, my.year);
+  } catch(e) {
+    if (body) body.innerHTML = `<div style="padding:24px;text-align:center;font-size:12px;color:var(--danger)">API hatası: ${e.message}</div>`;
+  }
+}
+
+function renderReportStats(taskList, month, year) {
+  const sub = document.getElementById('report-sub');
+  if (sub) sub.textContent = `${MONTH_TR_JS[month]} ${year} · ${taskList.length} görev`;
+  const body = document.getElementById('report-stats-body');
+  if (!body) return;
+  if (!taskList.length) {
+    body.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--text-muted)">Bu ay için kayıt bulunamadı.</div>';
+    return;
+  }
+  const done = taskList.filter(t => t.is_done).length;
+  const total = taskList.length;
+  const rate = total ? Math.round(done/total*100) : 0;
+  const cats = ['routine','support','infra','backup','other'];
+  const catColors = {routine:'var(--accent)',support:'var(--accent3)',infra:'var(--accent2)',backup:'var(--gold)',other:'var(--text-muted)'};
+  const catRows = cats.map(c => {
+    const all  = taskList.filter(t => t.category === c);
+    const comp = all.filter(t => t.is_done).length;
+    if (!all.length) return '';
+    const pct = Math.round(comp/all.length*100);
+    return `<div class="progress-wrap">
+      <div class="progress-label"><span>${CAT_LABELS_JS[c]||c}</span><span style="color:${catColors[c]}">${comp}/${all.length}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${catColors[c]}"></div></div>
+    </div>`;
+  }).join('');
+  body.innerHTML = catRows + `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div class="progress-wrap">
+        <div class="progress-label"><span style="font-weight:600">Genel İlerleme</span><span style="color:var(--green)">${rate}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${rate}%;background:var(--green)"></div></div>
+      </div>
+    </div>`;
+}
+
+function previewReportPdf() {
+  const my = _getSelectedMonthYear();
+  if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
+  window.open(`/api/report/pdf?month=${my.month}&year=${my.year}`, '_blank');
+}
+
+async function sendReportMail() {
+  const my = _getSelectedMonthYear();
+  if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
+  const to = document.getElementById('report-to')?.value?.trim();
+  const cc = document.getElementById('report-cc')?.value?.trim();
+  if (!to) { showToast('err', 'Alıcı mail adresi boş olamaz'); return; }
+  showToast('ok', 'Mail gönderiliyor, lütfen bekleyin...');
+  try {
+    const res  = await fetch('/api/report/send', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ month: my.month, year: my.year, cc: cc||null })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showMailResultModal(true, data.message || 'Mail başarıyla gönderildi', null);
+    } else {
+      showMailResultModal(false, data.error || 'Bilinmeyen hata', my);
+    }
+  } catch(e) {
+    showMailResultModal(false, `Bağlantı hatası: ${e.message}`, my);
+  }
+}
+
+function showMailResultModal(success, message, my) {
+  const modal = document.getElementById('mail-error-modal');
+  const title = document.getElementById('mail-error-title');
+  const msgEl = document.getElementById('mail-error-body');
+  const hint  = document.getElementById('mail-error-hint');
+  if (!modal) return;
+  title.textContent = success ? '✅ Mail Gönderildi' : '❌ Mail Gönderilemedi';
+  title.style.color = success ? 'var(--green)' : 'var(--danger)';
+  msgEl.textContent = message;
+  msgEl.style.color = success ? 'var(--text)' : 'var(--danger)';
+  // Hata türüne göre ipucu göster
+  if (!success) {
+    hint.style.display = 'block';
+    if (message.includes('kimlik') || message.includes('Authentication') || message.includes('App Password')) {
+      hint.textContent = '💡 Office 365 kullanıyorsanız: Ayarlar > SMTP\'de şifre olarak normal şifre yerine uygulama şifresi (App Password) kullanmanız gerekebilir. Azure AD > Kullanıcı > Kimlik Doğrulama bölümünden App Password oluşturabilirsiniz.';
+    } else if (message.includes('bağlanam') || message.includes('Connect') || message.includes('Ağ')) {
+      hint.textContent = '💡 Sunucuya ulaşılamıyor. SMTP host ve port ayarlarını kontrol edin. Office 365 için: smtp.office365.com:587';
+    } else if (message.includes('eksik') || message.includes('SMTP ayar')) {
+      hint.textContent = '💡 Ayarlar > SMTP bölümünden SMTP Host, Port, Kullanıcı Adı ve Şifre bilgilerini doldurun.';
+    } else {
+      hint.textContent = '💡 Hatayı kopyalayarak SMTP sağlayıcınızın destek ekibiyle paylaşabilir veya sistem yöneticinize danışabilirsiniz.';
+    }
+  } else {
+    hint.style.display = 'none';
+  }
+  modal.classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHECKLİST FONKSİYONLARI
+// ══════════════════════════════════════════════════════════
+
+// Yeni görev formu — checklist
+function _getNewChecklistItems() {
+  const items = [];
+  document.querySelectorAll('#checklist-items .checklist-item').forEach(el => {
+    const lbl = el.querySelector('.checklist-label');
+    if (lbl && lbl.textContent.trim()) items.push(lbl.textContent.trim());
+  });
+  return items;
+}
+
+function addChecklistItem() {
+  const inp = document.getElementById('new-checklist-item');
+  const val = inp.value.trim(); if (!val) return;
+  _appendChecklistItem('checklist-items', val, false, true);
+  inp.value = '';
+}
+
+function _appendChecklistItem(containerId, label, done, removable) {
+  const container = document.getElementById(containerId); if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'checklist-item';
+  const cb = document.createElement('div');
+  cb.className = 'checklist-cb' + (done ? ' checked' : '');
+  cb.onclick = function() {
+    this.classList.toggle('checked');
+    this.nextElementSibling.classList.toggle('done', this.classList.contains('checked'));
+  };
+  const lbl = document.createElement('span');
+  lbl.className = 'checklist-label' + (done ? ' done' : '');
+  lbl.textContent = label;
+  div.appendChild(cb);
+  div.appendChild(lbl);
+  if (removable) {
+    const rm = document.createElement('span');
+    rm.className = 'checklist-rm';
+    rm.textContent = '×';
+    rm.onclick = function() { this.closest('.checklist-item').remove(); };
+    div.appendChild(rm);
+  }
+  container.appendChild(div);
+}
+function _renderChecklistProgress(containerId, items, doneArr) {
+  const total = items.length;
+  if (!total) return;
+  const done  = doneArr.filter(Boolean).length;
+  const pct   = Math.round(done/total*100);
+  const container = document.getElementById(containerId); if (!container) return;
+  const existing = container.querySelector('.checklist-progress');
+  if (existing) existing.remove();
+  const prog = document.createElement('div');
+  prog.className = 'checklist-progress';
+  prog.innerHTML = `<div class="checklist-progress-fill" style="width:${pct}%"></div>`;
+  container.after(prog);
+}
+
+// Edit modal checklist
+function _loadEditChecklist(items, doneArr) {
+  const container = document.getElementById('edit-checklist-items'); if (!container) return;
+  container.innerHTML = '';
+  items.forEach((item, i) => _appendEditChecklistRow(container, item, doneArr[i]||false, i));
+  _renderChecklistProgress('edit-checklist-items', items, doneArr);
+}
+
+function _appendEditChecklistRow(container, label, done, idx) {
+  const div = document.createElement('div');
+  div.className = 'checklist-item';
+  div.dataset.idx = idx;
+  const cb = document.createElement('div');
+  cb.className = 'checklist-cb' + (done ? ' checked' : '');
+  cb.onclick = function() { _toggleEditCb(this); };
+  const lbl = document.createElement('span');
+  lbl.className = 'checklist-label' + (done ? ' done' : '');
+  lbl.textContent = label;
+  const rm = document.createElement('span');
+  rm.className = 'checklist-rm';
+  rm.textContent = '×';
+  rm.onclick = function() { this.closest('.checklist-item').remove(); _syncEditChecklistProgress(); };
+  div.appendChild(cb);
+  div.appendChild(lbl);
+  div.appendChild(rm);
+  container.appendChild(div);
+}
+function _toggleEditCb(cbEl) {
+  cbEl.classList.toggle('checked');
+  const label = cbEl.nextElementSibling;
+  label.classList.toggle('done', cbEl.classList.contains('checked'));
+  _syncEditChecklistProgress();
+}
+
+function _syncEditChecklistProgress() {
+  const items   = [...document.querySelectorAll('#edit-checklist-items .checklist-item')];
+  const total   = items.length;
+  const done    = items.filter(el => el.querySelector('.checklist-cb')?.classList.contains('checked')).length;
+  const pct     = total ? Math.round(done/total*100) : 0;
+  const fill    = document.querySelector('.checklist-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+}
+
+function addEditChecklistItem() {
+  const inp = document.getElementById('edit-new-checklist-item');
+  const val = inp.value.trim(); if (!val) return;
+  const container = document.getElementById('edit-checklist-items');
+  const idx = container.children.length;
+  _appendEditChecklistRow(container, val, false, idx);
+  inp.value = '';
+  _syncEditChecklistProgress();
+}
+
+function _getEditChecklistData() {
+  const items = []; const doneArr = [];
+  document.querySelectorAll('#edit-checklist-items .checklist-item').forEach(el => {
+    const lbl = el.querySelector('.checklist-label');
+    const cb  = el.querySelector('.checklist-cb');
+    if (lbl) { items.push(lbl.textContent.trim()); doneArr.push(cb?.classList.contains('checked')||false); }
+  });
+  return { items, doneArr };
+}
+
+function saveTeams() { showToast('ok', 'Firma ekipleri kaydedildi'); }
+
+</script>
+</body>
+</html>
