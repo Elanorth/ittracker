@@ -84,6 +84,7 @@ class Task(db.Model):
         cld = self.get_checklist_done()
         while len(cld) < len(cl): cld.append(False)
 
+        # Rutin görevlerde is_done, o aya ait TaskCompletion kaydından gelir
         is_done      = self.is_done
         completed_at = self.completed_at.isoformat() if self.completed_at else None
 
@@ -112,7 +113,8 @@ class Task(db.Model):
 
 
 class TaskCompletion(db.Model):
-    """Rutin görevlerin aylık tamamlanma kaydı."""
+    """Rutin görevlerin aylık tamamlanma kaydı.
+    Bir rutin görev her ay için en fazla bir tane tamamlanma kaydına sahip olabilir."""
     __tablename__ = "task_completions"
     id           = db.Column(db.Integer, primary_key=True)
     task_id      = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)

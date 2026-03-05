@@ -140,7 +140,8 @@ def get_tasks():
         if firm_filter: rq = rq.filter_by(firm=firm_filter)
         result += rq.order_by(Task.created_at.desc()).all()
 
-    # 2) Proje görevleri: tamamlanmamışlar her ayda görünür
+    # 2) Proje görevleri: tamamlanmamışlar her ayda görünür;
+    #    tamamlanmışlar yalnızca tamamlandıkları ayda görünür
     if not category_filter or category_filter == "project":
         pq = Task.query.filter_by(user_id=uid, category="project")
         if firm_filter: pq = pq.filter_by(firm=firm_filter)
@@ -151,7 +152,7 @@ def get_tasks():
                 if t.completed_at.month == month and t.completed_at.year == year:
                     result.append(t)
 
-    # 3) Diğer görevler: o aya ait olanlar
+    # 3) Diğer görevler (support, infra, backup, other): o aya ait olanlar
     if not category_filter or category_filter not in ("routine", "project"):
         created_match  = db.and_(db.extract("month", Task.created_at)==month,
                                   db.extract("year",  Task.created_at)==year)
@@ -271,6 +272,7 @@ def stats():
     month = request.args.get("month", date.today().month, type=int)
     year  = request.args.get("year",  date.today().year,  type=int)
 
+    # Aynı mantık: rutin + proje (aktif) + ay bazlı diğer
     created_match  = db.and_(db.extract("month", Task.created_at)==month,
                               db.extract("year",  Task.created_at)==year)
     deadline_match = db.and_(Task.deadline!=None,
@@ -289,6 +291,7 @@ def stats():
 
     tasks = routines + projects + others
 
+    # Rutin is_done: TaskCompletion'dan
     completed_ids = {c.task_id for c in TaskCompletion.query.filter_by(year=year, month=month).all()}
     def _is_done(t):
         if t.category == "routine" and t.period != "Tek Seferlik":

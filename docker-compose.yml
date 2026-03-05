@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./instance:/app/instance          # SQLite veritabanı
+      - backups:/srv/it_tracker/backups   # Config backup dosyaları
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  backups:
