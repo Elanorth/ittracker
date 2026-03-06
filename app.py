@@ -199,7 +199,8 @@ def create_task():
     if backup_file and backup_file.filename:
         fp = save_backup_file(backup_file, task.id, session["user_id"])
         db.session.add(ConfigBackup(task_id=task.id, user_id=session["user_id"],
-            filename=backup_file.filename, file_path=fp, device=data.get("backup_device","")))
+            filename=backup_file.filename, file_path=fp, device=data.get("backup_device",""),
+            file_size=os.path.getsize(fp)))
     db.session.commit()
     return jsonify(task.to_dict()), 201
 
@@ -264,7 +265,44 @@ def list_backups():
 @login_required
 def download_backup(bid):
     b = ConfigBackup.query.filter_by(id=bid, user_id=session["user_id"]).first_or_404()
+    if not os.path.exists(b.file_path):
+        return jsonify({"error": "Dosya sunucuda bulunamadı"}), 404
     return send_file(b.file_path, as_attachment=True, download_name=b.filename)
+
+@app.route("/api/backups/<int:bid>", methods=["DELETE"])
+@login_required
+def delete_backup(bid):
+    b = ConfigBackup.query.filter_by(id=bid, user_id=session["user_id"]).first_or_404()
+    try:
+        if os.path.exists(b.file_path):
+            os.remove(b.file_path)
+    except OSError:
+        pass
+    db.session.delete(b)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+@app.route("/api/tasks/<int:task_id>/backups")
+@login_required
+def task_backups(task_id):
+    task = Task.query.filter_by(id=task_id, user_id=session["user_id"]).first_or_404()
+    return jsonify([b.to_dict() for b in task.backups])
+
+@app.route("/api/tasks/<int:task_id>/backups", methods=["POST"])
+@login_required
+def add_task_backup(task_id):
+    task = Task.query.filter_by(id=task_id, user_id=session["user_id"]).first_or_404()
+    backup_file = request.files.get("backup_file")
+    if not backup_file or not backup_file.filename:
+        return jsonify({"error": "Dosya seçilmedi"}), 400
+    fp = save_backup_file(backup_file, task.id, session["user_id"])
+    b = ConfigBackup(filename=backup_file.filename, file_path=fp,
+                     device=request.form.get("backup_device", ""),
+                     task_id=task.id, user_id=session["user_id"],
+                     file_size=os.path.getsize(fp))
+    db.session.add(b)
+    db.session.commit()
+    return jsonify(b.to_dict()), 201
 
 # ── STATS ──
 @app.route("/api/stats")

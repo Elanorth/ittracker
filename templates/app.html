@@ -1238,6 +1238,19 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <label>Notlar</label>
       <textarea class="form-control" id="edit-task-notes" style="min-height:60px"></textarea>
     </div>
+    <!-- Backup dosya yönetim paneli (backup kategorisinde gösterilir) -->
+    <div id="edit-backup-panel" class="hidden" style="margin-bottom:12px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+      <div style="background:var(--surface2);padding:8px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.5px">💾 YÜKLÜ DOSYALAR</span>
+        <label class="btn btn-sm" style="padding:3px 10px;font-size:10px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold);cursor:pointer">
+          ＋ Dosya Ekle
+          <input type="file" id="edit-backup-upload-input" style="display:none" onchange="uploadBackupToTask()">
+        </label>
+      </div>
+      <div id="edit-backup-file-list" style="padding:8px 14px;min-height:36px">
+        <div style="font-size:11px;color:var(--text-muted)">Yükleniyor...</div>
+      </div>
+    </div>
     <!-- Son tamamlanma (rutin görevlerde gösterilir) -->
     <div id="edit-last-completed-row" class="hidden" style="background:rgba(0,212,170,.07);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--text-muted)">
       🕐 Son tamamlanma: <span id="edit-last-completed-val" style="color:var(--accent);font-weight:600"></span>
@@ -2323,6 +2336,13 @@ function openEditTask(id) {
     }
   }
 
+  // Backup paneli
+  const backupPanel = document.getElementById('edit-backup-panel');
+  if (backupPanel) {
+    backupPanel.classList.toggle('hidden', t.cat !== 'backup');
+    if (t.cat === 'backup') loadTaskBackups(id);
+  }
+
   document.getElementById('edit-task-modal').classList.remove('hidden');
 }
 function updateEditTeamOptions() {
@@ -2381,10 +2401,69 @@ async function deleteTask() {
     renderFullList(tasks);
     renderDashUpcoming();
     buildNotifications();
+    if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
+    if (document.getElementById('page-projects')?.classList.contains('active')) renderProjectsPage();
     showToast('ok', 'Görev silindi');
   } catch(e) { showToast('err', e.message); }
 }
 function closeEditTaskModal() { document.getElementById('edit-task-modal').classList.add('hidden'); }
+
+// ══════════════════════════════════════════════════════════
+//  BACKUP DOSYA YÖNETİMİ — Edit modal içi
+// ══════════════════════════════════════════════════════════
+async function loadTaskBackups(taskId) {
+  const el = document.getElementById('edit-backup-file-list');
+  if (!el) return;
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/backups`);
+    const list = res.ok ? await res.json() : [];
+    if (!list.length) {
+      el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 0">Henüz dosya yüklenmemiş.</div>';
+      return;
+    }
+    el.innerHTML = list.map(b => {
+      const sizeStr = b.file_size > 1024 ? Math.round(b.file_size/1024)+' KB' : (b.file_size||0)+' B';
+      const date = b.uploaded_at ? new Date(b.uploaded_at).toLocaleDateString('tr-TR') : '';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.filename}</div>
+          <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+b.device:''} · ${date}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-sm" style="padding:2px 8px;font-size:9px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" onclick="downloadBackup(${b.id})">&#8595;</button>
+          <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:9px" onclick="deleteBackupFile(${b.id}, ${taskId})">&#10005;</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="font-size:11px;color:var(--danger)">Yüklenemedi</div>'; }
+}
+
+async function deleteBackupFile(backupId, taskId) {
+  if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) return;
+  try {
+    const res = await fetch(`/api/backups/${backupId}`, { method:'DELETE' });
+    if (!res.ok) throw new Error('Silme hatası');
+    showToast('ok', 'Dosya silindi');
+    loadTaskBackups(taskId);
+    if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
+  } catch(e) { showToast('err', e.message); }
+}
+
+async function uploadBackupToTask() {
+  const input = document.getElementById('edit-backup-upload-input');
+  const taskId = parseInt(document.getElementById('edit-task-id').value);
+  if (!input.files[0]) return;
+  const fd = new FormData();
+  fd.append('backup_file', input.files[0]);
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/backups`, { method:'POST', body: fd });
+    if (!res.ok) throw new Error((await res.json()).error || 'Yükleme hatası');
+    showToast('ok', 'Dosya yüklendi ✓');
+    input.value = '';
+    loadTaskBackups(taskId);
+    if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
+  } catch(e) { showToast('err', e.message); }
+}
 
 // ══════════════════════════════════════════════════════════
 //  EDIT USER MODAL — API bağlı
@@ -2510,13 +2589,6 @@ function filterBackups() {
 
 function downloadBackup(backupId) {
   window.location.href = '/api/backups/' + backupId + '/download';
-  // NOT USED BELOWn backend endpoint kullan
-  const link = document.createElement('a');
-  link.href = `/api/backups/${taskId}/download`;
-  link.download = t.backup;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
 

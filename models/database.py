@@ -67,7 +67,8 @@ class Task(db.Model):
     checklist_done = db.Column(db.Text, default="[]")
     project_status = db.Column(db.Text, default="")   # Proje durum notu
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
-    backups        = db.relationship("ConfigBackup", backref="task", lazy=True)
+    backups        = db.relationship("ConfigBackup", backref="task", lazy=True,
+                                     cascade="all, delete-orphan")
     completions    = db.relationship("TaskCompletion", backref="task", lazy=True,
                                      cascade="all, delete-orphan")
 
