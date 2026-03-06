@@ -194,6 +194,12 @@ def init_db():
         db.session.commit()
         print("✅ Migration: project_status sütunu eklendi")
 
+    # Migration: eski kategorileri task'a taşı (support/infra/other → task)
+    result = db.session.execute(text("UPDATE tasks SET category = 'task' WHERE category IN ('support', 'infra', 'other')"))
+    if result.rowcount:
+        db.session.commit()
+        print(f"✅ Migration: {result.rowcount} görev task kategorisine taşındı")
+
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")
         ass = Firm(name="Assos",     slug="assos")

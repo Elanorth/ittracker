@@ -243,7 +243,9 @@ def update_task(task_id):
         task.checklist_done = _json.dumps(cld)
     if "project_status" in data: task.project_status = data["project_status"]
     db.session.commit()
-    return jsonify(task.to_dict())
+    month_val = data.get("month", date.today().month)
+    year_val  = data.get("year",  date.today().year)
+    return jsonify(task.to_dict(month=month_val, year=year_val))
 
 @app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
 @login_required

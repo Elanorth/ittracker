@@ -204,6 +204,11 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .tag.infra{background:var(--accent2-dim);color:var(--accent2);}
 .tag.backup{background:var(--gold-dim);color:var(--gold);}
 .tag.other{background:var(--surface3);color:var(--text-muted);}
+.tag.task{background:var(--accent3-dim);color:var(--accent3);}
+.tag.project{background:rgba(52,208,88,.12);color:var(--green);}
+.proj-card{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;margin-bottom:10px;}
+.proj-card:last-child{margin-bottom:0;}
+.proj-status-note{font-size:11px;color:var(--text-muted);margin-top:6px;padding:6px 10px;background:var(--surface);border-radius:5px;border-left:2px solid var(--accent3);}
 .firm-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:3px;font-size:9px;font-family:'IBM Plex Mono',monospace;font-weight:600;}
 .firm-chip.inventist{background:rgba(0,229,192,.08);color:var(--accent);border:1px solid rgba(0,229,192,.15);}
 .firm-chip.assos{background:rgba(244,185,66,.08);color:var(--gold);border:1px solid rgba(244,185,66,.15);}
@@ -433,10 +438,12 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </div>
 
   <nav>
-    <div class="nav-section">Ana Menü</div>
+    <div class="nav-section">Görevler</div>
     <a class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
-    <a class="nav-item" onclick="showPage('tasks')"><span class="nav-icon">☰</span>Tüm Görevler</a>
-    <a class="nav-item" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Zamanlanmış Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
+    <a class="nav-item" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <div class="nav-section" style="margin-top:8px">Raporlama</div>
     <a class="nav-item" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
     <a class="nav-item" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
     <div class="nav-section" style="margin-top:8px">Yönetim</div>
@@ -707,26 +714,85 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </div>
 </div>
 
-<!-- ─── ALL TASKS ─── -->
+<!-- ─── ANLIK GÖREVLER ─── -->
 <div id="page-tasks" class="page-section">
   <div class="topbar">
-    <div><div class="page-title">Tüm <span>Görevler</span></div></div>
-    <button class="btn btn-primary" onclick="showPage('add')">＋ Yeni Görev</button>
+    <div>
+      <div class="page-title">Anlık <span>Görevler</span></div>
+      <div class="page-sub">Tek seferlik işler — destek, kurulum, ayar, bakım</div>
+    </div>
+    <button class="btn btn-primary" onclick="showPage('add');document.getElementById('new-cat').value='task';onCatChange()">＋ Anlık Görev Ekle</button>
   </div>
   <div class="card">
     <div class="card-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input class="form-control" placeholder="Ara..." style="width:200px;padding:6px 10px;font-size:12px" oninput="filterFullList(this.value)">
-        <select class="form-control" style="width:120px;padding:6px 10px;font-size:12px" onchange="filterFullByFirm(this.value)">
+        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" onchange="filterFullByFirm(this.value)">
           <option value="">Tüm Firmalar</option><option value="inventist">İnventist</option><option value="assos">Assos</option>
         </select>
-        <select class="form-control" style="width:120px;padding:6px 10px;font-size:12px" onchange="filterFullByCat(this.value)">
-          <option value="">Tüm Kategoriler</option><option value="routine">Rutin</option><option value="support">Destek</option><option value="infra">Altyapı</option><option value="backup">Config Backup</option>
+        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" id="tasks-cat-filter" onchange="filterFullByCat(this.value)">
+          <option value="task">Anlık Görev</option>
+          <option value="backup">Config Backup</option>
+          <option value="">Tüm Kategoriler</option>
         </select>
       </div>
-      <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace" id="task-count-label">24 kayıt</span>
+      <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace" id="task-count-label">0 kayıt</span>
     </div>
     <div class="card-body" style="padding:0" id="full-task-list"></div>
+  </div>
+</div>
+
+<!-- ─── PROJELER ─── -->
+<div id="page-projects" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Proje <span>Takibi</span></div>
+      <div class="page-sub">Deadline'lı, çok günlü görevler ve durum notları</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" onclick="showPage('add');document.getElementById('new-cat').value='project';onCatChange()">＋ Yeni Proje</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">AKTİF PROJELER</div>
+          <span id="proj-active-count" style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">0 proje</span>
+        </div>
+        <div class="card-body" style="padding-top:6px" id="proj-active-body"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">TAMAMLANAN PROJELER</div>
+          <span id="proj-done-count" style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">0 proje</span>
+        </div>
+        <div class="card-body" style="padding-top:6px" id="proj-done-body"></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">ÖZET</div></div>
+        <div class="card-body" id="proj-stats-body">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Toplam Proje</span><span id="ps-total" style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Aktif</span><span id="ps-active" style="font-family:'IBM Plex Mono',monospace;color:var(--accent3)">0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Geciken</span><span id="ps-overdue" style="font-family:'IBM Plex Mono',monospace;color:var(--danger)">0</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Tamamlanan</span><span id="ps-done" style="font-family:'IBM Plex Mono',monospace;color:var(--green)">0</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">FİLTRE</div></div>
+        <div class="card-body">
+          <select class="form-control" style="font-size:12px" id="proj-filter-firm" onchange="renderProjectsPage()">
+            <option value="">Tüm Firmalar</option>
+            <option value="inventist">İnventist</option>
+            <option value="assos">Assos</option>
+          </select>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -767,11 +833,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
             <label>Kategori</label>
             <select class="form-control" id="new-cat" onchange="onCatChange()">
               <option value="">— Kategori Seçin —</option>
+              <option value="task">Anlık Görev</option>
+              <option value="project">Proje</option>
               <option value="routine">Rutin</option>
-              <option value="support">Destek Talebi</option>
-              <option value="infra">Altyapı</option>
               <option value="backup">Config Backup</option>
-              <option value="other">Diğer</option>
             </select>
           </div>
           <div class="form-group">
@@ -1143,11 +1208,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="form-group">
         <label>Kategori</label>
         <select class="form-control" id="edit-task-cat">
+          <option value="task">Anlık Görev</option>
+          <option value="project">Proje</option>
           <option value="routine">Rutin</option>
-          <option value="support">Destek Talebi</option>
-          <option value="infra">Altyapi</option>
           <option value="backup">Config Backup</option>
-          <option value="other">Diger</option>
         </select>
       </div>
       <div class="form-group">
@@ -1282,7 +1346,7 @@ const FIRMS = {
 };
 const BACKUP_TYPES = ['.cfg','.conf','.txt','.bin','.xml','.json','.tar','.zip'];
 const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
-const CAT_LABELS = {routine:'Rutin',support:'Destek',infra:'Altyapı',backup:'Config Backup',other:'Diğer'};
+const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Anlık',infra:'Anlık',other:'Anlık'};
 
 // ── Uygulama durumu ──
 let tasks = [];       // API'den yüklenir
@@ -1360,6 +1424,8 @@ function normalizeTask(t) {
     next_due:       t.next_due || null,
     checklist:      t.checklist || [],
     checklist_done: t.checklist_done || [],
+    project_status: t.project_status || '',
+    completed_at:   t.completed_at || null,
   };
 }
 
@@ -1370,10 +1436,12 @@ function showPage(name) {
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const map = {dashboard:0,tasks:1,scheduled:2,report:3,backups:4,admin:5,settings:6};
+  // dashboard:0, tasks:1, projects:2, scheduled:3, report:4, backups:5, admin:6, settings:7
+  const map = {dashboard:0, tasks:1, projects:2, scheduled:3, report:4, backups:5, admin:6, settings:7};
   document.querySelectorAll('.nav-item')[map[name]]?.classList.add('active');
   if (name==='dashboard') renderDashboard();
-  if (name==='tasks')     { loadTasks().then(() => renderFullList(tasks)); }
+  if (name==='tasks')     { _ftCat = 'task'; loadTasks().then(() => { document.getElementById('tasks-cat-filter').value = 'task'; renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup')); }); }
+  if (name==='projects')  { loadTasks().then(() => renderProjectsPage()); }
   if (name==='add')       { onCatChange(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
@@ -1428,16 +1496,29 @@ function updateTeamOptions() {
 //  BACKUP SECTION TOGGLE
 // ══════════════════════════════════════════════════════════
 function onCatChange() {
-  const cat    = document.getElementById('new-cat').value;
-  const period = document.getElementById('new-period').value;
+  const cat       = document.getElementById('new-cat').value;
   const isBackup  = cat === 'backup';
   const isRoutine = cat === 'routine';
-  const isEmpty   = cat === '';
+  const isProject = cat === 'project';
+  const isTask    = cat === 'task';
 
   // Backup section
   document.getElementById('backup-section').classList.toggle('hidden', !isBackup);
-  if (isBackup) { document.getElementById('new-period').value = 'Günlük'; document.getElementById('new-period').disabled = true; }
-  else document.getElementById('new-period').disabled = false;
+
+  // Period: sadece rutin görevde anlamlı; diğerlerinde "Tek Seferlik" sabit
+  const periodSel = document.getElementById('new-period');
+  const periodRow = document.getElementById('deadline-row')?.previousElementSibling;
+  if (isRoutine) {
+    periodSel.disabled = false;
+    if (periodSel.value === 'Tek Seferlik') periodSel.value = 'Aylık';
+  } else if (isBackup) {
+    periodSel.value = 'Günlük';
+    periodSel.disabled = true;
+  } else {
+    // task veya project: periyot yok, tek seferlik
+    periodSel.value = 'Tek Seferlik';
+    periodSel.disabled = true;
+  }
 
   // Checklist sadece rutin görevde
   document.getElementById('checklist-section').classList.toggle('hidden', !isRoutine);
@@ -1446,7 +1527,6 @@ function onCatChange() {
   const infoBox = document.getElementById('routine-info-box');
   if (infoBox) infoBox.classList.toggle('hidden', !isRoutine);
 
-  // Deadline alanı: rutin + periyotlularda otomatik hesaplanır
   _updateDeadlineHint();
 }
 
@@ -1583,10 +1663,11 @@ function filterFullList(v)   { _ftSearch = v.toLowerCase(); renderFullList(); }
 async function apiToggleTask(id) {
   const t = tasks.find(t => t.id === id); if (!t) return;
   const newDone = !t.done;
+  const _now = new Date();
   try {
     const res = await fetch(`/api/tasks/${id}`, {
       method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({is_done: newDone})
+      body: JSON.stringify({is_done: newDone, month: _now.getMonth()+1, year: _now.getFullYear()})
     });
     if (!res.ok) throw new Error('API hatası');
     const updated = await res.json();
