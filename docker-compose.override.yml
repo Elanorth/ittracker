@@ -1,0 +1,8 @@
+# Geliştirme ortamı — docker compose up ile otomatik devreye girer.
+# Canlıda bu dosya olmayacağı için docker-compose.yml'e dokunmaya gerek yok.
+services:
+  web:
+    volumes:
+      - ./app.py:/app/app.py
+      - ./models:/app/models
+      - ./templates:/app/templates
