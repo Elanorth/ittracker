@@ -4,7 +4,7 @@
 
 set -e
 
-DOMAIN="assospharma.com"
+DOMAIN="ittracker.assospharma.com"
 EMAIL="levent.can@inventist.com.tr"   # Sertifika uyarıları için
 STAGING=0                              # Test için 1, üretim için 0
 
@@ -43,8 +43,7 @@ docker compose run --rm certbot certonly \
   --email $EMAIL \
   --agree-tos \
   --no-eff-email \
-  -d $DOMAIN \
-  -d www.$DOMAIN
+  -d $DOMAIN
 
 echo ">>> Nginx yeniden yükleniyor..."
 docker compose exec nginx nginx -s reload
