@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(\"C:\\\\Users\\\\levent.can\\\\Projects\\\\ittracker\\\\venv\\\\Scripts\\\\pip\" install:*)",
+      "Bash(rm:*)"
+    ]
+  }
+}
