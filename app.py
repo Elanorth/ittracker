@@ -23,6 +23,10 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
+
+# Nginx reverse proxy arkasında HTTPS ve gerçek IP'yi doğru al
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///it_tracker.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
@@ -71,6 +75,13 @@ def login():
             data = request.form
         username = (data.get("username") or "").strip().lower()
         password = data.get("password") or ""
+        # Sadece admin kullanıcı local girişe izin verilir
+        admin_username = os.environ.get("ADMIN_USERNAME", "levent.can")
+        if username != admin_username:
+            if request.is_json:
+                return jsonify({"ok": False, "error": "Lütfen Microsoft 365 ile giriş yapın"}), 403
+            return render_template("login.html", admin_mode=True,
+                                   error="Bu kullanıcı için Microsoft 365 ile giriş gereklidir")
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             session["user_id"] = user.id
@@ -79,8 +90,9 @@ def login():
             return redirect(url_for("dashboard"))
         if request.is_json:
             return jsonify({"ok": False, "error": "Hatalı kullanıcı adı veya şifre"}), 401
-        return render_template("login.html", error="Hatalı kullanıcı adı veya şifre")
-    return render_template("login.html")
+        return render_template("login.html", admin_mode=True, error="Hatalı kullanıcı adı veya şifre")
+    admin_mode = request.args.get("admin") == "1"
+    return render_template("login.html", admin_mode=admin_mode)
 
 @app.route("/logout")
 def logout():
@@ -91,6 +103,10 @@ def logout():
 @app.route("/auth/o365")
 def auth_o365():
     if not MSAL_AVAILABLE: return jsonify({"error":"pip install msal"}), 503
+    # Davet token'ını session'a kaydet (register sayfasından geliyorsa)
+    invite_token = request.args.get("invite")
+    if invite_token:
+        session["invite_token"] = invite_token
     state = secrets.token_urlsafe(16)
     session["oauth_state"] = state
     msal_app = msal.ConfidentialClientApplication(
@@ -111,20 +127,48 @@ def auth_callback():
     if "error" in result: return f"Hata: {result.get('error_description','')}", 400
     claims  = result.get("id_token_claims", {})
     o365_id = claims.get("oid")
-    email   = claims.get("preferred_username","")
+    email   = claims.get("preferred_username","").lower()
     name    = claims.get("name", email)
+
+    admin_email = os.environ.get("ADMIN_EMAIL", "").lower()
+
+    # Mevcut kullanıcı kontrolü (o365_id veya email ile)
     user = User.query.filter_by(o365_id=o365_id).first() or User.query.filter_by(email=email).first()
+
     if not user:
-        inv  = Invitation.query.filter_by(email=email, used=False).first()
-        user = User(username=email.split("@")[0].lower(), full_name=name, email=email, o365_id=o365_id, role=inv.role if inv else "IT Yardımcısı")
+        # Yeni kullanıcı — davet zorunlu (admin hariç)
+        invite_token = session.pop("invite_token", None)
+        inv = None
+        if invite_token:
+            inv = Invitation.query.filter_by(token=invite_token, used=False).first()
+        if not inv:
+            inv = Invitation.query.filter_by(email=email, used=False).first()
+
+        if not inv and email != admin_email:
+            return render_template("error.html",
+                msg=f"'{email}' adresi için geçerli bir davet bulunamadı. "
+                    "Lütfen sistem yöneticinizden davet isteyin.")
+
+        role = inv.role if inv else "IT Sorumlusu"
+        user = User(
+            username=email.split("@")[0].lower(),
+            full_name=name, email=email,
+            o365_id=o365_id, role=role
+        )
         user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)
-        if inv: inv.used = True
+        if inv:
+            inv.used = True
         db.session.commit()
     else:
-        user.o365_id = o365_id; user.full_name = name; db.session.commit()
-    session["user_id"] = user.id
+        # Mevcut kullanıcı — o365_id ve ad güncelle
+        user.o365_id  = o365_id
+        user.full_name = name
+        db.session.commit()
+
+    session["user_id"]    = user.id
     session["o365_token"] = result.get("access_token")
+    session.pop("invite_token", None)
     return redirect(url_for("dashboard"))
 
 # ── TASKS ──
@@ -416,19 +460,13 @@ def invite_user():
     result=send_invite_email(email,data.get("full_name",""),url,data.get("role",""))
     return jsonify({"ok":result.get("ok"),"invite_url":url})
 
-@app.route("/register", methods=["GET","POST"])
+@app.route("/register")
 def register():
-    token=request.args.get("token") or (request.get_json() or {}).get("token")
-    inv=Invitation.query.filter_by(token=token,used=False).first()
-    if not inv or inv.expires_at<datetime.utcnow(): return render_template("error.html",msg="Geçersiz davet"),400
-    if request.method=="POST":
-        data=request.get_json() or request.form
-        user=User(username=data.get("username","").strip().lower(),full_name=inv.full_name,email=inv.email,role=inv.role,firm=inv.firm)
-        user.set_password(data.get("password",""))
-        db.session.add(user); inv.used=True; db.session.commit()
-        session["user_id"]=user.id
-        return jsonify({"ok":True}) if request.is_json else redirect(url_for("dashboard"))
-    return render_template("register.html",invitation=inv)
+    token = request.args.get("token")
+    inv = Invitation.query.filter_by(token=token, used=False).first()
+    if not inv or inv.expires_at < datetime.utcnow():
+        return render_template("error.html", msg="Bu davet bağlantısı geçersiz veya süresi dolmuş."), 400
+    return render_template("register.html", invitation=inv, token=token)
 
 # ── REPORT ──
 @app.route("/api/report/pdf")
