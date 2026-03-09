@@ -35,6 +35,11 @@ O365_SCOPES       = ["User.Read", "Mail.Send"]
 
 db.init_app(app)
 
+ALLOWED_PRIORITIES = {"düşük", "orta", "yüksek"}
+def _normalize_priority(val):
+    v = (val or "").strip().lower()
+    return v if v in ALLOWED_PRIORITIES else "orta"
+
 def login_required(f):
     @wraps(f)
     def dec(*args, **kwargs):
@@ -178,6 +183,7 @@ def create_task():
     else:
         data = request.get_json(); backup_file = None
     category = data.get("category","other")
+    priority = _normalize_priority(data.get("priority"))
     period   = data.get("period","Tek Seferlik")
     deadline_raw = data.get("deadline")
     deadline = datetime.fromisoformat(deadline_raw).date() if deadline_raw else None
@@ -191,6 +197,7 @@ def create_task():
     if isinstance(cl_raw, list): cl_raw = _json.dumps(cl_raw)
     cl_items = _json.loads(cl_raw) if isinstance(cl_raw, str) else []
     task = Task(user_id=session["user_id"], title=data["title"], category=category,
+                priority=priority,
                 period=period, firm=data.get("firm",""), team=data.get("team",""),
                 notes=data.get("notes",""), deadline=deadline, next_due=next_due,
                 checklist=_json.dumps(cl_items),
@@ -228,6 +235,7 @@ def update_task(task_id):
             task.completed_at = datetime.utcnow() if data["is_done"] else None
     if "title"    in data: task.title    = data["title"]
     if "category" in data: task.category = data["category"]
+    if "priority" in data: task.priority = _normalize_priority(data["priority"])
     if "period"   in data: task.period   = data["period"]
     if "firm"     in data: task.firm     = data["firm"]
     if "team"     in data: task.team     = data["team"]

@@ -54,6 +54,7 @@ class Task(db.Model):
     user_id        = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     title          = db.Column(db.String(300), nullable=False)
     category       = db.Column(db.String(50), default="other")
+    priority       = db.Column(db.String(10), default="orta")  # support talepleri için: düşük/orta/yüksek
     period         = db.Column(db.String(50), default="Tek Seferlik")
     firm           = db.Column(db.String(50), default="")
     team           = db.Column(db.String(100), default="")
@@ -99,6 +100,7 @@ class Task(db.Model):
         return {
             "id": self.id, "user_id": self.user_id, "title": self.title,
             "category": self.category, "period": self.period,
+            "priority": (self.priority or "orta"),
             "firm": self.firm, "team": self.team, "notes": self.notes,
             "deadline": self.deadline.isoformat() if self.deadline else None,
             "next_due": self.next_due.isoformat() if self.next_due else None,
@@ -195,11 +197,14 @@ def init_db():
         db.session.commit()
         print("✅ Migration: project_status sütunu eklendi")
 
-    # Migration: eski kategorileri task'a taşı (support/infra/other → task)
-    result = db.session.execute(text("UPDATE tasks SET category = 'task' WHERE category IN ('support', 'infra', 'other')"))
-    if result.rowcount:
+    # Migration: mevcut tasks tablosuna priority sütunu ekle (support talepleri için)
+    # SQLite: ALTER TABLE ile kolon eklenir; mevcut satırlar NULL kalabilir, onları "orta" yapıyoruz.
+    cols = [c["name"] for c in inspector.get_columns("tasks")]
+    if "priority" not in cols:
+        db.session.execute(text("ALTER TABLE tasks ADD COLUMN priority TEXT DEFAULT 'orta'"))
+        db.session.execute(text("UPDATE tasks SET priority = 'orta' WHERE priority IS NULL OR priority = ''"))
         db.session.commit()
-        print(f"✅ Migration: {result.rowcount} görev task kategorisine taşındı")
+        print("✅ Migration: priority sütunu eklendi")
 
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")

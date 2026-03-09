@@ -5,4 +5,5 @@ services:
     volumes:
       - ./app.py:/app/app.py
       - ./models:/app/models
+      - ./services:/app/services
       - ./templates:/app/templates

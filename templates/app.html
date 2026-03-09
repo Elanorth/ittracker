@@ -216,6 +216,10 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .dl-badge.ok{background:var(--green-dim);color:var(--green);}
 .dl-badge.warn{background:var(--gold-dim);color:var(--gold);}
 .dl-badge.late{background:var(--accent2-dim);color:var(--accent2);}
+.prio-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.10);}
+.prio-badge.low{background:var(--green-dim);color:var(--green);border-color:rgba(0,212,170,.25);}
+.prio-badge.med{background:var(--gold-dim);color:var(--gold);border-color:rgba(244,185,66,.25);}
+.prio-badge.high{background:var(--accent2-dim);color:var(--accent2);border-color:rgba(248,81,73,.25);}
 .backup-icon{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:var(--gold);cursor:pointer;}
 .backup-icon:hover{color:var(--gold);}
 
@@ -834,6 +838,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
             <select class="form-control" id="new-cat" onchange="onCatChange()">
               <option value="">— Kategori Seçin —</option>
               <option value="task">Anlık Görev</option>
+              <option value="support">Destek Talebi</option>
               <option value="project">Proje</option>
               <option value="routine">Rutin</option>
               <option value="backup">Config Backup</option>
@@ -845,6 +850,19 @@ textarea.form-control{resize:vertical;min-height:64px;}
               <option>Günlük</option><option>Haftalık</option><option>Aylık</option><option>Yıllık</option><option>Tek Seferlik</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-row hidden" id="priority-row">
+          <div class="form-group">
+            <label>Öncelik (Destek)</label>
+            <select class="form-control" id="new-priority">
+              <option value="düşük">Düşük</option>
+              <option value="orta" selected>Orta</option>
+              <option value="yüksek">Yüksek</option>
+            </select>
+            <div class="form-hint">Sadece destek taleplerinde kullanılır</div>
+          </div>
+          <div class="form-group"><div></div></div>
         </div>
 
         <!-- Rutin görev için: bitiş tarihi gizli, otomatik hesaplanır -->
@@ -1209,6 +1227,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <label>Kategori</label>
         <select class="form-control" id="edit-task-cat">
           <option value="task">Anlık Görev</option>
+          <option value="support">Destek Talebi</option>
           <option value="project">Proje</option>
           <option value="routine">Rutin</option>
           <option value="backup">Config Backup</option>
@@ -1237,6 +1256,17 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="form-group" style="margin-bottom:4px">
       <label>Notlar</label>
       <textarea class="form-control" id="edit-task-notes" style="min-height:60px"></textarea>
+    </div>
+    <div id="edit-priority-row" class="hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group" style="margin:0">
+        <label>Öncelik (Destek)</label>
+        <select class="form-control" id="edit-task-priority">
+          <option value="düşük">Düşük</option>
+          <option value="orta">Orta</option>
+          <option value="yüksek">Yüksek</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0"><div></div></div>
     </div>
     <!-- Backup dosya yönetim paneli (backup kategorisinde gösterilir) -->
     <div id="edit-backup-panel" class="hidden" style="margin-bottom:12px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
@@ -1423,6 +1453,7 @@ function normalizeTask(t) {
     id:       t.id,
     title:    t.title,
     cat:      t.category,      // API: category → FE: cat
+    priority: t.priority || 'orta',
     period:   t.period,
     firm:     t.firm,
     team:     t.team,
@@ -1514,9 +1545,13 @@ function onCatChange() {
   const isRoutine = cat === 'routine';
   const isProject = cat === 'project';
   const isTask    = cat === 'task';
+  const isSupport = cat === 'support';
 
   // Backup section
   document.getElementById('backup-section').classList.toggle('hidden', !isBackup);
+
+  // Priority: sadece destek taleplerinde
+  document.getElementById('priority-row')?.classList.toggle('hidden', !isSupport);
 
   // Period: sadece rutin görevde anlamlı; diğerlerinde "Tek Seferlik" sabit
   const periodSel = document.getElementById('new-period');
@@ -1573,6 +1608,10 @@ function _updateDeadlineHint() {
 // Periyot değişince de hint'i güncelle
 document.addEventListener('change', e => {
   if (e.target?.id === 'new-period') _updateDeadlineHint();
+  if (e.target?.id === 'edit-task-cat') {
+    const cat = e.target.value;
+    document.getElementById('edit-priority-row')?.classList.toggle('hidden', cat !== 'support');
+  }
 });
 function toggleBackupSection() { onCatChange(); }
 function triggerUpload() { /* input[type=file] zaten tüm alanı kaplıyor */ }
@@ -1601,6 +1640,14 @@ function dlText(dl, done) {
 function catLabel(cat) {
   return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
 }
+function priorityBadge(t) {
+  if (!t || t.cat !== 'support') return '';
+  const p = (t.priority || 'orta').toLowerCase();
+  const cls = p === 'yüksek' ? 'high' : (p === 'düşük' ? 'low' : 'med');
+  const label = p === 'yüksek' ? 'Yüksek' : (p === 'düşük' ? 'Düşük' : 'Orta');
+  const dot = p === 'yüksek' ? '⬤' : (p === 'düşük' ? '⬤' : '⬤');
+  return ` <span class="prio-badge ${cls}" title="Öncelik">${dot} ${label}</span>`;
+}
 function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
@@ -1627,7 +1674,7 @@ function taskRow(t) {
     <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${t.title}</div>
-      <div class="task-meta">${catLabel(t.cat)} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
       ${clProgress}${lcStr}
     </div>
     ${dl}
@@ -1817,6 +1864,7 @@ async function addTask() {
       deadline: document.getElementById('new-deadline').value || null,
       checklist: clItems,
     };
+    if (cat === 'support') body.priority = document.getElementById('new-priority')?.value || 'orta';
     fetchOpts = { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) };
   }
   try {
@@ -2313,6 +2361,10 @@ function openEditTask(id) {
   document.getElementById('edit-task-deadline').value = t.deadline || '';
   document.getElementById('edit-task-done').value     = t.done ? 'true' : 'false';
   document.getElementById('edit-task-notes').value    = t.notes || '';
+  const prRow = document.getElementById('edit-priority-row');
+  if (prRow) prRow.classList.toggle('hidden', t.cat !== 'support');
+  const prSel = document.getElementById('edit-task-priority');
+  if (prSel) prSel.value = (t.priority || 'orta');
   document.getElementById('edit-task-firm').value     = t.firm;
   updateEditTeamOptions();
   setTimeout(() => { document.getElementById('edit-task-team').value = t.team; }, 20);
@@ -2365,6 +2417,7 @@ async function saveEditTask() {
     is_done:  document.getElementById('edit-task-done').value === 'true',
     notes:    document.getElementById('edit-task-notes').value,
   };
+  if (body.category === 'support') body.priority = document.getElementById('edit-task-priority')?.value || 'orta';
   // Checklist verisi (rutin görevlerde)
   const clSection = document.getElementById('edit-checklist-section');
   if (clSection && !clSection.classList.contains('hidden')) {
