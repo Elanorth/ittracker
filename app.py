@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from functools import wraps
 from datetime import datetime, date, timedelta
 import json as _json
-from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, init_db, _next_due_date
+from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, BoardCard, BoardComment, init_db, _next_due_date
 from services.report import generate_monthly_pdf
 from services.mailer import send_report_email, send_invite_email
 from services.storage import save_backup_file
@@ -78,6 +78,16 @@ def super_admin_required(f):
         user = db.session.get(User, session.get("user_id"))
         if not user or not user.is_super_admin:
             return jsonify({"error": "Yetkisiz"}), 403
+        return f(*args, **kwargs)
+    return login_required(dec)
+
+def board_access_required(f):
+    """Ortak Alan erişimi: can_access_board veya super_admin"""
+    @wraps(f)
+    def dec(*args, **kwargs):
+        user = db.session.get(User, session.get("user_id"))
+        if not user or (not user.can_access_board and not user.is_super_admin):
+            return jsonify({"error": "Ortak Alan erisiminiz yok"}), 403
         return f(*args, **kwargs)
     return login_required(dec)
 
@@ -490,6 +500,9 @@ def admin_update_user(uid):
         target.is_admin = new_level in ("super_admin", "it_manager")
         role_map = {"super_admin": "IT Sorumlusu", "it_manager": "IT Yöneticisi", "junior": "IT Yardımcısı"}
         target.role = role_map.get(new_level, "IT Yardımcısı")
+    # can_access_board — sadece super_admin ayarlayabilir
+    if "can_access_board" in data and me.is_super_admin:
+        target.can_access_board = bool(data["can_access_board"])
     for f in ("role", "firm", "active"):
         if f in data: setattr(target, f, data[f])
     db.session.commit(); return jsonify(target.to_dict())
@@ -647,6 +660,101 @@ def test_smtp():
         return jsonify({"ok": True, "message": f"{host}:{port} bağlantısı başarılı"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+
+# ══════════════════════════════════════════════════════════
+#  ORTAK ALAN (BOARD) API
+# ══════════════════════════════════════════════════════════
+@app.route("/api/board/cards", methods=["GET"])
+@board_access_required
+def board_list_cards():
+    me = _current_user()
+    q = BoardCard.query.order_by(BoardCard.column, BoardCard.position, BoardCard.created_at)
+    # Super admin tum kartlari gorur, digerleri kendi firmasinin kartlarini
+    if not me.is_super_admin:
+        q = q.filter_by(firm=me.firm)
+    return jsonify([c.to_dict() for c in q.all()])
+
+@app.route("/api/board/cards", methods=["POST"])
+@board_access_required
+def board_create_card():
+    me = _current_user()
+    data = request.get_json() or {}
+    title = data.get("title", "").strip()
+    if not title:
+        return jsonify({"error": "Baslik zorunludur"}), 400
+    col = data.get("column", "todo")
+    # Pozisyonu kolonun sonuna ekle
+    max_pos = db.session.query(db.func.max(BoardCard.position)).filter_by(column=col).scalar() or 0
+    card = BoardCard(
+        title=title,
+        description=data.get("description", ""),
+        column=col,
+        position=max_pos + 1,
+        color=data.get("color", "yellow"),
+        checklist=_json.dumps(data.get("checklist", [])),
+        checklist_done=_json.dumps(data.get("checklist_done", [])),
+        created_by=me.id,
+        assigned_to=data.get("assigned_to"),
+        firm=data.get("firm", me.firm),
+    )
+    db.session.add(card)
+    db.session.commit()
+    return jsonify(card.to_dict()), 201
+
+@app.route("/api/board/cards/<int:card_id>", methods=["PATCH"])
+@board_access_required
+def board_update_card(card_id):
+    card = BoardCard.query.get_or_404(card_id)
+    data = request.get_json() or {}
+    for field in ("title", "description", "column", "position", "color", "firm", "assigned_to"):
+        if field in data:
+            setattr(card, field, data[field])
+    if "checklist" in data:
+        card.checklist = _json.dumps(data["checklist"])
+    if "checklist_done" in data:
+        card.checklist_done = _json.dumps(data["checklist_done"])
+    db.session.commit()
+    return jsonify(card.to_dict())
+
+@app.route("/api/board/cards/<int:card_id>", methods=["DELETE"])
+@board_access_required
+def board_delete_card(card_id):
+    me = _current_user()
+    card = BoardCard.query.get_or_404(card_id)
+    if not me.is_super_admin and card.created_by != me.id:
+        return jsonify({"error": "Bu karti silme yetkiniz yok"}), 403
+    db.session.delete(card)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+@app.route("/api/board/cards/<int:card_id>/comments", methods=["GET"])
+@board_access_required
+def board_list_comments(card_id):
+    BoardCard.query.get_or_404(card_id)
+    comments = BoardComment.query.filter_by(card_id=card_id).order_by(BoardComment.created_at.asc()).all()
+    return jsonify([c.to_dict() for c in comments])
+
+@app.route("/api/board/cards/<int:card_id>/comments", methods=["POST"])
+@board_access_required
+def board_add_comment(card_id):
+    BoardCard.query.get_or_404(card_id)
+    me = _current_user()
+    data = request.get_json() or {}
+    content = data.get("content", "").strip()
+    if not content:
+        return jsonify({"error": "Yorum bos olamaz"}), 400
+    comment = BoardComment(card_id=card_id, user_id=me.id, content=content)
+    db.session.add(comment)
+    db.session.commit()
+    return jsonify(comment.to_dict()), 201
+
+# Board kullanicilari listesi (atama dropdown icin)
+@app.route("/api/board/users", methods=["GET"])
+@board_access_required
+def board_list_users():
+    users = User.query.filter_by(active=True).all()
+    return jsonify([{"id": u.id, "full_name": u.full_name, "firm": u.firm} for u in users])
+
 
 if __name__ == "__main__":
     with app.app_context(): init_db()

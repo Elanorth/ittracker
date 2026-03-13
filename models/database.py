@@ -14,8 +14,9 @@ class User(db.Model):
     role             = db.Column(db.String(50), default="IT Yardımcısı")
     firm             = db.Column(db.String(50), default="")
     is_admin         = db.Column(db.Boolean, default=False)
-    permission_level = db.Column(db.String(20), default="junior")  # super_admin | it_manager | junior
-    active           = db.Column(db.Boolean, default=True)
+    permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_manager | junior
+    can_access_board  = db.Column(db.Boolean, default=False)
+    active            = db.Column(db.Boolean, default=True)
     o365_id          = db.Column(db.String(100), unique=True, nullable=True)
     password_hash    = db.Column(db.String(256), nullable=False)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
@@ -36,6 +37,7 @@ class User(db.Model):
         return {"id":self.id,"username":self.username,"full_name":self.full_name,"email":self.email,
                 "role":self.role,"firm":self.firm,"is_admin":self.is_admin,"active":self.active,
                 "permission_level":self.permission_level or "junior",
+                "can_access_board":bool(self.can_access_board),
                 "o365_linked":bool(self.o365_id),"created_at":self.created_at.isoformat()}
 
 import json as _json
@@ -195,6 +197,73 @@ class Invitation(db.Model):
     def to_dict(self): return {"id":self.id,"email":self.email,"full_name":self.full_name,
                                "role":self.role,"firm":self.firm,"used":self.used,"expires_at":self.expires_at.isoformat()}
 
+class BoardCard(db.Model):
+    """Ortak Alan — Trello tarzı kanban kartı"""
+    __tablename__ = "board_cards"
+    id             = db.Column(db.Integer, primary_key=True)
+    title          = db.Column(db.String(300), nullable=False)
+    description    = db.Column(db.Text, default="")
+    column         = db.Column(db.String(20), default="todo")  # todo/in_progress/review/done
+    position       = db.Column(db.Integer, default=0)
+    color          = db.Column(db.String(20), default="yellow")  # yellow/green/blue/pink/orange
+    checklist      = db.Column(db.Text, default="[]")
+    checklist_done = db.Column(db.Text, default="[]")
+    created_by     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    assigned_to    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    firm           = db.Column(db.String(50), default="")
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    comments       = db.relationship("BoardComment", backref="card", lazy=True, cascade="all, delete-orphan")
+    creator        = db.relationship("User", foreign_keys=[created_by])
+    assignee       = db.relationship("User", foreign_keys=[assigned_to])
+
+    def get_checklist(self):
+        try: return _json.loads(self.checklist or "[]")
+        except: return []
+
+    def get_checklist_done(self):
+        try: return _json.loads(self.checklist_done or "[]")
+        except: return []
+
+    def to_dict(self):
+        cl  = self.get_checklist()
+        cld = self.get_checklist_done()
+        while len(cld) < len(cl): cld.append(False)
+        return {
+            "id": self.id, "title": self.title, "description": self.description,
+            "column": self.column, "position": self.position, "color": self.color,
+            "checklist": cl, "checklist_done": cld,
+            "created_by": self.created_by,
+            "creator_name": self.creator.full_name if self.creator else "",
+            "assigned_to": self.assigned_to,
+            "assignee_name": self.assignee.full_name if self.assignee else "",
+            "firm": self.firm,
+            "comment_count": len(self.comments),
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class BoardComment(db.Model):
+    """Ortak Alan kart yorumu"""
+    __tablename__ = "board_comments"
+    id         = db.Column(db.Integer, primary_key=True)
+    card_id    = db.Column(db.Integer, db.ForeignKey("board_cards.id", ondelete="CASCADE"), nullable=False)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    content    = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    author     = db.relationship("User", foreign_keys=[user_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id, "card_id": self.card_id,
+            "user_id": self.user_id,
+            "author_name": self.author.full_name if self.author else "",
+            "content": self.content,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
 def init_db():
     import os
     from sqlalchemy import inspect, text
@@ -231,6 +300,15 @@ def init_db():
         """))
         db.session.commit()
         print("Migration: permission_level sutunu eklendi")
+
+    # Migration: can_access_board sütunu ekle
+    user_cols = [c["name"] for c in inspector.get_columns("users")]
+    if "can_access_board" not in user_cols:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN can_access_board BOOLEAN DEFAULT 0"))
+        # Super admin'lere otomatik erişim ver
+        db.session.execute(text("UPDATE users SET can_access_board = 1 WHERE permission_level = 'super_admin'"))
+        db.session.commit()
+        print("Migration: can_access_board sutunu eklendi")
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")
