@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v3</title>
+<title>IT//TRACKER · v2</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -30,63 +30,6 @@
   --radius: 10px;
   --sidebar-w: 230px;
 }
-
-/* ═══════ ASSOS PHARMA TEMA ═══════ */
-[data-theme="assos"] {
-  --bg: #0a1628;
-  --surface: #101e33;
-  --surface2: #162640;
-  --surface3: #1e3050;
-  --border: #243656;
-  --border2: #2e4466;
-  --accent: #1e73be;
-  --accent-dim: rgba(30,115,190,.12);
-  --accent2: #ff5a60;
-  --accent2-dim: rgba(255,90,96,.1);
-  --accent3: #0095eb;
-  --accent3-dim: rgba(0,149,235,.1);
-  --gold: #f4b942;
-  --gold-dim: rgba(244,185,66,.1);
-  --green: #34d058;
-  --green-dim: rgba(52,208,88,.1);
-  --danger: #f85149;
-  --text: #dce6f0;
-  --text-muted: #6b7e93;
-  --text-dim: #3d5070;
-}
-[data-theme="assos"] .btn-primary { background: #1e73be; color: #fff; }
-[data-theme="assos"] .btn-primary:hover { background: #0095eb; }
-[data-theme="assos"] .logo-hex { background: #1e73be; }
-[data-theme="assos"] .cal-cell.today .cal-day-num { background: #1e73be; color: #fff; }
-
-/* ═══════ İNVENTİST TEMA (Siyah-Beyaz) ═══════ */
-[data-theme="inventist"] {
-  --bg: #0a0a0a;
-  --surface: #111111;
-  --surface2: #1a1a1a;
-  --surface3: #222222;
-  --border: #2a2a2a;
-  --border2: #333333;
-  --accent: #ffffff;
-  --accent-dim: rgba(255,255,255,.08);
-  --accent2: #ff5f3d;
-  --accent2-dim: rgba(255,95,61,.1);
-  --accent3: #a0a0a0;
-  --accent3-dim: rgba(160,160,160,.1);
-  --gold: #f4b942;
-  --gold-dim: rgba(244,185,66,.1);
-  --green: #34d058;
-  --green-dim: rgba(52,208,88,.1);
-  --danger: #f85149;
-  --text: #e8e8e8;
-  --text-muted: #777777;
-  --text-dim: #444444;
-}
-[data-theme="inventist"] .btn-primary { background: #ffffff; color: #0a0a0a; }
-[data-theme="inventist"] .btn-primary:hover { background: #d0d0d0; }
-[data-theme="inventist"] .logo-hex { background: #ffffff; }
-[data-theme="inventist"] .cal-cell.today .cal-day-num { background: #ffffff; color: #0a0a0a; }
-[data-theme="inventist"] .avatar { background: linear-gradient(135deg, #555, #fff); }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
 
@@ -485,7 +428,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="logo-hex" style="width:36px;height:36px"></div>
         <div class="logo-text" style="font-size:18px">IT//TRACKER</div>
       </div>
-      <div class="logo-sub" id="login-logo-sub" style="text-align:center">İnventist & Assos · Görev Yönetim Sistemi</div>
+      <div class="logo-sub" style="text-align:center">İnventist & Assos · Görev Yönetim Sistemi</div>
     </div>
     <div class="login-title">Hoş Geldiniz</div>
     <div class="login-sub">Devam etmek için Office 365 hesabınızla giriş yapın veya kullanıcı adı & şifrenizi kullanın.</div>
@@ -519,7 +462,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="logo-hex"></div>
       <div class="logo-text">IT//TRACKER</div>
     </div>
-    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v3.0</div>
+    <div class="logo-sub">İnventist & Assos · v2.0</div>
   </div>
 
   <div class="user-block">
@@ -533,16 +476,16 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
   <nav>
     <div class="nav-section">Görevler</div>
-    <a class="nav-item active" data-perm="all" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
-    <a class="nav-item" data-perm="all" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
-    <div class="nav-section" data-perm="manager" style="margin-top:8px">Raporlama</div>
-    <a class="nav-item" data-perm="manager" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
-    <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
-    <a class="nav-item admin-item" data-perm="manager" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
+    <a class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
+    <a class="nav-item" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
+    <a class="nav-item" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <div class="nav-section" style="margin-top:8px">Raporlama</div>
+    <a class="nav-item" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
+    <a class="nav-item" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
+    <div class="nav-section" style="margin-top:8px">Yönetim</div>
+    <a class="nav-item admin-item" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
+    <a class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
   </nav>
 
   <div class="sidebar-footer">
@@ -1209,7 +1152,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <thead>
             <tr>
               <th>KULLANICI</th>
-              <th>YETKİ</th>
+              <th>ROL</th>
               <th>FİRMA</th>
               <th>O365</th>
               <th>DURUM</th>
@@ -1231,7 +1174,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px">
 
     <!-- Kullanıcı Ayarları -->
-    <div class="card" id="settings-card-user">
+    <div class="card">
       <div class="card-header"><div class="card-title">KULLANICI BİLGİLERİ</div></div>
       <div class="card-body">
         <div class="form-row"><div class="form-group"><label>Ad Soyad</label><input class="form-control" id="set-fullname" value="Levent Mahir Can"></div><div class="form-group"><label>Kullanici Adi</label><input class="form-control" id="set-username" value="lmc"></div></div>
@@ -1248,7 +1191,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
     <!-- Firma Yönetimi -->
-    <div class="card" id="settings-card-firms">
+    <div class="card">
       <div class="card-header"><div class="card-title">FİRMA YÖNETİMİ</div></div>
       <div class="card-body">
         <div style="margin-bottom:18px">
@@ -1278,7 +1221,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
     <!-- Mail & Rapor -->
-    <div class="card" id="settings-card-smtp">
+    <div class="card">
       <div class="card-header"><div class="card-title">RAPOR AYARLARI</div></div>
       <div class="card-body">
         <div class="form-group" style="margin-bottom:12px"><label>SMTP Sunucu</label><input class="form-control" id="smtp-host" value="smtp.office365.com" placeholder="smtp.office365.com"></div>
@@ -1292,7 +1235,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
     <!-- Config Backup -->
-    <div class="card" id="settings-card-backup">
+    <div class="card">
       <div class="card-header"><div class="card-title">CONFIG BACKUP AYARLARI</div></div>
       <div class="card-body">
         <div class="form-group" style="margin-bottom:12px"><label>Backup Depolama Yolu</label><input class="form-control" value="/srv/it_tracker/backups" placeholder="/srv/backups"></div>
@@ -1443,11 +1386,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="form-group">
-        <label>Yetki Seviyesi</label>
-        <select class="form-control" id="edit-user-perm">
-          <option value="junior">Junior</option>
-          <option value="it_manager">IT Yöneticisi</option>
-          <option value="super_admin">Super Admin</option>
+        <label>Rol</label>
+        <select class="form-control" id="edit-user-role">
+          <option>IT Sorumlusu</option>
+          <option>IT Yardımcısı</option>
+          <option>Yönetici (Read)</option>
         </select>
       </div>
       <div class="form-group">
@@ -1480,7 +1423,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="form-group" style="margin-bottom:12px"><label>Ad Soyad</label><input class="form-control" id="inv-name" placeholder="Ahmet Yılmaz"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="inv-email" placeholder="ahmet@inventist.com"></div>
     <div class="form-row">
-      <div class="form-group"><label>Yetki Seviyesi</label><select class="form-control" id="inv-perm"><option value="junior">Junior</option><option value="it_manager">IT Yöneticisi</option></select></div>
+      <div class="form-group"><label>Rol</label><select class="form-control" id="inv-role"><option>IT Yardımcısı</option><option>IT Sorumlusu</option><option>Yönetici (Read)</option></select></div>
       <div class="form-group"><label>Firma</label><select class="form-control" id="inv-firm"><option value="inventist">İnventist</option><option value="assos">Assos</option></select></div>
     </div>
     <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:4px;font-size:11px;color:var(--text-muted)">
@@ -1498,113 +1441,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <script>
 // ══════════════════════════════════════════════════════════
-//  KULLANICI FİRMA BAZLI TEMA (v3)
-// ══════════════════════════════════════════════════════════
-function applyThemeForFirm(firmSlug) {
-  const f = (firmSlug || '').toLowerCase();
-  let theme = null;
-  let logoText = 'İnventist & Assos · v3.0';
-
-  if (f.includes('assos')) {
-    theme = 'assos';
-    logoText = 'Assos Pharma · v3.0';
-  } else if (f.includes('inventist')) {
-    theme = 'inventist';
-    logoText = 'İnventist · v3.0';
-  }
-
-  if (theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-
-  const logoSub = document.getElementById('logo-sub-text');
-  if (logoSub) logoSub.textContent = logoText;
-}
-
-// ══════════════════════════════════════════════════════════
-//  YETKİ SİSTEMİ (v3)
-// ══════════════════════════════════════════════════════════
-function applyPermissions(level) {
-  // Nav item görünürlüğü
-  document.querySelectorAll('[data-perm="manager"]').forEach(el => {
-    el.style.display = (level === 'junior') ? 'none' : '';
-  });
-
-  // Junior: "Yeni Görev" butonunu kısıtla (sadece anlık)
-  const newTaskBtn = document.getElementById('btn-new-task-top');
-  if (newTaskBtn && level === 'junior') {
-    newTaskBtn.setAttribute('data-junior', 'true');
-  }
-}
-
-function applySettingsPermissions() {
-  const level = (currentUser.permission_level || 'junior');
-  const smtpCard = document.getElementById('settings-card-smtp');
-  const backupCard = document.getElementById('settings-card-backup');
-  if (smtpCard) smtpCard.style.display = (level === 'super_admin') ? '' : 'none';
-  if (backupCard) backupCard.style.display = (level === 'super_admin') ? '' : 'none';
-}
-
-function applyJuniorTaskRestrictions() {
-  const level = (currentUser.permission_level || 'junior');
-  const catSel = document.getElementById('new-cat');
-  const firmSel = document.getElementById('new-firm');
-  const periodSel = document.getElementById('new-period');
-
-  if (level === 'junior') {
-    // Kategori: sadece Anlık Görev ve Destek Talebi
-    Array.from(catSel.options).forEach(opt => {
-      if (['routine','project','backup'].includes(opt.value)) opt.style.display = 'none';
-      else opt.style.display = '';
-    });
-    catSel.value = 'task';
-    // Firma: otomatik kullanıcının firması
-    if (currentUser.firm) {
-      firmSel.value = currentUser.firm;
-      firmSel.disabled = true;
-      updateTeamOptions();
-    }
-    // Periyot gizle
-    periodSel.closest('.form-group').style.display = 'none';
-  } else {
-    // Manager/admin: tümünü göster
-    Array.from(catSel.options).forEach(opt => opt.style.display = '');
-    firmSel.disabled = false;
-    periodSel.closest('.form-group').style.display = '';
-  }
-}
-
-const PERM_LABELS = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', junior:'Junior'};
-const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add'];
-
-// ══════════════════════════════════════════════════════════
 //  SABİT VERİLER
 // ══════════════════════════════════════════════════════════
-// FIRMS objesi — başlangıçta sabit, loadFirmsFromDB() ile DB'den güncellenir
 const FIRMS = {
-  inventist: { id: null, label: 'İnventist', cls: 'inventist', teams: [], teamIds: {} },
-  assos:     { id: null, label: 'Assos',     cls: 'assos',     teams: [], teamIds: {} }
+  inventist: { label: 'İnventist', cls: 'inventist',
+    teams: ['Teknik Ekip','Misafir İlişkileri','F&B','Akademi Yönetimi','Otel ve Ön Büro','Housekeeping','İnsan Kaynakları','Genel'] },
+  assos: { label: 'Assos', cls: 'assos',
+    teams: ['Resepsiyon','Teknik Servis','Yiyecek-İçecek','İdare','Animasyon','Genel'] }
 };
-
-async function loadFirmsFromDB() {
-  try {
-    const res = await fetch('/api/firms');
-    if (!res.ok) return;
-    const firms = await res.json();
-    firms.forEach(f => {
-      const slug = f.slug;
-      if (FIRMS[slug]) {
-        FIRMS[slug].id = f.id;
-        FIRMS[slug].label = f.name;
-        FIRMS[slug].teams = f.teams.map(t => t.name);
-        FIRMS[slug].teamIds = {};
-        f.teams.forEach(t => { FIRMS[slug].teamIds[t.name] = t.id; });
-      }
-    });
-  } catch(e) { console.warn('Firma verileri yüklenemedi:', e); }
-}
 const BACKUP_TYPES = ['.cfg','.conf','.txt','.bin','.xml','.json','.tar','.zip'];
 const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
 const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Anlık',infra:'Anlık',other:'Anlık'};
@@ -1644,13 +1488,8 @@ async function loadApp() {
     document.getElementById('sb-role').textContent = me.role || '';
     document.getElementById('sb-avatar').textContent = (me.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     if (me.o365_linked) document.getElementById('sb-o365').style.display = 'inline-flex';
-    // Kullanıcının firmasına göre tema uygula
-    applyThemeForFirm(me.firm);
-    // Yetki seviyesine göre UI kısıtla
-    applyPermissions(me.permission_level || 'junior');
   } catch(e) { console.warn('Me yüklenemedi', e); }
 
-  await loadFirmsFromDB();
   await loadTasks();
   setDateDisplay('topbar-date-day', 'topbar-date-full');
   renderDashboard();
@@ -1700,10 +1539,6 @@ function normalizeTask(t) {
 //  NAVIGATION
 // ══════════════════════════════════════════════════════════
 function showPage(name) {
-  // Yetki guard: Junior sadece izinli sayfalara erişebilir
-  const level = (currentUser.permission_level || 'junior');
-  if (level === 'junior' && !JUNIOR_ALLOWED_PAGES.includes(name)) return;
-
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1713,10 +1548,10 @@ function showPage(name) {
   if (name==='dashboard') renderDashboard();
   if (name==='tasks')     { _ftCat = 'task'; loadTasks().then(() => { document.getElementById('tasks-cat-filter').value = 'task'; renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup')); }); }
   if (name==='projects')  { loadTasks().then(() => renderProjectsPage()); }
-  if (name==='add')       { applyJuniorTaskRestrictions(); onCatChange(); }
+  if (name==='add')       { onCatChange(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
-  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); }
+  if (name==='settings')  { renderSettingsTeams(); loadSettingsFromServer(); }
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
 }
@@ -2175,17 +2010,11 @@ async function loadAndRenderUsers() {
   } catch(e) { showToast('err', 'Kullanıcılar yüklenemedi: ' + e.message); }
 }
 
-function permBadge(level) {
-  const map = {super_admin:['Super Admin','var(--accent)'], it_manager:['IT Yöneticisi','var(--accent3)'], junior:['Junior','var(--text-muted)']};
-  const [label, color] = map[level] || map.junior;
-  return `<span style="font-size:10px;padding:2px 8px;border-radius:12px;border:1px solid ${color};color:${color};font-family:'IBM Plex Mono',monospace">${label}</span>`;
-}
-
 function renderUserTable() {
   document.getElementById('user-tbody').innerHTML = USERS.map(u => `
     <tr>
       <td><div style="font-weight:600;font-size:12px">${u.full_name}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${u.username}</div></td>
-      <td>${permBadge(u.permission_level)}</td>
+      <td><span style="font-size:11px">${u.role}</span></td>
       <td>${firmChip(u.firm)}</td>
       <td>${u.o365_linked ? '<span style="color:var(--accent3);font-size:11px">⬡ Bağlı</span>' : '<span style="color:var(--text-muted);font-size:11px">—</span>'}</td>
       <td><span class="status-dot ${u.active?'active':'inactive'}"></span><span style="font-size:11px">${u.active?'Aktif':'Pasif'}</span></td>
@@ -2209,7 +2038,7 @@ async function sendInvite() {
   try {
     const res = await fetch('/api/admin/invite', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ full_name:name, email, permission_level:document.getElementById('inv-perm').value, firm:document.getElementById('inv-firm').value })
+      body: JSON.stringify({ full_name:name, email, role:document.getElementById('inv-role').value, firm:document.getElementById('inv-firm').value })
     });
     const data = await res.json();
     if (data.ok) { closeModal(); showToast('ok',`Davet maili ${email} adresine gönderildi ✓`); loadAndRenderUsers(); }
@@ -2222,41 +2051,17 @@ async function sendInvite() {
 // ══════════════════════════════════════════════════════════
 function renderSettingsTeams() {
   ['inventist','assos'].forEach(firm => {
-    const el = document.getElementById(`${firm}-teams-display`);
-    if (!el) return;
-    el.innerHTML = FIRMS[firm].teams.map(t => {
-      const tid = FIRMS[firm].teamIds[t] || '';
-      return `<span class="pill-tag" onclick="removeTeam('${firm}','${t}',${tid})">${t} <span class="rm">×</span></span>`;
-    }).join('');
+    document.getElementById(`${firm}-teams-display`).innerHTML =
+      FIRMS[firm].teams.map(t => `<span class="pill-tag" onclick="removeTeam('${firm}','${t}')">${t} <span class="rm">×</span></span>`).join('');
   });
   renderBackupTypes();
 }
-async function addTeam(firm) {
+function addTeam(firm) {
   const inp = document.getElementById(`${firm}-new-team`); const val = inp.value.trim(); if (!val) return;
-  if (FIRMS[firm].teams.includes(val)) { inp.value = ''; return; }
-  const fid = FIRMS[firm].id;
-  if (!fid) { showToast('err','Firma ID bulunamadı'); return; }
-  try {
-    const res = await fetch(`/api/firms/${fid}/teams`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:val}) });
-    if (!res.ok) { showToast('err','Ekip eklenemedi'); return; }
-    const t = await res.json();
-    FIRMS[firm].teams.push(t.name);
-    FIRMS[firm].teamIds[t.name] = t.id;
-    showToast('ok',`"${val}" eklendi`);
-  } catch(e) { showToast('err','Hata: '+e.message); }
+  if (!FIRMS[firm].teams.includes(val)) { FIRMS[firm].teams.push(val); showToast('ok',`"${val}" eklendi`); }
   inp.value = ''; renderSettingsTeams();
 }
-async function removeTeam(firm, team, tid) {
-  if (!tid) { showToast('err','Ekip ID bulunamadı'); return; }
-  try {
-    const res = await fetch(`/api/teams/${tid}`, { method:'DELETE' });
-    if (!res.ok) { showToast('err','Ekip silinemedi'); return; }
-    FIRMS[firm].teams = FIRMS[firm].teams.filter(t => t !== team);
-    delete FIRMS[firm].teamIds[team];
-    showToast('ok',`"${team}" kaldırıldı`);
-  } catch(e) { showToast('err','Hata: '+e.message); }
-  renderSettingsTeams();
-}
+function removeTeam(firm, team) { FIRMS[firm].teams = FIRMS[firm].teams.filter(t => t !== team); renderSettingsTeams(); showToast('ok',`"${team}" kaldırıldı`); }
 function renderBackupTypes() {
   document.getElementById('backup-types-display').innerHTML = BACKUP_TYPES.map(t => `<span class="pill-tag" onclick="removeBackupType('${t}')">${t} <span class="rm">×</span></span>`).join('');
 }
@@ -2953,28 +2758,18 @@ function openEditUser(id) {
   document.getElementById('edit-user-name').value     = u.full_name || '';
   document.getElementById('edit-user-username').value = u.username  || '';
   document.getElementById('edit-user-email').value    = u.email     || '';
-  document.getElementById('edit-user-perm').value     = u.permission_level || 'junior';
+  document.getElementById('edit-user-role').value     = u.role      || '';
   document.getElementById('edit-user-firm').value     = u.firm      || '';
   document.getElementById('edit-user-status').value   = u.active ? 'active' : 'inactive';
-
-  // IT Yöneticisi super_admin seçeneğini göremez
-  const permSel = document.getElementById('edit-user-perm');
-  const saOpt = permSel.querySelector('option[value="super_admin"]');
-  if (saOpt) saOpt.style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
-  // Super Admin düzenleniyorsa ve ben SA değilsem modalı açma
-  if (u.permission_level === 'super_admin' && currentUser.permission_level !== 'super_admin') {
-    showToast('err', 'Super Admin kullanıcısını düzenleme yetkiniz yok');
-    return;
-  }
   document.getElementById('edit-user-modal').classList.remove('hidden');
 }
 async function saveEditUser() {
   const id = parseInt(document.getElementById('edit-user-id').value);
   const status = document.getElementById('edit-user-status').value;
-  const perm = document.getElementById('edit-user-perm').value;
   const body = {
-    permission_level: perm,
+    role:     document.getElementById('edit-user-role').value,
     firm:     document.getElementById('edit-user-firm').value,
+    is_admin: document.getElementById('edit-user-role').value === 'IT Sorumlusu',
     active:   status === 'active',
   };
   try {
@@ -3486,7 +3281,7 @@ function _getEditChecklistData() {
   return { items, doneArr };
 }
 
-function saveTeams() { showToast('ok', 'Ekip değişiklikleri otomatik kaydedildi.'); }
+function saveTeams() { showToast('ok', 'Firma ekipleri kaydedildi'); }
 
 </script>
 </body>
