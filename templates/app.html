@@ -1497,35 +1497,30 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <script>
 // ══════════════════════════════════════════════════════════
-//  DOMAIN BAZLI TEMA ALGILAMA (v3)
+//  KULLANICI FİRMA BAZLI TEMA (v3)
 // ══════════════════════════════════════════════════════════
-(function() {
-  const host = window.location.hostname.toLowerCase();
+function applyThemeForFirm(firmSlug) {
+  const f = (firmSlug || '').toLowerCase();
   let theme = null;
   let logoText = 'İnventist & Assos · v3.0';
-  let loginText = 'İnventist & Assos · Görev Yönetim Sistemi';
 
-  if (host.includes('assospharma') || host.includes('assos')) {
+  if (f.includes('assos')) {
     theme = 'assos';
     logoText = 'Assos Pharma · v3.0';
-    loginText = 'Assos Pharma · Görev Yönetim Sistemi';
-  } else if (host.includes('inventist')) {
+  } else if (f.includes('inventist')) {
     theme = 'inventist';
     logoText = 'İnventist · v3.0';
-    loginText = 'İnventist · Görev Yönetim Sistemi';
   }
 
   if (theme) {
     document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    const logoSub = document.getElementById('logo-sub-text');
-    const loginSub = document.getElementById('login-logo-sub');
-    if (logoSub) logoSub.textContent = logoText;
-    if (loginSub) loginSub.textContent = loginText;
-  });
-})();
+  const logoSub = document.getElementById('logo-sub-text');
+  if (logoSub) logoSub.textContent = logoText;
+}
 
 // ══════════════════════════════════════════════════════════
 //  SABİT VERİLER
@@ -1592,6 +1587,8 @@ async function loadApp() {
     document.getElementById('sb-role').textContent = me.role || '';
     document.getElementById('sb-avatar').textContent = (me.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     if (me.o365_linked) document.getElementById('sb-o365').style.display = 'inline-flex';
+    // Kullanıcının firmasına göre tema uygula
+    applyThemeForFirm(me.firm);
   } catch(e) { console.warn('Me yüklenemedi', e); }
 
   await loadFirmsFromDB();
