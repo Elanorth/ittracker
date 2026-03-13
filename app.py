@@ -150,10 +150,11 @@ def auth_callback():
                     "Lütfen sistem yöneticinizden davet isteyin.")
 
         role = inv.role if inv else "IT Sorumlusu"
+        firm = inv.firm if inv else ""
         user = User(
             username=email.split("@")[0].lower(),
             full_name=name, email=email,
-            o365_id=o365_id, role=role
+            o365_id=o365_id, role=role, firm=firm
         )
         user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)

@@ -7,6 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#080c10;--surface:#0f1419;--surface2:#161d26;--border:#242d38;--border2:#2e3a47;--accent:#00e5c0;--accent3:#7f6cf7;--text:#dce6f0;--text-muted:#6b7e93;}
+/* Assos Pharma Tema */
+[data-theme="assos"]{--bg:#0a1628;--surface:#101e33;--surface2:#162640;--border:#243656;--border2:#2e4466;--accent:#1e73be;--accent3:#0095eb;--text:#dce6f0;--text-muted:#6b7e93;}
+[data-theme="assos"] .btn{background:#1e73be;color:#fff;}
+[data-theme="assos"] .btn:hover{background:#0095eb;}
+/* İnventist Tema */
+[data-theme="inventist"]{--bg:#0d120a;--surface:#141c12;--surface2:#1a2416;--border:#2a3625;--border2:#354430;--accent:#bea989;--accent3:#8b9e6b;--text:#e0ead7;--text-muted:#7a8a6e;}
+[data-theme="inventist"] .btn{background:#bea989;color:#0d120a;}
+[data-theme="inventist"] .btn:hover{background:#9c8b71;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4;}
@@ -31,7 +39,7 @@ input:focus{border-color:var(--accent);}
 <body>
 <div class="card">
   <div class="logo">IT//TRACKER</div>
-  <div class="sub">İnventist &amp; Assos · IT Yönetim Sistemi</div>
+  <div class="sub" id="login-sub">İnventist &amp; Assos · IT Yönetim Sistemi</div>
   <div class="title">Hoş Geldiniz</div>
   <div class="desc">Şirket hesabınızla devam edin</div>
 
@@ -61,5 +69,14 @@ input:focus{border-color:var(--accent);}
   </form>
   {% endif %}
 </div>
+<script>
+(function(){
+  var h=location.hostname.toLowerCase(),t=null,s='İnventist & Assos · IT Yönetim Sistemi';
+  if(h.includes('assospharma')||h.includes('assos')){t='assos';s='Assos Pharma · IT Yönetim Sistemi';}
+  else if(h.includes('inventist')){t='inventist';s='İnventist · IT Yönetim Sistemi';}
+  if(t)document.documentElement.setAttribute('data-theme',t);
+  var el=document.getElementById('login-sub');if(el)el.textContent=s;
+})();
+</script>
 </body>
 </html>

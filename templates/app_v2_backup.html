@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v3</title>
+<title>IT//TRACKER · v2</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -30,62 +30,6 @@
   --radius: 10px;
   --sidebar-w: 230px;
 }
-
-/* ═══════ ASSOS PHARMA TEMA ═══════ */
-[data-theme="assos"] {
-  --bg: #0a1628;
-  --surface: #101e33;
-  --surface2: #162640;
-  --surface3: #1e3050;
-  --border: #243656;
-  --border2: #2e4466;
-  --accent: #1e73be;
-  --accent-dim: rgba(30,115,190,.12);
-  --accent2: #ff5a60;
-  --accent2-dim: rgba(255,90,96,.1);
-  --accent3: #0095eb;
-  --accent3-dim: rgba(0,149,235,.1);
-  --gold: #f4b942;
-  --gold-dim: rgba(244,185,66,.1);
-  --green: #34d058;
-  --green-dim: rgba(52,208,88,.1);
-  --danger: #f85149;
-  --text: #dce6f0;
-  --text-muted: #6b7e93;
-  --text-dim: #3d5070;
-}
-[data-theme="assos"] .btn-primary { background: #1e73be; color: #fff; }
-[data-theme="assos"] .btn-primary:hover { background: #0095eb; }
-[data-theme="assos"] .logo-hex { background: #1e73be; }
-[data-theme="assos"] .cal-cell.today .cal-day-num { background: #1e73be; color: #fff; }
-
-/* ═══════ İNVENTİST TEMA ═══════ */
-[data-theme="inventist"] {
-  --bg: #0d120a;
-  --surface: #141c12;
-  --surface2: #1a2416;
-  --surface3: #222e1e;
-  --border: #2a3625;
-  --border2: #354430;
-  --accent: #bea989;
-  --accent-dim: rgba(190,169,137,.12);
-  --accent2: #6d8165;
-  --accent2-dim: rgba(109,129,101,.12);
-  --accent3: #8b9e6b;
-  --accent3-dim: rgba(139,158,107,.12);
-  --gold: #bea989;
-  --gold-dim: rgba(190,169,137,.1);
-  --green: #6d8165;
-  --green-dim: rgba(109,129,101,.1);
-  --danger: #c45b4a;
-  --text: #e0ead7;
-  --text-muted: #7a8a6e;
-  --text-dim: #4a5a3e;
-}
-[data-theme="inventist"] .btn-primary { background: #bea989; color: #0d120a; }
-[data-theme="inventist"] .btn-primary:hover { background: #9c8b71; }
-[data-theme="inventist"] .logo-hex { background: #bea989; }
-[data-theme="inventist"] .cal-cell.today .cal-day-num { background: #bea989; color: #0d120a; }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
 
@@ -484,7 +428,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="logo-hex" style="width:36px;height:36px"></div>
         <div class="logo-text" style="font-size:18px">IT//TRACKER</div>
       </div>
-      <div class="logo-sub" id="login-logo-sub" style="text-align:center">İnventist & Assos · Görev Yönetim Sistemi</div>
+      <div class="logo-sub" style="text-align:center">İnventist & Assos · Görev Yönetim Sistemi</div>
     </div>
     <div class="login-title">Hoş Geldiniz</div>
     <div class="login-sub">Devam etmek için Office 365 hesabınızla giriş yapın veya kullanıcı adı & şifrenizi kullanın.</div>
@@ -518,7 +462,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="logo-hex"></div>
       <div class="logo-text">IT//TRACKER</div>
     </div>
-    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v3.0</div>
+    <div class="logo-sub">İnventist & Assos · v2.0</div>
   </div>
 
   <div class="user-block">
@@ -1497,62 +1441,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <script>
 // ══════════════════════════════════════════════════════════
-//  DOMAIN BAZLI TEMA ALGILAMA (v3)
-// ══════════════════════════════════════════════════════════
-(function() {
-  const host = window.location.hostname.toLowerCase();
-  let theme = null;
-  let logoText = 'İnventist & Assos · v3.0';
-  let loginText = 'İnventist & Assos · Görev Yönetim Sistemi';
-
-  if (host.includes('assospharma') || host.includes('assos')) {
-    theme = 'assos';
-    logoText = 'Assos Pharma · v3.0';
-    loginText = 'Assos Pharma · Görev Yönetim Sistemi';
-  } else if (host.includes('inventist')) {
-    theme = 'inventist';
-    logoText = 'İnventist · v3.0';
-    loginText = 'İnventist · Görev Yönetim Sistemi';
-  }
-
-  if (theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    const logoSub = document.getElementById('logo-sub-text');
-    const loginSub = document.getElementById('login-logo-sub');
-    if (logoSub) logoSub.textContent = logoText;
-    if (loginSub) loginSub.textContent = loginText;
-  });
-})();
-
-// ══════════════════════════════════════════════════════════
 //  SABİT VERİLER
 // ══════════════════════════════════════════════════════════
-// FIRMS objesi — başlangıçta sabit, loadFirmsFromDB() ile DB'den güncellenir
 const FIRMS = {
-  inventist: { id: null, label: 'İnventist', cls: 'inventist', teams: [], teamIds: {} },
-  assos:     { id: null, label: 'Assos',     cls: 'assos',     teams: [], teamIds: {} }
+  inventist: { label: 'İnventist', cls: 'inventist',
+    teams: ['Teknik Ekip','Misafir İlişkileri','F&B','Akademi Yönetimi','Otel ve Ön Büro','Housekeeping','İnsan Kaynakları','Genel'] },
+  assos: { label: 'Assos', cls: 'assos',
+    teams: ['Resepsiyon','Teknik Servis','Yiyecek-İçecek','İdare','Animasyon','Genel'] }
 };
-
-async function loadFirmsFromDB() {
-  try {
-    const res = await fetch('/api/firms');
-    if (!res.ok) return;
-    const firms = await res.json();
-    firms.forEach(f => {
-      const slug = f.slug;
-      if (FIRMS[slug]) {
-        FIRMS[slug].id = f.id;
-        FIRMS[slug].label = f.name;
-        FIRMS[slug].teams = f.teams.map(t => t.name);
-        FIRMS[slug].teamIds = {};
-        f.teams.forEach(t => { FIRMS[slug].teamIds[t.name] = t.id; });
-      }
-    });
-  } catch(e) { console.warn('Firma verileri yüklenemedi:', e); }
-}
 const BACKUP_TYPES = ['.cfg','.conf','.txt','.bin','.xml','.json','.tar','.zip'];
 const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
 const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Anlık',infra:'Anlık',other:'Anlık'};
@@ -1594,7 +1490,6 @@ async function loadApp() {
     if (me.o365_linked) document.getElementById('sb-o365').style.display = 'inline-flex';
   } catch(e) { console.warn('Me yüklenemedi', e); }
 
-  await loadFirmsFromDB();
   await loadTasks();
   setDateDisplay('topbar-date-day', 'topbar-date-full');
   renderDashboard();
@@ -1656,7 +1551,7 @@ function showPage(name) {
   if (name==='add')       { onCatChange(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
-  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); }
+  if (name==='settings')  { renderSettingsTeams(); loadSettingsFromServer(); }
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
 }
@@ -2156,41 +2051,17 @@ async function sendInvite() {
 // ══════════════════════════════════════════════════════════
 function renderSettingsTeams() {
   ['inventist','assos'].forEach(firm => {
-    const el = document.getElementById(`${firm}-teams-display`);
-    if (!el) return;
-    el.innerHTML = FIRMS[firm].teams.map(t => {
-      const tid = FIRMS[firm].teamIds[t] || '';
-      return `<span class="pill-tag" onclick="removeTeam('${firm}','${t}',${tid})">${t} <span class="rm">×</span></span>`;
-    }).join('');
+    document.getElementById(`${firm}-teams-display`).innerHTML =
+      FIRMS[firm].teams.map(t => `<span class="pill-tag" onclick="removeTeam('${firm}','${t}')">${t} <span class="rm">×</span></span>`).join('');
   });
   renderBackupTypes();
 }
-async function addTeam(firm) {
+function addTeam(firm) {
   const inp = document.getElementById(`${firm}-new-team`); const val = inp.value.trim(); if (!val) return;
-  if (FIRMS[firm].teams.includes(val)) { inp.value = ''; return; }
-  const fid = FIRMS[firm].id;
-  if (!fid) { showToast('err','Firma ID bulunamadı'); return; }
-  try {
-    const res = await fetch(`/api/firms/${fid}/teams`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:val}) });
-    if (!res.ok) { showToast('err','Ekip eklenemedi'); return; }
-    const t = await res.json();
-    FIRMS[firm].teams.push(t.name);
-    FIRMS[firm].teamIds[t.name] = t.id;
-    showToast('ok',`"${val}" eklendi`);
-  } catch(e) { showToast('err','Hata: '+e.message); }
+  if (!FIRMS[firm].teams.includes(val)) { FIRMS[firm].teams.push(val); showToast('ok',`"${val}" eklendi`); }
   inp.value = ''; renderSettingsTeams();
 }
-async function removeTeam(firm, team, tid) {
-  if (!tid) { showToast('err','Ekip ID bulunamadı'); return; }
-  try {
-    const res = await fetch(`/api/teams/${tid}`, { method:'DELETE' });
-    if (!res.ok) { showToast('err','Ekip silinemedi'); return; }
-    FIRMS[firm].teams = FIRMS[firm].teams.filter(t => t !== team);
-    delete FIRMS[firm].teamIds[team];
-    showToast('ok',`"${team}" kaldırıldı`);
-  } catch(e) { showToast('err','Hata: '+e.message); }
-  renderSettingsTeams();
-}
+function removeTeam(firm, team) { FIRMS[firm].teams = FIRMS[firm].teams.filter(t => t !== team); renderSettingsTeams(); showToast('ok',`"${team}" kaldırıldı`); }
 function renderBackupTypes() {
   document.getElementById('backup-types-display').innerHTML = BACKUP_TYPES.map(t => `<span class="pill-tag" onclick="removeBackupType('${t}')">${t} <span class="rm">×</span></span>`).join('');
 }
@@ -3410,7 +3281,7 @@ function _getEditChecklistData() {
   return { items, doneArr };
 }
 
-function saveTeams() { showToast('ok', 'Ekip değişiklikleri otomatik kaydedildi.'); }
+function saveTeams() { showToast('ok', 'Firma ekipleri kaydedildi'); }
 
 </script>
 </body>
