@@ -1230,21 +1230,17 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card">
         <div class="card-header"><div class="card-title">KULLANICI ÖZET</div></div>
         <div class="card-body">
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Toplam Kullanıcı</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">4</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Aktif</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--green)">3</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Bekleyen Davet</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--gold)">1</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px"><span>O365 Bağlı</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--accent3)">2</span></div>
+          <div id="user-stats-body" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Toplam Kullanıcı</span><span id="stat-total" style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Aktif</span><span id="stat-active" style="font-family:'IBM Plex Mono',monospace;color:var(--green)">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>Bekleyen Davet</span><span id="stat-pending" style="font-family:'IBM Plex Mono',monospace;color:var(--gold)">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>O365 Bağlı</span><span id="stat-o365" style="font-family:'IBM Plex Mono',monospace;color:var(--accent3)">—</span></div>
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">ROL DAĞILIMI</div></div>
-        <div class="card-body">
-          <div class="progress-wrap"><div class="progress-label"><span>IT Sorumlusu</span><span style="color:var(--accent)">1</span></div><div class="progress-bar"><div class="progress-fill" style="width:25%;background:var(--accent)"></div></div></div>
-          <div class="progress-wrap"><div class="progress-label"><span>IT Yardımcısı</span><span style="color:var(--accent3)">2</span></div><div class="progress-bar"><div class="progress-fill" style="width:50%;background:var(--accent3)"></div></div></div>
-          <div class="progress-wrap"><div class="progress-label"><span>Yönetici (Read)</span><span style="color:var(--gold)">1</span></div><div class="progress-bar"><div class="progress-fill" style="width:25%;background:var(--gold)"></div></div></div>
-        </div>
+        <div class="card-header"><div class="card-title">YETKİ DAĞILIMI</div></div>
+        <div class="card-body" id="perm-dist-body"></div>
       </div>
     </div>
 
@@ -1269,6 +1265,29 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <tbody id="user-tbody"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- BEKLEYEN DAVETLER -->
+  <div class="card" id="invitations-section" style="margin-top:18px">
+    <div class="card-header">
+      <div class="card-title">BEKLEYEN DAVETLER</div>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto">
+      <table class="data-table" id="inv-table">
+        <thead>
+          <tr>
+            <th>KİŞİ</th>
+            <th>E-POSTA</th>
+            <th>YETKİ</th>
+            <th>FİRMA</th>
+            <th>SON KULLANMA</th>
+            <th>İŞLEM</th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody"></tbody>
+      </table>
+      <div id="inv-empty" style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;display:none">Bekleyen davet bulunmuyor</div>
     </div>
   </div>
 </div>
@@ -2334,13 +2353,60 @@ function renderTeamBars() {
 // ══════════════════════════════════════════════════════════
 //  ADMIN — KULLANICI TABLOSU (API'den)
 // ══════════════════════════════════════════════════════════
+let INVITATIONS = [];
 async function loadAndRenderUsers() {
   try {
-    const res = await fetch('/api/admin/users');
-    if (!res.ok) { document.getElementById('user-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Yetkisiz erişim</td></tr>'; return; }
-    USERS = await res.json();
+    const [uRes, iRes] = await Promise.all([fetch('/api/admin/users'), fetch('/api/admin/invitations')]);
+    if (!uRes.ok) { document.getElementById('user-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Yetkisiz erişim</td></tr>'; return; }
+    USERS = await uRes.json();
+    INVITATIONS = iRes.ok ? await iRes.json() : [];
     renderUserTable();
+    renderUserStats();
+    renderInvitations();
   } catch(e) { showToast('err', 'Kullanıcılar yüklenemedi: ' + e.message); }
+}
+
+function renderUserStats() {
+  const total = USERS.length;
+  const active = USERS.filter(u => u.active).length;
+  const pending = INVITATIONS.length;
+  const o365 = USERS.filter(u => u.o365_linked).length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('stat-o365').textContent = o365;
+
+  // Yetki dağılımı
+  const permCounts = {};
+  const permLabels = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', junior:'Junior'};
+  const permColors = {super_admin:'var(--accent)', it_manager:'var(--accent3)', junior:'var(--text-muted)'};
+  USERS.forEach(u => { const p = u.permission_level || 'junior'; permCounts[p] = (permCounts[p]||0)+1; });
+  const maxP = Math.max(...Object.values(permCounts), 1);
+  document.getElementById('perm-dist-body').innerHTML = Object.entries(permCounts).map(([k,v]) =>
+    `<div class="progress-wrap"><div class="progress-label"><span>${permLabels[k]||k}</span><span style="color:${permColors[k]||'var(--text-muted)'}">${v}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${(v/maxP)*100}%;background:${permColors[k]||'var(--text-muted)'}"></div></div></div>`
+  ).join('');
+}
+
+function renderInvitations() {
+  const tbody = document.getElementById('inv-tbody');
+  const empty = document.getElementById('inv-empty');
+  if (!INVITATIONS.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = INVITATIONS.map(inv => {
+    const expired = new Date(inv.expires_at) < new Date();
+    const expLabel = expired ? '<span style="color:var(--red)">Süresi dolmuş</span>' : new Date(inv.expires_at).toLocaleDateString('tr-TR');
+    return `<tr>
+      <td style="font-size:12px">${inv.full_name || '—'}</td>
+      <td style="font-size:11px;font-family:'IBM Plex Mono',monospace">${inv.email}</td>
+      <td>${permBadge(inv.role === 'Super Admin' ? 'super_admin' : inv.role === 'IT Yöneticisi' ? 'it_manager' : 'junior')}</td>
+      <td>${firmChip(inv.firm)}</td>
+      <td style="font-size:11px">${expLabel}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="resendInvite(${inv.id})" title="Yeniden Gönder">&#8634; Gönder</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="cancelInvite(${inv.id})" title="İptal Et">&#10005; İptal</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function permBadge(level) {
@@ -2363,7 +2429,23 @@ function renderUserTable() {
     </tr>`).join('');
 }
 
-function resendInvite(id) { showToast('ok','Davet maili yeniden gönderildi'); }
+async function resendInvite(id) {
+  try {
+    const res = await fetch(`/api/admin/invitations/${id}/resend`, {method:'POST'});
+    const data = await res.json();
+    if (data.ok) { showToast('ok','Davet maili yeniden gönderildi'); loadAndRenderUsers(); }
+    else showToast('err', data.error || 'Gönderilemedi');
+  } catch(e) { showToast('err', e.message); }
+}
+async function cancelInvite(id) {
+  if (!confirm('Bu daveti iptal etmek istediğinize emin misiniz?')) return;
+  try {
+    const res = await fetch(`/api/admin/invitations/${id}`, {method:'DELETE'});
+    const data = await res.json();
+    if (data.ok) { showToast('ok','Davet iptal edildi'); loadAndRenderUsers(); }
+    else showToast('err', data.error || 'İptal edilemedi');
+  } catch(e) { showToast('err', e.message); }
+}
 
 // ══════════════════════════════════════════════════════════
 //  INVITE MODAL
