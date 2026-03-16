@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from functools import wraps
 from datetime import datetime, date, timedelta
 import json as _json
-from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, init_db, _next_due_date
+from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, BoardCard, BoardComment, init_db, _next_due_date
 from services.report import generate_monthly_pdf
 from services.mailer import send_report_email, send_invite_email
 from services.storage import save_backup_file
@@ -60,6 +60,40 @@ def admin_required(f):
             return jsonify({"error": "Yetkisiz"}), 403
         return f(*args, **kwargs)
     return login_required(dec)
+
+def manager_required(f):
+    """IT Yöneticisi veya Super Admin gerektirir"""
+    @wraps(f)
+    def dec(*args, **kwargs):
+        user = db.session.get(User, session.get("user_id"))
+        if not user or not user.is_manager_or_above:
+            return jsonify({"error": "Yetkisiz"}), 403
+        return f(*args, **kwargs)
+    return login_required(dec)
+
+def super_admin_required(f):
+    """Sadece Super Admin gerektirir"""
+    @wraps(f)
+    def dec(*args, **kwargs):
+        user = db.session.get(User, session.get("user_id"))
+        if not user or not user.is_super_admin:
+            return jsonify({"error": "Yetkisiz"}), 403
+        return f(*args, **kwargs)
+    return login_required(dec)
+
+def board_access_required(f):
+    """Ortak Alan erişimi: can_access_board veya super_admin"""
+    @wraps(f)
+    def dec(*args, **kwargs):
+        user = db.session.get(User, session.get("user_id"))
+        if not user or (not user.can_access_board and not user.is_super_admin):
+            return jsonify({"error": "Ortak Alan erisiminiz yok"}), 403
+        return f(*args, **kwargs)
+    return login_required(dec)
+
+def _current_user():
+    """Yardımcı: mevcut kullanıcıyı döndürür"""
+    return db.session.get(User, session.get("user_id"))
 
 @app.route("/")
 @login_required
@@ -151,10 +185,15 @@ def auth_callback():
 
         role = inv.role if inv else "IT Sorumlusu"
         firm = inv.firm if inv else ""
+        # Permission level: role_label'dan türet
+        perm_map = {"Super Admin": "super_admin", "IT Yöneticisi": "it_manager", "Junior": "junior"}
+        perm = perm_map.get(role, "junior")
         user = User(
             username=email.split("@")[0].lower(),
             full_name=name, email=email,
-            o365_id=o365_id, role=role, firm=firm
+            o365_id=o365_id, role=role, firm=firm,
+            permission_level=perm,
+            is_admin=perm in ("super_admin", "it_manager")
         )
         user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)
@@ -223,6 +262,12 @@ def get_tasks():
 @app.route("/api/tasks", methods=["POST"])
 @login_required
 def create_task():
+    # Junior sadece anlık görev oluşturabilir
+    user = _current_user()
+    if user and user.permission_level == "junior":
+        cat = (request.form if request.content_type and "multipart" in request.content_type else request.get_json() or {}).get("category", "other")
+        if cat in ("routine", "project", "backup"):
+            return jsonify({"error": "Bu görev türünü oluşturma yetkiniz yok"}), 403
     if request.content_type and "multipart" in request.content_type:
         data = request.form; backup_file = request.files.get("backup_file")
     else:
@@ -311,6 +356,9 @@ def delete_task(task_id):
 @app.route("/api/backups")
 @login_required
 def list_backups():
+    user = _current_user()
+    if user and user.permission_level == "junior":
+        return jsonify({"error": "Yetkisiz"}), 403
     bkps = ConfigBackup.query.filter_by(user_id=session["user_id"]).order_by(ConfigBackup.uploaded_at.desc()).all()
     return jsonify([b.to_dict() for b in bkps])
 
@@ -409,7 +457,7 @@ def stats():
 def get_firms(): return jsonify([f.to_dict() for f in Firm.query.order_by(Firm.name).all()])
 
 @app.route("/api/firms", methods=["POST"])
-@admin_required
+@manager_required
 def create_firm():
     data=request.get_json(); firm=Firm(name=data["name"],slug=data["name"].lower().replace(" ","_")); db.session.add(firm); db.session.commit(); return jsonify(firm.to_dict()),201
 
@@ -418,48 +466,78 @@ def create_firm():
 def get_teams(fid): return jsonify([t.to_dict() for t in Team.query.filter_by(firm_id=fid).order_by(Team.name).all()])
 
 @app.route("/api/firms/<int:fid>/teams", methods=["POST"])
-@admin_required
+@manager_required
 def create_team(fid):
     data=request.get_json(); t=Team(firm_id=fid,name=data["name"]); db.session.add(t); db.session.commit(); return jsonify(t.to_dict()),201
 
 @app.route("/api/teams/<int:tid>", methods=["DELETE"])
-@admin_required
+@manager_required
 def delete_team(tid):
     t=Team.query.get_or_404(tid); db.session.delete(t); db.session.commit(); return jsonify({"ok":True})
 
 # ── ADMIN ──
 @app.route("/api/admin/users")
-@admin_required
+@manager_required
 def admin_users(): return jsonify([u.to_dict() for u in User.query.order_by(User.created_at.desc()).all()])
 
 @app.route("/api/admin/users/<int:uid>", methods=["PATCH"])
-@admin_required
+@manager_required
 def admin_update_user(uid):
-    user=User.query.get_or_404(uid); data=request.get_json()
-    for f in ("role","is_admin","firm","active"):
-        if f in data: setattr(user,f,data[f])
-    db.session.commit(); return jsonify(user.to_dict())
+    me = _current_user()
+    target = User.query.get_or_404(uid)
+    data = request.get_json()
+    # IT Yöneticisi super_admin'i düzenleyemez
+    if not me.is_super_admin and target.permission_level == "super_admin":
+        return jsonify({"error": "Super Admin kullanıcısını düzenleme yetkiniz yok"}), 403
+    # permission_level güncellemesi
+    if "permission_level" in data:
+        new_level = data["permission_level"]
+        # IT Yöneticisi super_admin atayamaz
+        if not me.is_super_admin and new_level == "super_admin":
+            return jsonify({"error": "Super Admin rolü atama yetkiniz yok"}), 403
+        target.permission_level = new_level
+        # is_admin ve role'u permission_level'dan türet
+        target.is_admin = new_level in ("super_admin", "it_manager")
+        role_map = {"super_admin": "IT Sorumlusu", "it_manager": "IT Yöneticisi", "junior": "IT Yardımcısı"}
+        target.role = role_map.get(new_level, "IT Yardımcısı")
+    # can_access_board — sadece super_admin ayarlayabilir
+    if "can_access_board" in data and me.is_super_admin:
+        target.can_access_board = bool(data["can_access_board"])
+    for f in ("role", "firm", "active"):
+        if f in data: setattr(target, f, data[f])
+    db.session.commit(); return jsonify(target.to_dict())
 
 @app.route("/api/admin/users/<int:uid>", methods=["DELETE"])
-@admin_required
+@manager_required
 def admin_delete_user(uid):
-    u=User.query.get_or_404(uid); db.session.delete(u); db.session.commit(); return jsonify({"ok":True})
+    me = _current_user()
+    target = User.query.get_or_404(uid)
+    # IT Yöneticisi super_admin silemez
+    if not me.is_super_admin and target.permission_level == "super_admin":
+        return jsonify({"error": "Super Admin kullanıcısını silme yetkiniz yok"}), 403
+    db.session.delete(target); db.session.commit(); return jsonify({"ok":True})
 
 # ── INVITE ──
 @app.route("/api/admin/invite", methods=["POST"])
-@admin_required
+@manager_required
 def invite_user():
+    me = _current_user()
     data=request.get_json(); email=data.get("email","").strip().lower()
     if not email: return jsonify({"error":"Mail boş"}),400
     if User.query.filter_by(email=email).first(): return jsonify({"error":"Kayıtlı"}),409
+    perm = data.get("permission_level", "junior")
+    # IT Yöneticisi super_admin davet edemez
+    if not me.is_super_admin and perm == "super_admin":
+        return jsonify({"error": "Super Admin davet etme yetkiniz yok"}), 403
     Invitation.query.filter_by(email=email,used=False).delete()
     token=secrets.token_urlsafe(32)
-    inv=Invitation(email=email,full_name=data.get("full_name",""),role=data.get("role","IT Yardımcısı"),
+    role_label = {"super_admin": "Super Admin", "it_manager": "IT Yöneticisi", "junior": "Junior"}.get(perm, "Junior")
+    inv=Invitation(email=email,full_name=data.get("full_name",""),role=role_label,
                    firm=data.get("firm",""),token=token,expires_at=datetime.utcnow()+timedelta(days=7),invited_by=session["user_id"])
     db.session.add(inv); db.session.commit()
     url=f"{request.host_url}register?token={token}"
-    result=send_invite_email(email,data.get("full_name",""),url,data.get("role",""))
-    return jsonify({"ok":result.get("ok"),"invite_url":url})
+    result=send_invite_email(email,data.get("full_name",""),url,role_label)
+    return jsonify({"ok":result.get("ok"),"invite_url":url,"permission_level":perm})
 
 @app.route("/register")
 def register():
@@ -471,7 +549,7 @@ def register():
 
 # ── REPORT ──
 @app.route("/api/report/pdf")
-@login_required
+@manager_required
 def download_report():
     user=db.session.get(User, session["user_id"]); month=request.args.get("month",date.today().month,type=int); year=request.args.get("year",date.today().year,type=int)
     tasks=Task.query.filter(Task.user_id==user.id,db.extract("month",Task.created_at)==month,db.extract("year",Task.created_at)==year).all()
@@ -482,7 +560,7 @@ def download_report():
     return resp
 
 @app.route("/api/report/send", methods=["POST"])
-@login_required
+@manager_required
 def send_report():
     user=db.session.get(User, session["user_id"]); data=request.get_json() or {}
     month=data.get("month",date.today().month); year=data.get("year",date.today().year)
@@ -518,7 +596,7 @@ def update_me():
     return jsonify(user.to_dict())
 
 @app.route("/api/settings/smtp", methods=["GET", "POST"])
-@login_required
+@super_admin_required
 def smtp_settings():
     env_path = os.path.join(os.path.dirname(__file__), ".env")
     if request.method == "GET":
@@ -566,7 +644,7 @@ def smtp_settings():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/settings/smtp/test", methods=["POST"])
-@login_required
+@super_admin_required
 def test_smtp():
     import smtplib, ssl
     host = os.environ.get("SMTP_HOST", "smtp.office365.com")
@@ -582,6 +660,101 @@ def test_smtp():
         return jsonify({"ok": True, "message": f"{host}:{port} bağlantısı başarılı"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
+
+# ══════════════════════════════════════════════════════════
+#  ORTAK ALAN (BOARD) API
+# ══════════════════════════════════════════════════════════
+@app.route("/api/board/cards", methods=["GET"])
+@board_access_required
+def board_list_cards():
+    me = _current_user()
+    q = BoardCard.query.order_by(BoardCard.column, BoardCard.position, BoardCard.created_at)
+    # Super admin tum kartlari gorur, digerleri kendi firmasinin kartlarini
+    if not me.is_super_admin:
+        q = q.filter_by(firm=me.firm)
+    return jsonify([c.to_dict() for c in q.all()])
+
+@app.route("/api/board/cards", methods=["POST"])
+@board_access_required
+def board_create_card():
+    me = _current_user()
+    data = request.get_json() or {}
+    title = data.get("title", "").strip()
+    if not title:
+        return jsonify({"error": "Baslik zorunludur"}), 400
+    col = data.get("column", "todo")
+    # Pozisyonu kolonun sonuna ekle
+    max_pos = db.session.query(db.func.max(BoardCard.position)).filter_by(column=col).scalar() or 0
+    card = BoardCard(
+        title=title,
+        description=data.get("description", ""),
+        column=col,
+        position=max_pos + 1,
+        color=data.get("color", "yellow"),
+        checklist=_json.dumps(data.get("checklist", [])),
+        checklist_done=_json.dumps(data.get("checklist_done", [])),
+        created_by=me.id,
+        assigned_to=data.get("assigned_to"),
+        firm=data.get("firm", me.firm),
+    )
+    db.session.add(card)
+    db.session.commit()
+    return jsonify(card.to_dict()), 201
+
+@app.route("/api/board/cards/<int:card_id>", methods=["PATCH"])
+@board_access_required
+def board_update_card(card_id):
+    card = BoardCard.query.get_or_404(card_id)
+    data = request.get_json() or {}
+    for field in ("title", "description", "column", "position", "color", "firm", "assigned_to"):
+        if field in data:
+            setattr(card, field, data[field])
+    if "checklist" in data:
+        card.checklist = _json.dumps(data["checklist"])
+    if "checklist_done" in data:
+        card.checklist_done = _json.dumps(data["checklist_done"])
+    db.session.commit()
+    return jsonify(card.to_dict())
+
+@app.route("/api/board/cards/<int:card_id>", methods=["DELETE"])
+@board_access_required
+def board_delete_card(card_id):
+    me = _current_user()
+    card = BoardCard.query.get_or_404(card_id)
+    if not me.is_super_admin and card.created_by != me.id:
+        return jsonify({"error": "Bu karti silme yetkiniz yok"}), 403
+    db.session.delete(card)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+@app.route("/api/board/cards/<int:card_id>/comments", methods=["GET"])
+@board_access_required
+def board_list_comments(card_id):
+    BoardCard.query.get_or_404(card_id)
+    comments = BoardComment.query.filter_by(card_id=card_id).order_by(BoardComment.created_at.asc()).all()
+    return jsonify([c.to_dict() for c in comments])
+
+@app.route("/api/board/cards/<int:card_id>/comments", methods=["POST"])
+@board_access_required
+def board_add_comment(card_id):
+    BoardCard.query.get_or_404(card_id)
+    me = _current_user()
+    data = request.get_json() or {}
+    content = data.get("content", "").strip()
+    if not content:
+        return jsonify({"error": "Yorum bos olamaz"}), 400
+    comment = BoardComment(card_id=card_id, user_id=me.id, content=content)
+    db.session.add(comment)
+    db.session.commit()
+    return jsonify(comment.to_dict()), 201
+
+# Board kullanicilari listesi (atama dropdown icin)
+@app.route("/api/board/users", methods=["GET"])
+@board_access_required
+def board_list_users():
+    users = User.query.filter_by(active=True).all()
+    return jsonify([{"id": u.id, "full_name": u.full_name, "firm": u.firm} for u in users])
+
 
 if __name__ == "__main__":
     with app.app_context(): init_db()

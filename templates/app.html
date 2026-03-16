@@ -395,6 +395,54 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .page-section.active{display:block;}
 .hidden{display:none!important;}
 
+/* ═══════ KANBAN BOARD ═══════ */
+.board-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.board-header h1{font-family:'Unbounded',sans-serif;font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.board-container{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;min-height:500px;}
+.board-column{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;min-height:400px;display:flex;flex-direction:column;}
+.board-column-header{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);padding:6px 8px 10px;border-bottom:1px solid var(--border);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.board-column-count{background:var(--surface2);border-radius:10px;padding:1px 8px;font-size:10px;color:var(--text-muted);}
+.board-cards{flex:1;display:flex;flex-direction:column;gap:8px;}
+.board-card{border-radius:8px;padding:12px 14px;cursor:pointer;position:relative;transition:transform .12s,box-shadow .12s;border-left:4px solid transparent;}
+.board-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.3);}
+.board-card[data-color="yellow"]{background:#3d3520;border-left-color:#d4a843;}
+.board-card[data-color="green"]{background:#1e3328;border-left-color:#3fb950;}
+.board-card[data-color="blue"]{background:#1a2a3d;border-left-color:#58a6ff;}
+.board-card[data-color="pink"]{background:#3d1e2e;border-left-color:#f778ba;}
+.board-card[data-color="orange"]{background:#3d2a1a;border-left-color:#e8863a;}
+.board-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.3;}
+.board-card-desc{font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.board-card-footer{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text-muted);}
+.board-card-footer .bc-tag{display:flex;align-items:center;gap:3px;}
+.board-add-btn{width:100%;padding:8px;border:1px dashed var(--border);border-radius:8px;background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;text-align:center;margin-top:4px;}
+.board-add-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Board card detail modal */
+.board-detail{max-width:640px;width:90vw;}
+.board-detail .modal-title{font-size:16px;}
+.board-detail .bd-section{margin-bottom:16px;}
+.board-detail .bd-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.board-detail .bd-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.board-detail .color-pick{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s;}
+.board-detail .color-pick.active{border-color:#fff;}
+.board-detail .color-pick[data-c="yellow"]{background:#d4a843;}
+.board-detail .color-pick[data-c="green"]{background:#3fb950;}
+.board-detail .color-pick[data-c="blue"]{background:#58a6ff;}
+.board-detail .color-pick[data-c="pink"]{background:#f778ba;}
+.board-detail .color-pick[data-c="orange"]{background:#e8863a;}
+.bd-checklist-item{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;}
+.bd-checklist-item input[type="checkbox"]{accent-color:var(--accent3);}
+.bd-checklist-item.done span{text-decoration:line-through;color:var(--text-muted);}
+.bd-comment{padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px;}
+.bd-comment-header{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.bd-comment-author{font-weight:600;color:var(--text);}
+.bd-comment-date{color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;}
+.bd-comment-body{font-size:12px;color:var(--text-muted);line-height:1.4;}
+.bd-move-btns{display:flex;gap:6px;margin-top:8px;}
+.bd-move-btns button{padding:4px 10px;font-size:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;}
+.bd-move-btns button:hover{border-color:var(--accent);color:var(--accent);}
+.bd-move-btns button.active-col{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+
 /* ═══════ ANIMATIONS ═══════ */
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -533,16 +581,18 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
   <nav>
     <div class="nav-section">Görevler</div>
-    <a class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
-    <a class="nav-item" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
-    <a class="nav-item" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
-    <a class="nav-item" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
-    <div class="nav-section" style="margin-top:8px">Raporlama</div>
-    <a class="nav-item" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
-    <a class="nav-item" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
-    <div class="nav-section" style="margin-top:8px">Yönetim</div>
-    <a class="nav-item admin-item" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
-    <a class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
+    <a class="nav-item active" data-perm="all" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
+    <a class="nav-item" data-perm="all" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
+    <a class="nav-item" data-perm="manager" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" data-perm="manager" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <div class="nav-section" data-perm="manager" style="margin-top:8px">Raporlama</div>
+    <a class="nav-item" data-perm="manager" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
+    <a class="nav-item" data-perm="manager" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
+    <div class="nav-section" data-perm="board" style="margin-top:8px">Ortak Çalışma</div>
+    <a class="nav-item" data-perm="board" onclick="showPage('board')"><span class="nav-icon">📋</span>Ortak Alan</a>
+    <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
+    <a class="nav-item admin-item" data-perm="manager" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
+    <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
   </nav>
 
   <div class="sidebar-footer">
@@ -1209,7 +1259,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <thead>
             <tr>
               <th>KULLANICI</th>
-              <th>ROL</th>
+              <th>YETKİ</th>
               <th>FİRMA</th>
               <th>O365</th>
               <th>DURUM</th>
@@ -1231,7 +1281,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px">
 
     <!-- Kullanıcı Ayarları -->
-    <div class="card">
+    <div class="card" id="settings-card-user">
       <div class="card-header"><div class="card-title">KULLANICI BİLGİLERİ</div></div>
       <div class="card-body">
         <div class="form-row"><div class="form-group"><label>Ad Soyad</label><input class="form-control" id="set-fullname" value="Levent Mahir Can"></div><div class="form-group"><label>Kullanici Adi</label><input class="form-control" id="set-username" value="lmc"></div></div>
@@ -1248,7 +1298,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
     <!-- Firma Yönetimi -->
-    <div class="card">
+    <div class="card" id="settings-card-firms">
       <div class="card-header"><div class="card-title">FİRMA YÖNETİMİ</div></div>
       <div class="card-body">
         <div style="margin-bottom:18px">
@@ -1278,7 +1328,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
     <!-- Mail & Rapor -->
-    <div class="card">
+    <div class="card" id="settings-card-smtp">
       <div class="card-header"><div class="card-title">RAPOR AYARLARI</div></div>
       <div class="card-body">
         <div class="form-group" style="margin-bottom:12px"><label>SMTP Sunucu</label><input class="form-control" id="smtp-host" value="smtp.office365.com" placeholder="smtp.office365.com"></div>
@@ -1292,7 +1342,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
     <!-- Config Backup -->
-    <div class="card">
+    <div class="card" id="settings-card-backup">
       <div class="card-header"><div class="card-title">CONFIG BACKUP AYARLARI</div></div>
       <div class="card-body">
         <div class="form-group" style="margin-bottom:12px"><label>Backup Depolama Yolu</label><input class="form-control" value="/srv/it_tracker/backups" placeholder="/srv/backups"></div>
@@ -1314,8 +1364,105 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </div>
 </div>
 
+<!-- ═══════ ORTAK ALAN (BOARD) ═══════ -->
+<div id="page-board" class="page-section">
+  <div class="board-header">
+    <h1>📋 Ortak Alan</h1>
+    <button class="btn btn-primary btn-new-task" onclick="openNewCardModal('todo')">＋ Yeni Kart</button>
+  </div>
+  <div class="board-container" id="board-container">
+    <div class="board-column" data-col="todo">
+      <div class="board-column-header">Yapılacak <span class="board-column-count" id="bc-todo">0</span></div>
+      <div class="board-cards" id="board-col-todo"></div>
+      <button class="board-add-btn" onclick="openNewCardModal('todo')">＋ Kart Ekle</button>
+    </div>
+    <div class="board-column" data-col="in_progress">
+      <div class="board-column-header">Devam Eden <span class="board-column-count" id="bc-in_progress">0</span></div>
+      <div class="board-cards" id="board-col-in_progress"></div>
+      <button class="board-add-btn" onclick="openNewCardModal('in_progress')">＋ Kart Ekle</button>
+    </div>
+    <div class="board-column" data-col="review">
+      <div class="board-column-header">İnceleme <span class="board-column-count" id="bc-review">0</span></div>
+      <div class="board-cards" id="board-col-review"></div>
+      <button class="board-add-btn" onclick="openNewCardModal('review')">＋ Kart Ekle</button>
+    </div>
+    <div class="board-column" data-col="done">
+      <div class="board-column-header">Tamamlandı <span class="board-column-count" id="bc-done">0</span></div>
+      <div class="board-cards" id="board-col-done"></div>
+    </div>
+  </div>
+</div>
+
 </main>
 
+
+<!-- ─── BOARD CARD DETAIL MODAL ─── -->
+<div id="board-card-modal" class="modal-overlay hidden">
+  <div class="modal board-detail">
+    <input type="hidden" id="bcard-id">
+    <input type="hidden" id="bcard-mode" value="create">
+    <div class="bd-section">
+      <div class="bd-label">Başlık</div>
+      <input class="form-control" id="bcard-title" placeholder="Kart başlığı...">
+    </div>
+    <div class="bd-section">
+      <div class="bd-label">Açıklama</div>
+      <textarea class="form-control" id="bcard-desc" rows="3" placeholder="Detay ekleyin..." style="resize:vertical;"></textarea>
+    </div>
+    <div class="bd-row">
+      <div class="bd-section" style="flex:1">
+        <div class="bd-label">Kolon</div>
+        <div class="bd-move-btns" id="bcard-col-btns">
+          <button data-col="todo" onclick="setBCardCol('todo')">Yapılacak</button>
+          <button data-col="in_progress" onclick="setBCardCol('in_progress')">Devam Eden</button>
+          <button data-col="review" onclick="setBCardCol('review')">İnceleme</button>
+          <button data-col="done" onclick="setBCardCol('done')">Tamamlandı</button>
+        </div>
+      </div>
+    </div>
+    <div class="bd-row">
+      <div class="bd-section" style="flex:1">
+        <div class="bd-label">Renk</div>
+        <div style="display:flex;gap:8px;" id="bcard-colors">
+          <div class="color-pick active" data-c="yellow" onclick="setBCardColor('yellow')"></div>
+          <div class="color-pick" data-c="green" onclick="setBCardColor('green')"></div>
+          <div class="color-pick" data-c="blue" onclick="setBCardColor('blue')"></div>
+          <div class="color-pick" data-c="pink" onclick="setBCardColor('pink')"></div>
+          <div class="color-pick" data-c="orange" onclick="setBCardColor('orange')"></div>
+        </div>
+      </div>
+      <div class="bd-section" style="flex:1">
+        <div class="bd-label">Atanan Kişi</div>
+        <select class="form-control" id="bcard-assigned" style="font-size:12px;">
+          <option value="">— Kimse —</option>
+        </select>
+      </div>
+    </div>
+    <div class="bd-section">
+      <div class="bd-label">Kontrol Listesi</div>
+      <div id="bcard-checklist"></div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <input class="form-control" id="bcard-cl-new" placeholder="Yeni madde..." style="font-size:12px;flex:1;">
+        <button class="btn btn-outline btn-sm" onclick="addBCardChecklistItem()">Ekle</button>
+      </div>
+    </div>
+    <div class="bd-section" id="bcard-comments-section" style="display:none">
+      <div class="bd-label">Yorumlar</div>
+      <div id="bcard-comments-list"></div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input class="form-control" id="bcard-comment-input" placeholder="Yorum yazın..." style="font-size:12px;flex:1;">
+        <button class="btn btn-outline btn-sm" onclick="addBCardComment()">Gönder</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-outline btn-sm" id="bcard-delete-btn" style="color:var(--danger);border-color:var(--danger);display:none" onclick="deleteBoardCard()">Sil</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="closeBoardCardModal()">Kapat</button>
+        <button class="btn btn-primary btn-sm" onclick="saveBoardCard()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ─── EDIT TASK MODAL ─── -->
 <div id="edit-task-modal" class="modal-overlay hidden">
@@ -1443,11 +1590,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="form-group">
-        <label>Rol</label>
-        <select class="form-control" id="edit-user-role">
-          <option>IT Sorumlusu</option>
-          <option>IT Yardımcısı</option>
-          <option>Yönetici (Read)</option>
+        <label>Yetki Seviyesi</label>
+        <select class="form-control" id="edit-user-perm">
+          <option value="junior">Junior</option>
+          <option value="it_manager">IT Yöneticisi</option>
+          <option value="super_admin">Super Admin</option>
         </select>
       </div>
       <div class="form-group">
@@ -1466,6 +1613,12 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <option value="inactive">Pasif</option>
       </select>
     </div>
+    <div class="form-group" style="margin-bottom:12px" id="edit-user-board-group">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="edit-user-board-access" style="accent-color:var(--accent3);">
+        📋 Ortak Alan erişimi
+      </label>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" onclick="closeEditUserModal()">Iptal</button>
       <button class="btn btn-primary btn-sm" onclick="saveEditUser()">Kaydet</button>
@@ -1480,7 +1633,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="form-group" style="margin-bottom:12px"><label>Ad Soyad</label><input class="form-control" id="inv-name" placeholder="Ahmet Yılmaz"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="inv-email" placeholder="ahmet@inventist.com"></div>
     <div class="form-row">
-      <div class="form-group"><label>Rol</label><select class="form-control" id="inv-role"><option>IT Yardımcısı</option><option>IT Sorumlusu</option><option>Yönetici (Read)</option></select></div>
+      <div class="form-group"><label>Yetki Seviyesi</label><select class="form-control" id="inv-perm"><option value="junior">Junior</option><option value="it_manager">IT Yöneticisi</option></select></div>
       <div class="form-group"><label>Firma</label><select class="form-control" id="inv-firm"><option value="inventist">İnventist</option><option value="assos">Assos</option></select></div>
     </div>
     <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:4px;font-size:11px;color:var(--text-muted)">
@@ -1522,6 +1675,68 @@ function applyThemeForFirm(firmSlug) {
   const logoSub = document.getElementById('logo-sub-text');
   if (logoSub) logoSub.textContent = logoText;
 }
+
+// ══════════════════════════════════════════════════════════
+//  YETKİ SİSTEMİ (v3)
+// ══════════════════════════════════════════════════════════
+function applyPermissions(level) {
+  // Nav item görünürlüğü
+  document.querySelectorAll('[data-perm="manager"]').forEach(el => {
+    el.style.display = (level === 'junior') ? 'none' : '';
+  });
+
+  // Ortak Alan — can_access_board veya super_admin
+  const showBoard = currentUser.can_access_board || currentUser.permission_level === 'super_admin';
+  document.querySelectorAll('[data-perm="board"]').forEach(el => {
+    el.style.display = showBoard ? '' : 'none';
+  });
+
+  // Junior: "Yeni Görev" butonunu kısıtla (sadece anlık)
+  const newTaskBtn = document.getElementById('btn-new-task-top');
+  if (newTaskBtn && level === 'junior') {
+    newTaskBtn.setAttribute('data-junior', 'true');
+  }
+}
+
+function applySettingsPermissions() {
+  const level = (currentUser.permission_level || 'junior');
+  const smtpCard = document.getElementById('settings-card-smtp');
+  const backupCard = document.getElementById('settings-card-backup');
+  if (smtpCard) smtpCard.style.display = (level === 'super_admin') ? '' : 'none';
+  if (backupCard) backupCard.style.display = (level === 'super_admin') ? '' : 'none';
+}
+
+function applyJuniorTaskRestrictions() {
+  const level = (currentUser.permission_level || 'junior');
+  const catSel = document.getElementById('new-cat');
+  const firmSel = document.getElementById('new-firm');
+  const periodSel = document.getElementById('new-period');
+
+  if (level === 'junior') {
+    // Kategori: sadece Anlık Görev ve Destek Talebi
+    Array.from(catSel.options).forEach(opt => {
+      if (['routine','project','backup'].includes(opt.value)) opt.style.display = 'none';
+      else opt.style.display = '';
+    });
+    catSel.value = 'task';
+    // Firma: otomatik kullanıcının firması
+    if (currentUser.firm) {
+      firmSel.value = currentUser.firm;
+      firmSel.disabled = true;
+      updateTeamOptions();
+    }
+    // Periyot gizle
+    periodSel.closest('.form-group').style.display = 'none';
+  } else {
+    // Manager/admin: tümünü göster
+    Array.from(catSel.options).forEach(opt => opt.style.display = '');
+    firmSel.disabled = false;
+    periodSel.closest('.form-group').style.display = '';
+  }
+}
+
+const PERM_LABELS = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', junior:'Junior'};
+const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board'];
 
 // ══════════════════════════════════════════════════════════
 //  SABİT VERİLER
@@ -1590,6 +1805,8 @@ async function loadApp() {
     if (me.o365_linked) document.getElementById('sb-o365').style.display = 'inline-flex';
     // Kullanıcının firmasına göre tema uygula
     applyThemeForFirm(me.firm);
+    // Yetki seviyesine göre UI kısıtla
+    applyPermissions(me.permission_level || 'junior');
   } catch(e) { console.warn('Me yüklenemedi', e); }
 
   await loadFirmsFromDB();
@@ -1642,21 +1859,28 @@ function normalizeTask(t) {
 //  NAVIGATION
 // ══════════════════════════════════════════════════════════
 function showPage(name) {
+  // Yetki guard: Junior sadece izinli sayfalara erişebilir
+  const level = (currentUser.permission_level || 'junior');
+  if (level === 'junior' && !JUNIOR_ALLOWED_PAGES.includes(name)) return;
+  // Board guard: can_access_board veya super_admin
+  if (name === 'board' && !currentUser.can_access_board && level !== 'super_admin') return;
+
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  // dashboard:0, tasks:1, projects:2, scheduled:3, report:4, backups:5, admin:6, settings:7
-  const map = {dashboard:0, tasks:1, projects:2, scheduled:3, report:4, backups:5, admin:6, settings:7};
-  document.querySelectorAll('.nav-item')[map[name]]?.classList.add('active');
+  // Nav active highlight — data-page attribute yerine onclick match
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.getAttribute('onclick')?.includes("'"+name+"'"));
+  });
   if (name==='dashboard') renderDashboard();
   if (name==='tasks')     { _ftCat = 'task'; loadTasks().then(() => { document.getElementById('tasks-cat-filter').value = 'task'; renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup')); }); }
   if (name==='projects')  { loadTasks().then(() => renderProjectsPage()); }
-  if (name==='add')       { onCatChange(); }
+  if (name==='add')       { applyJuniorTaskRestrictions(); onCatChange(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
-  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); }
+  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); }
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
+  if (name==='board')     renderBoard();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2113,11 +2337,17 @@ async function loadAndRenderUsers() {
   } catch(e) { showToast('err', 'Kullanıcılar yüklenemedi: ' + e.message); }
 }
 
+function permBadge(level) {
+  const map = {super_admin:['Super Admin','var(--accent)'], it_manager:['IT Yöneticisi','var(--accent3)'], junior:['Junior','var(--text-muted)']};
+  const [label, color] = map[level] || map.junior;
+  return `<span style="font-size:10px;padding:2px 8px;border-radius:12px;border:1px solid ${color};color:${color};font-family:'IBM Plex Mono',monospace">${label}</span>`;
+}
+
 function renderUserTable() {
   document.getElementById('user-tbody').innerHTML = USERS.map(u => `
     <tr>
       <td><div style="font-weight:600;font-size:12px">${u.full_name}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${u.username}</div></td>
-      <td><span style="font-size:11px">${u.role}</span></td>
+      <td>${permBadge(u.permission_level)}</td>
       <td>${firmChip(u.firm)}</td>
       <td>${u.o365_linked ? '<span style="color:var(--accent3);font-size:11px">⬡ Bağlı</span>' : '<span style="color:var(--text-muted);font-size:11px">—</span>'}</td>
       <td><span class="status-dot ${u.active?'active':'inactive'}"></span><span style="font-size:11px">${u.active?'Aktif':'Pasif'}</span></td>
@@ -2141,7 +2371,7 @@ async function sendInvite() {
   try {
     const res = await fetch('/api/admin/invite', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ full_name:name, email, role:document.getElementById('inv-role').value, firm:document.getElementById('inv-firm').value })
+      body: JSON.stringify({ full_name:name, email, permission_level:document.getElementById('inv-perm').value, firm:document.getElementById('inv-firm').value })
     });
     const data = await res.json();
     if (data.ok) { closeModal(); showToast('ok',`Davet maili ${email} adresine gönderildi ✓`); loadAndRenderUsers(); }
@@ -2885,20 +3115,38 @@ function openEditUser(id) {
   document.getElementById('edit-user-name').value     = u.full_name || '';
   document.getElementById('edit-user-username').value = u.username  || '';
   document.getElementById('edit-user-email').value    = u.email     || '';
-  document.getElementById('edit-user-role').value     = u.role      || '';
+  document.getElementById('edit-user-perm').value     = u.permission_level || 'junior';
   document.getElementById('edit-user-firm').value     = u.firm      || '';
   document.getElementById('edit-user-status').value   = u.active ? 'active' : 'inactive';
+
+  // IT Yöneticisi super_admin seçeneğini göremez
+  const permSel = document.getElementById('edit-user-perm');
+  const saOpt = permSel.querySelector('option[value="super_admin"]');
+  if (saOpt) saOpt.style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
+  // Super Admin düzenleniyorsa ve ben SA değilsem modalı açma
+  if (u.permission_level === 'super_admin' && currentUser.permission_level !== 'super_admin') {
+    showToast('err', 'Super Admin kullanıcısını düzenleme yetkiniz yok');
+    return;
+  }
+  // Board erişim checkbox
+  document.getElementById('edit-user-board-access').checked = !!u.can_access_board;
+  // Board toggle sadece super_admin'e görünür
+  document.getElementById('edit-user-board-group').style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
   document.getElementById('edit-user-modal').classList.remove('hidden');
 }
 async function saveEditUser() {
   const id = parseInt(document.getElementById('edit-user-id').value);
   const status = document.getElementById('edit-user-status').value;
+  const perm = document.getElementById('edit-user-perm').value;
   const body = {
-    role:     document.getElementById('edit-user-role').value,
+    permission_level: perm,
     firm:     document.getElementById('edit-user-firm').value,
-    is_admin: document.getElementById('edit-user-role').value === 'IT Sorumlusu',
     active:   status === 'active',
   };
+  // Board erişim — sadece super_admin gönderebilir
+  if (currentUser.permission_level === 'super_admin') {
+    body.can_access_board = document.getElementById('edit-user-board-access').checked;
+  }
   try {
     const res = await fetch(`/api/admin/users/${id}`, {
       method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
@@ -3409,6 +3657,234 @@ function _getEditChecklistData() {
 }
 
 function saveTeams() { showToast('ok', 'Ekip değişiklikleri otomatik kaydedildi.'); }
+
+// ══════════════════════════════════════════════════════════
+//  ORTAK ALAN (BOARD) — Trello Kanban
+// ══════════════════════════════════════════════════════════
+let boardCards = [];
+let boardUsers = [];
+const BOARD_COLS = ['todo','in_progress','review','done'];
+const COL_LABELS = {todo:'Yapılacak', in_progress:'Devam Eden', review:'İnceleme', done:'Tamamlandı'};
+
+async function renderBoard() {
+  try {
+    const [cardsRes, usersRes] = await Promise.all([
+      fetch('/api/board/cards'),
+      fetch('/api/board/users')
+    ]);
+    if (!cardsRes.ok) { showToast('err','Board yuklenemedi'); return; }
+    boardCards = await cardsRes.json();
+    if (usersRes.ok) boardUsers = await usersRes.json();
+  } catch(e) { showToast('err', e.message); return; }
+
+  BOARD_COLS.forEach(col => {
+    const cards = boardCards.filter(c => c.column === col);
+    const el = document.getElementById('board-col-' + col);
+    const countEl = document.getElementById('bc-' + col);
+    if (countEl) countEl.textContent = cards.length;
+    if (!el) return;
+    el.innerHTML = cards.sort((a,b) => a.position - b.position).map(c => {
+      const cl = c.checklist || [];
+      const cld = c.checklist_done || [];
+      const clDone = cld.filter(Boolean).length;
+      const clTotal = cl.length;
+      const clText = clTotal ? `<span class="bc-tag">✓ ${clDone}/${clTotal}</span>` : '';
+      const cmtText = c.comment_count ? `<span class="bc-tag">💬 ${c.comment_count}</span>` : '';
+      const assignText = c.assignee_name ? `<span class="bc-tag">@${c.assignee_name.split(' ')[0]}</span>` : '';
+      const desc = c.description ? `<div class="board-card-desc">${esc(c.description)}</div>` : '';
+      return `<div class="board-card" data-color="${c.color}" onclick="openBoardCardModal(${c.id})">
+        <div class="board-card-title">${esc(c.title)}</div>
+        ${desc}
+        <div class="board-card-footer">${clText}${cmtText}${assignText}</div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── Kart Detay Modalı ──
+let _bCardColor = 'yellow';
+let _bCardCol = 'todo';
+let _bCardChecklist = [];
+let _bCardChecklistDone = [];
+
+async function openBoardCardModal(id) {
+  const card = boardCards.find(c => c.id === id);
+  if (!card) return;
+  document.getElementById('bcard-mode').value = 'edit';
+  document.getElementById('bcard-id').value = id;
+  document.getElementById('bcard-title').value = card.title;
+  document.getElementById('bcard-desc').value = card.description || '';
+  _bCardColor = card.color || 'yellow';
+  _bCardCol = card.column || 'todo';
+  _bCardChecklist = [...(card.checklist || [])];
+  _bCardChecklistDone = [...(card.checklist_done || [])];
+  setBCardColor(_bCardColor);
+  setBCardCol(_bCardCol);
+  renderBCardChecklist();
+  populateBCardAssigned(card.assigned_to);
+  document.getElementById('bcard-delete-btn').style.display = '';
+  document.getElementById('bcard-comments-section').style.display = '';
+  // Yorumları yükle
+  try {
+    const res = await fetch(`/api/board/cards/${id}/comments`);
+    if (res.ok) renderBCardComments(await res.json());
+  } catch(e) {}
+  document.getElementById('board-card-modal').classList.remove('hidden');
+}
+
+function openNewCardModal(col) {
+  document.getElementById('bcard-mode').value = 'create';
+  document.getElementById('bcard-id').value = '';
+  document.getElementById('bcard-title').value = '';
+  document.getElementById('bcard-desc').value = '';
+  _bCardColor = 'yellow';
+  _bCardCol = col || 'todo';
+  _bCardChecklist = [];
+  _bCardChecklistDone = [];
+  setBCardColor('yellow');
+  setBCardCol(_bCardCol);
+  renderBCardChecklist();
+  populateBCardAssigned(null);
+  document.getElementById('bcard-delete-btn').style.display = 'none';
+  document.getElementById('bcard-comments-section').style.display = 'none';
+  document.getElementById('bcard-comments-list').innerHTML = '';
+  document.getElementById('board-card-modal').classList.remove('hidden');
+}
+
+function closeBoardCardModal() {
+  document.getElementById('board-card-modal').classList.add('hidden');
+}
+
+function setBCardColor(c) {
+  _bCardColor = c;
+  document.querySelectorAll('#bcard-colors .color-pick').forEach(el => {
+    el.classList.toggle('active', el.dataset.c === c);
+  });
+}
+
+function setBCardCol(c) {
+  _bCardCol = c;
+  document.querySelectorAll('#bcard-col-btns button').forEach(el => {
+    el.classList.toggle('active-col', el.dataset.col === c);
+  });
+}
+
+function populateBCardAssigned(selectedId) {
+  const sel = document.getElementById('bcard-assigned');
+  sel.innerHTML = '<option value="">— Kimse —</option>' +
+    boardUsers.map(u => `<option value="${u.id}" ${u.id===selectedId?'selected':''}>${u.full_name}</option>`).join('');
+}
+
+// Checklist
+function renderBCardChecklist() {
+  const el = document.getElementById('bcard-checklist');
+  el.innerHTML = _bCardChecklist.map((item, i) => {
+    const done = _bCardChecklistDone[i] ? 'done' : '';
+    const checked = _bCardChecklistDone[i] ? 'checked' : '';
+    return `<div class="bd-checklist-item ${done}">
+      <input type="checkbox" ${checked} onchange="toggleBCardCL(${i})">
+      <span>${esc(item)}</span>
+      <button style="margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;" onclick="removeBCardCL(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleBCardCL(i) {
+  while (_bCardChecklistDone.length < _bCardChecklist.length) _bCardChecklistDone.push(false);
+  _bCardChecklistDone[i] = !_bCardChecklistDone[i];
+  renderBCardChecklist();
+}
+
+function removeBCardCL(i) {
+  _bCardChecklist.splice(i, 1);
+  _bCardChecklistDone.splice(i, 1);
+  renderBCardChecklist();
+}
+
+function addBCardChecklistItem() {
+  const inp = document.getElementById('bcard-cl-new');
+  const val = inp.value.trim();
+  if (!val) return;
+  _bCardChecklist.push(val);
+  _bCardChecklistDone.push(false);
+  inp.value = '';
+  renderBCardChecklist();
+}
+
+// Yorumlar
+function renderBCardComments(comments) {
+  const el = document.getElementById('bcard-comments-list');
+  if (!comments.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px;">Henüz yorum yok</div>'; return; }
+  el.innerHTML = comments.map(c => {
+    const d = new Date(c.created_at);
+    const dateStr = d.toLocaleDateString('tr-TR') + ' ' + d.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'});
+    return `<div class="bd-comment">
+      <div class="bd-comment-header"><span class="bd-comment-author">${esc(c.author_name)}</span><span class="bd-comment-date">${dateStr}</span></div>
+      <div class="bd-comment-body">${esc(c.content)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function addBCardComment() {
+  const id = parseInt(document.getElementById('bcard-id').value);
+  const inp = document.getElementById('bcard-comment-input');
+  const content = inp.value.trim();
+  if (!content || !id) return;
+  try {
+    const res = await fetch(`/api/board/cards/${id}/comments`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({content})
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Hata');
+    inp.value = '';
+    // Yorumları tekrar yükle
+    const cmtRes = await fetch(`/api/board/cards/${id}/comments`);
+    if (cmtRes.ok) renderBCardComments(await cmtRes.json());
+    showToast('ok', 'Yorum eklendi');
+  } catch(e) { showToast('err', e.message); }
+}
+
+// Kaydet
+async function saveBoardCard() {
+  const mode = document.getElementById('bcard-mode').value;
+  const title = document.getElementById('bcard-title').value.trim();
+  if (!title) { showToast('err', 'Baslik zorunlu'); return; }
+  const assigned = document.getElementById('bcard-assigned').value;
+  const body = {
+    title, description: document.getElementById('bcard-desc').value,
+    column: _bCardCol, color: _bCardColor,
+    checklist: _bCardChecklist, checklist_done: _bCardChecklistDone,
+    assigned_to: assigned ? parseInt(assigned) : null,
+    firm: currentUser.firm || '',
+  };
+  try {
+    let url = '/api/board/cards';
+    let method = 'POST';
+    if (mode === 'edit') {
+      url = `/api/board/cards/${document.getElementById('bcard-id').value}`;
+      method = 'PATCH';
+    }
+    const res = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if (!res.ok) throw new Error((await res.json()).error || 'Hata');
+    closeBoardCardModal();
+    await renderBoard();
+    showToast('ok', mode === 'create' ? 'Kart olusturuldu' : 'Kart guncellendi');
+  } catch(e) { showToast('err', e.message); }
+}
+
+// Sil
+async function deleteBoardCard() {
+  const id = document.getElementById('bcard-id').value;
+  if (!id || !confirm('Bu karti silmek istediginizden emin misiniz?')) return;
+  try {
+    const res = await fetch(`/api/board/cards/${id}`, {method:'DELETE'});
+    if (!res.ok) throw new Error((await res.json()).error || 'Hata');
+    closeBoardCardModal();
+    await renderBoard();
+    showToast('ok', 'Kart silindi');
+  } catch(e) { showToast('err', e.message); }
+}
 
 </script>
 </body>
