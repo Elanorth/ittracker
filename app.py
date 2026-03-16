@@ -536,6 +536,32 @@ def invite_user():
     result=send_invite_email(email,data.get("full_name",""),url,role_label)
     return jsonify({"ok":result.get("ok"),"invite_url":url,"permission_level":perm})
 
+@app.route("/api/admin/invitations")
+@manager_required
+def list_invitations():
+    invs = Invitation.query.filter_by(used=False).order_by(Invitation.created_at.desc()).all()
+    return jsonify([i.to_dict() for i in invs])
+
+@app.route("/api/admin/invitations/<int:inv_id>", methods=["DELETE"])
+@manager_required
+def cancel_invitation(inv_id):
+    inv = Invitation.query.get_or_404(inv_id)
+    if inv.used: return jsonify({"error":"Zaten kullanılmış"}),400
+    db.session.delete(inv); db.session.commit()
+    return jsonify({"ok":True})
+
+@app.route("/api/admin/invitations/<int:inv_id>/resend", methods=["POST"])
+@manager_required
+def resend_invitation(inv_id):
+    inv = Invitation.query.get_or_404(inv_id)
+    if inv.used: return jsonify({"error":"Zaten kullanılmış"}),400
+    inv.token = secrets.token_urlsafe(32)
+    inv.expires_at = datetime.utcnow() + timedelta(days=7)
+    db.session.commit()
+    url = f"{request.host_url}register?token={inv.token}"
+    result = send_invite_email(inv.email, inv.full_name, url, inv.role)
+    return jsonify({"ok":result.get("ok"),"invite_url":url})
+
 @app.route("/register")
 def register():
     token = request.args.get("token")
