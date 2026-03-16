@@ -496,10 +496,7 @@ def admin_update_user(uid):
         if not me.is_super_admin and new_level == "super_admin":
             return jsonify({"error": "Super Admin rolü atama yetkiniz yok"}), 403
         target.permission_level = new_level
-        # is_admin ve role'u permission_level'dan türet
         target.is_admin = new_level in ("super_admin", "it_manager")
-        role_map = {"super_admin": "IT Sorumlusu", "it_manager": "IT Yöneticisi", "junior": "IT Yardımcısı"}
-        target.role = role_map.get(new_level, "IT Yardımcısı")
     # can_access_board — sadece super_admin ayarlayabilir
     if "can_access_board" in data and me.is_super_admin:
         target.can_access_board = bool(data["can_access_board"])

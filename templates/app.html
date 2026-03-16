@@ -1259,9 +1259,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <thead>
             <tr>
               <th>KULLANICI</th>
+              <th>ÜNVAN</th>
               <th>YETKİ</th>
               <th>FİRMA</th>
-              <th>O365</th>
               <th>DURUM</th>
               <th>İŞLEM</th>
             </tr>
@@ -1287,7 +1287,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row"><div class="form-group"><label>Ad Soyad</label><input class="form-control" id="set-fullname" value="Levent Mahir Can"></div><div class="form-group"><label>Kullanici Adi</label><input class="form-control" id="set-username" value="lmc"></div></div>
         <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="set-email" value="levent.can@inventist.com"></div>
         <div class="form-group" style="margin-bottom:12px"><label>Yeni Sifre (bos birakırsanız degismez)</label><input class="form-control" id="set-password" type="password" placeholder="••••••••"></div>
-        <div class="form-group" style="margin-bottom:16px"><label>Rol</label><select class="form-control" id="set-role"><option>IT Sorumlusu</option><option>IT Yardımcısı</option><option>Yönetici</option></select></div>
+        <div class="form-group" style="margin-bottom:16px"><label>Ünvan</label><input class="form-control" id="set-role" placeholder="ör: IT Müdürü, Sistem Uzmanı, Stajyer"></div>
         <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px">
           <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent3);margin-bottom:4px">⬡ Office 365 Entegrasyonu</div>
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Hesabınızı Microsoft 365 ile senkronize edin</div>
@@ -1584,9 +1584,15 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <input class="form-control" id="edit-user-username">
       </div>
     </div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>Mail Adresi</label>
-      <input class="form-control" id="edit-user-email">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Mail Adresi</label>
+        <input class="form-control" id="edit-user-email">
+      </div>
+      <div class="form-group">
+        <label>Ünvan</label>
+        <input class="form-control" id="edit-user-role" placeholder="ör: Sistem Uzmanı">
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="form-group">
@@ -2347,9 +2353,9 @@ function renderUserTable() {
   document.getElementById('user-tbody').innerHTML = USERS.map(u => `
     <tr>
       <td><div style="font-weight:600;font-size:12px">${u.full_name}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${u.username}</div></td>
+      <td><span style="font-size:11px;color:var(--text-muted)">${u.role || '—'}</span></td>
       <td>${permBadge(u.permission_level)}</td>
       <td>${firmChip(u.firm)}</td>
-      <td>${u.o365_linked ? '<span style="color:var(--accent3);font-size:11px">⬡ Bağlı</span>' : '<span style="color:var(--text-muted);font-size:11px">—</span>'}</td>
       <td><span class="status-dot ${u.active?'active':'inactive'}"></span><span style="font-size:11px">${u.active?'Aktif':'Pasif'}</span></td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-outline btn-sm" onclick="openEditUser(${u.id})">&#9998; Düzenle</button>
@@ -3115,6 +3121,7 @@ function openEditUser(id) {
   document.getElementById('edit-user-name').value     = u.full_name || '';
   document.getElementById('edit-user-username').value = u.username  || '';
   document.getElementById('edit-user-email').value    = u.email     || '';
+  document.getElementById('edit-user-role').value     = u.role       || '';
   document.getElementById('edit-user-perm').value     = u.permission_level || 'junior';
   document.getElementById('edit-user-firm').value     = u.firm      || '';
   document.getElementById('edit-user-status').value   = u.active ? 'active' : 'inactive';
@@ -3140,6 +3147,7 @@ async function saveEditUser() {
   const perm = document.getElementById('edit-user-perm').value;
   const body = {
     permission_level: perm,
+    role:     document.getElementById('edit-user-role').value,
     firm:     document.getElementById('edit-user-firm').value,
     active:   status === 'active',
   };
@@ -3269,13 +3277,7 @@ async function loadSettingsFromServer() {
       if (fn) fn.value = u.full_name || '';
       if (un) un.value = u.username  || '';
       if (em) em.value = u.email     || '';
-      if (rl) {
-        for (const opt of rl.options) {
-          if (opt.value === u.role || opt.text === u.role) {
-            rl.value = opt.value; break;
-          }
-        }
-      }
+      if (rl) rl.value = u.role || '';
     }
     // SMTP ayarlarını yükle
     const sRes = await fetch('/api/settings/smtp');
