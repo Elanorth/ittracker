@@ -19,7 +19,7 @@ echo OK: GitHub push tamamlandi.
 :: 2. Sunucuda pull + docker rebuild
 echo.
 echo [2/3] Sunucuya baglaniliyor... (pull + docker rebuild)
-ssh -t leventcan@10.34.0.62 "cd /home/leventcan/ittracker && git pull origin main && sudo docker compose down && sudo docker compose up -d --build"
+ssh -t leventcan@10.34.0.62 "cd /home/leventcan/ittracker && git pull github main && sudo docker compose down && sudo docker system prune -f && sudo docker compose up -d --build"
 if %errorlevel% neq 0 (
     echo HATA: Sunucu deploy basarisiz!
     pause
