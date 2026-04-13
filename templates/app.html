@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IT//TRACKER · v2</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#00e5c0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ITTracker">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1528,10 +1534,11 @@ function normalizeTask(t) {
     mailSent:       t.mail_sent || false,
     last_completed: t.last_completed || null,
     next_due:       t.next_due || null,
-    checklist:      t.checklist || [],
-    checklist_done: t.checklist_done || [],
-    project_status: t.project_status || '',
-    completed_at:   t.completed_at || null,
+    checklist:           t.checklist || [],
+    checklist_done:      t.checklist_done || [],
+    project_status:      t.project_status || '',
+    completed_at:        t.completed_at || null,
+    from_previous_month: t.from_previous_month || false,
   };
 }
 
@@ -1630,8 +1637,8 @@ function onCatChange() {
     periodSel.disabled = true;
   }
 
-  // Checklist sadece rutin görevde
-  document.getElementById('checklist-section').classList.toggle('hidden', !isRoutine);
+  // Checklist rutin ve proje görevlerinde
+  document.getElementById('checklist-section').classList.toggle('hidden', !(isRoutine || isProject));
 
   // Rutin bilgi kutusu
   const infoBox = document.getElementById('routine-info-box');
@@ -1716,9 +1723,13 @@ function firmChip(firm) {
 }
 function taskRow(t) {
   const dl = t.deadline ? `<div class="dl-badge ${dlClass(t.deadline,t.done)}">${dlText(t.deadline,t.done)}</div>` : '<div></div>';
-  // Checklist ilerleme çubuğu (rutin görevlerde)
+  // Önceki aydan taşınan görev etiketi
+  const prevBadge = t.from_previous_month
+    ? `<span style="font-size:9px;background:rgba(244,185,66,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:4px;border:1px solid rgba(244,185,66,.25)">⏩ Önceki Aydan</span>`
+    : '';
+  // Checklist ilerleme çubuğu (rutin ve proje görevlerinde)
   let clProgress = '';
-  if (t.cat === 'routine' && t.checklist && t.checklist.length > 0) {
+  if ((t.cat === 'routine' || t.cat === 'project') && t.checklist && t.checklist.length > 0) {
     const total = t.checklist.length;
     const done2 = (t.checklist_done||[]).filter(Boolean).length;
     const pct   = Math.round(done2/total*100);
@@ -1736,7 +1747,7 @@ function taskRow(t) {
     <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${t.title}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
       ${clProgress}${lcStr}
     </div>
     ${dl}
@@ -1794,6 +1805,16 @@ function renderProjectsPage() {
     const statusNote = t.project_status
       ? `<div class="proj-status-note">📌 ${t.project_status}</div>`
       : '';
+    let clNote = '';
+    if (t.checklist && t.checklist.length > 0) {
+      const clTotal = t.checklist.length;
+      const clDone  = (t.checklist_done||[]).filter(Boolean).length;
+      const clPct   = Math.round(clDone/clTotal*100);
+      clNote = `<div style="font-size:9px;color:var(--text-muted);margin-top:6px">
+        Adımlar: ${clDone}/${clTotal}
+        <div class="checklist-progress" style="margin-top:3px"><div class="checklist-progress-fill" style="width:${clPct}%"></div></div>
+      </div>`;
+    }
     return `
     <div class="proj-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -1804,7 +1825,7 @@ function renderProjectsPage() {
             <span>${t.team || ''}</span>
             ${isOverdue ? '<span style="color:var(--danger);font-weight:600">⚠ Gecikti</span>' : ''}
           </div>
-          ${statusNote}
+          ${statusNote}${clNote}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:80px">
           <div style="font-size:10px;color:${dlColor};font-family:'IBM Plex Mono',monospace">${dlStr}</div>
@@ -2553,8 +2574,9 @@ function openEditTask(id) {
   const clSection = document.getElementById('edit-checklist-section');
   if (clSection) {
     const isRoutine = t.cat === 'routine';
-    clSection.classList.toggle('hidden', !isRoutine);
-    if (isRoutine) {
+    const isProject = t.cat === 'project';
+    clSection.classList.toggle('hidden', !(isRoutine || isProject));
+    if (isRoutine || isProject) {
       _loadEditChecklist(t.checklist || [], t.checklist_done || []);
     }
   }
@@ -3283,6 +3305,10 @@ function _getEditChecklistData() {
 
 function saveTeams() { showToast('ok', 'Firma ekipleri kaydedildi'); }
 
+// PWA — Service Worker kaydı
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

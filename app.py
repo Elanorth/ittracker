@@ -202,16 +202,28 @@ def get_tasks():
                     result.append(t)
 
     # 3) Diğer görevler (support, infra, backup, other): o aya ait olanlar
+    #    + tamamlanmamış olup önceki aylarda oluşturulmuş görevler (carry-over)
     if not category_filter or category_filter not in ("routine", "project"):
         created_match  = db.and_(db.extract("month", Task.created_at)==month,
                                   db.extract("year",  Task.created_at)==year)
         deadline_match = db.and_(Task.deadline!=None,
                                   db.extract("month", Task.deadline)==month,
                                   db.extract("year",  Task.deadline)==year)
+        # Tamamlanmamış ve önceki aylarda oluşturulmuş görevler bir sonraki aya taşınır
+        carry_over = db.and_(
+            Task.is_done == False,
+            db.or_(
+                db.extract("year",  Task.created_at) < year,
+                db.and_(
+                    db.extract("year",  Task.created_at) == year,
+                    db.extract("month", Task.created_at) <  month
+                )
+            )
+        )
         oq = Task.query.filter(
             Task.user_id==uid,
             Task.category.notin_(["routine", "project"]),
-            db.or_(created_match, deadline_match)
+            db.or_(created_match, deadline_match, carry_over)
         )
         if firm_filter:     oq = oq.filter_by(firm=firm_filter)
         if category_filter: oq = oq.filter_by(category=category_filter)

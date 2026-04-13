@@ -97,6 +97,14 @@ class Task(db.Model):
             is_done      = comp is not None
             completed_at = comp.completed_at.isoformat() if comp else None
 
+        # Önceki aylardan taşınan tamamlanmamış görev kontrolü
+        from_previous_month = False
+        if month and year and self.category not in ("routine", "project") and not self.is_done:
+            from_previous_month = (
+                self.created_at.year < year or
+                (self.created_at.year == year and self.created_at.month < month)
+            )
+
         return {
             "id": self.id, "user_id": self.user_id, "title": self.title,
             "category": self.category, "period": self.period,
@@ -112,6 +120,7 @@ class Task(db.Model):
             "checklist": cl,
             "checklist_done": cld,
             "project_status": self.project_status or "",
+            "from_previous_month": from_previous_month,
         }
 
 
