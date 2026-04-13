@@ -12,8 +12,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 MONTH_TR = {1:"Ocak",2:"Şubat",3:"Mart",4:"Nisan",5:"Mayıs",6:"Haziran",
             7:"Temmuz",8:"Ağustos",9:"Eylül",10:"Ekim",11:"Kasım",12:"Aralık"}
-CAT_LABELS = {"routine":"Rutin","support":"Destek","infra":"Altyapı",
-               "backup":"Config Backup","other":"Diğer"}
+CAT_LABELS = {"routine":"Rutin","project":"Proje","support":"Destek",
+               "infra":"Altyapı","backup":"Config Backup","other":"Diğer"}
 
 DARK  = colors.HexColor("#1a1a2e")
 ACCENT= colors.HexColor("#00d4aa")
@@ -47,22 +47,26 @@ def _register_font():
 FONT_NORMAL, FONT_BOLD = _register_font()
 
 def generate_monthly_pdf(user, tasks, month, year):
+    display_name = (user.full_name or "").strip() or user.username
     path = os.path.join(tempfile.gettempdir(),
-                        f"IT_Rapor_{user.username}_{year}_{month:02d}.pdf")
+                        f"IT_Rapor_{display_name}_{year}_{month:02d}.pdf")
     _build(user, tasks, month, year, path)
     return path
 
 def _build(user, tasks, month, year, path):
+    display_name = (user.full_name or "").strip() or user.username
     doc = SimpleDocTemplate(path, pagesize=A4,
         leftMargin=2*cm, rightMargin=2*cm,
-        topMargin=2*cm, bottomMargin=2*cm)
+        topMargin=2*cm, bottomMargin=2*cm,
+        title=f"IT Görev Raporu — {display_name} — {MONTH_TR[month]} {year}",
+        author=display_name)
 
     def style(name, font=None, **kw):
         base = getSampleStyleSheet()["Normal"]
         return ParagraphStyle(name, parent=base, fontName=font or FONT_NORMAL, **kw)
 
-    title_s  = style("TT", font=FONT_BOLD, fontSize=20, textColor=ACCENT, spaceAfter=4, alignment=TA_CENTER)
-    meta_s   = style("MM", fontSize=10, textColor=MUTED,  spaceAfter=16, alignment=TA_CENTER)
+    title_s  = style("TT", font=FONT_BOLD, fontSize=20, leading=26, textColor=ACCENT, spaceAfter=4, alignment=TA_CENTER)
+    meta_s   = style("MM", fontSize=10, leading=16, textColor=MUTED, spaceAfter=16, alignment=TA_CENTER)
     h2_s     = style("HH", font=FONT_BOLD, fontSize=12, textColor=DARK, spaceBefore=14, spaceAfter=6)
     footer_s = style("FF", fontSize=9,  textColor=MUTED,  alignment=TA_CENTER, spaceBefore=6)
     cell_s   = style("CC", fontSize=8)
@@ -84,7 +88,7 @@ def _build(user, tasks, month, year, path):
 
     elems = []
     elems.append(Paragraph(f"IT Görev Raporu — {MONTH_TR[month]} {year}", title_s))
-    elems.append(Paragraph(f"{user.full_name}  |  {user.email}  |  {user.role}", meta_s))
+    elems.append(Paragraph(f"{display_name}  |  {user.email}  |  {user.role}", meta_s))
     elems.append(HRFlowable(width="100%", thickness=1, color=ACCENT, spaceAfter=12))
 
     # KPI
