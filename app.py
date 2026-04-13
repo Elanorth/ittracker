@@ -100,6 +100,17 @@ def _current_user():
 def dashboard():
     return render_template("app.html")
 
+@app.route("/sw.js")
+def service_worker():
+    resp = send_file(
+        os.path.join(app.root_path, "static", "sw.js"),
+        mimetype="application/javascript"
+    )
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
