@@ -12,8 +12,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 MONTH_TR = {1:"Ocak",2:"Şubat",3:"Mart",4:"Nisan",5:"Mayıs",6:"Haziran",
             7:"Temmuz",8:"Ağustos",9:"Eylül",10:"Ekim",11:"Kasım",12:"Aralık"}
-CAT_LABELS = {"routine":"Rutin","project":"Proje","support":"Destek",
-               "infra":"Altyapı","backup":"Config Backup","other":"Diğer"}
+CAT_LABELS = {"routine":"Rutin","project":"Proje","task":"Anlık Görev",
+               "support":"Destek","infra":"Altyapı","backup":"Config Backup","other":"Diğer"}
 
 DARK  = colors.HexColor("#1a1a2e")
 ACCENT= colors.HexColor("#00d4aa")
