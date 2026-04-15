@@ -10,6 +10,7 @@ services:
     volumes:
       - ./instance:/app/instance
       - backups:/srv/it_tracker/backups
+      - ./.env:/app/.env
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')"]
       interval: 30s
