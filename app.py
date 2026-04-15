@@ -197,7 +197,7 @@ def auth_callback():
         role = inv.role if inv else "IT Sorumlusu"
         firm = inv.firm if inv else ""
         # Permission level: role_label'dan türet
-        perm_map = {"Super Admin": "super_admin", "IT Yöneticisi": "it_manager", "Junior": "junior"}
+        perm_map = {"Super Admin": "super_admin", "IT Yöneticisi": "it_manager", "IT Specialist": "it_specialist", "Junior": "junior"}
         perm = perm_map.get(role, "junior")
         user = User(
             username=email.split("@")[0].lower(),
@@ -551,7 +551,7 @@ def invite_user():
         return jsonify({"error": "Super Admin davet etme yetkiniz yok"}), 403
     Invitation.query.filter_by(email=email,used=False).delete()
     token=secrets.token_urlsafe(32)
-    role_label = {"super_admin": "Super Admin", "it_manager": "IT Yöneticisi", "junior": "Junior"}.get(perm, "Junior")
+    role_label = {"super_admin": "Super Admin", "it_manager": "IT Yöneticisi", "it_specialist": "IT Specialist", "junior": "Junior"}.get(perm, "Junior")
     inv=Invitation(email=email,full_name=data.get("full_name",""),role=role_label,
                    firm=data.get("firm",""),token=token,expires_at=datetime.utcnow()+timedelta(days=7),invited_by=session["user_id"])
     db.session.add(inv); db.session.commit()

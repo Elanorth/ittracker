@@ -1624,6 +1624,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <label>Yetki Seviyesi</label>
         <select class="form-control" id="edit-user-perm">
           <option value="junior">Junior</option>
+          <option value="it_specialist">IT Specialist</option>
           <option value="it_manager">IT Yöneticisi</option>
           <option value="super_admin">Super Admin</option>
         </select>
@@ -1664,7 +1665,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="form-group" style="margin-bottom:12px"><label>Ad Soyad</label><input class="form-control" id="inv-name" placeholder="Ahmet Yılmaz"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="inv-email" placeholder="ahmet@inventist.com"></div>
     <div class="form-row">
-      <div class="form-group"><label>Yetki Seviyesi</label><select class="form-control" id="inv-perm"><option value="junior">Junior</option><option value="it_manager">IT Yöneticisi</option></select></div>
+      <div class="form-group"><label>Yetki Seviyesi</label><select class="form-control" id="inv-perm"><option value="junior">Junior</option><option value="it_specialist">IT Specialist</option><option value="it_manager">IT Yöneticisi</option></select></div>
       <div class="form-group"><label>Firma</label><select class="form-control" id="inv-firm"><option value="inventist">İnventist</option><option value="assos">Assos</option></select></div>
     </div>
     <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:4px;font-size:11px;color:var(--text-muted)">
@@ -1766,7 +1767,7 @@ function applyJuniorTaskRestrictions() {
   }
 }
 
-const PERM_LABELS = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', junior:'Junior'};
+const PERM_LABELS = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
 const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board'];
 
 // ══════════════════════════════════════════════════════════
@@ -2399,8 +2400,8 @@ function renderUserStats() {
 
   // Yetki dağılımı
   const permCounts = {};
-  const permLabels = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', junior:'Junior'};
-  const permColors = {super_admin:'var(--accent)', it_manager:'var(--accent3)', junior:'var(--text-muted)'};
+  const permLabels = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
+  const permColors = {super_admin:'var(--accent)', it_manager:'var(--accent3)', it_specialist:'var(--accent2)', junior:'var(--text-muted)'};
   USERS.forEach(u => { const p = u.permission_level || 'junior'; permCounts[p] = (permCounts[p]||0)+1; });
   const maxP = Math.max(...Object.values(permCounts), 1);
   document.getElementById('perm-dist-body').innerHTML = Object.entries(permCounts).map(([k,v]) =>
@@ -2419,7 +2420,7 @@ function renderInvitations() {
     return `<tr>
       <td style="font-size:12px">${inv.full_name || '—'}</td>
       <td style="font-size:11px;font-family:'IBM Plex Mono',monospace">${inv.email}</td>
-      <td>${permBadge(inv.role === 'Super Admin' ? 'super_admin' : inv.role === 'IT Yöneticisi' ? 'it_manager' : 'junior')}</td>
+      <td>${permBadge(inv.role === 'Super Admin' ? 'super_admin' : inv.role === 'IT Yöneticisi' ? 'it_manager' : inv.role === 'IT Specialist' ? 'it_specialist' : 'junior')}</td>
       <td>${firmChip(inv.firm)}</td>
       <td style="font-size:11px">${expLabel}</td>
       <td style="display:flex;gap:6px">
@@ -2431,7 +2432,7 @@ function renderInvitations() {
 }
 
 function permBadge(level) {
-  const map = {super_admin:['Super Admin','var(--accent)'], it_manager:['IT Yöneticisi','var(--accent3)'], junior:['Junior','var(--text-muted)']};
+  const map = {super_admin:['Super Admin','var(--accent)'], it_manager:['IT Yöneticisi','var(--accent3)'], it_specialist:['IT Specialist','var(--accent2)'], junior:['Junior','var(--text-muted)']};
   const [label, color] = map[level] || map.junior;
   return `<span style="font-size:10px;padding:2px 8px;border-radius:12px;border:1px solid ${color};color:${color};font-family:'IBM Plex Mono',monospace">${label}</span>`;
 }

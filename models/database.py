@@ -14,7 +14,7 @@ class User(db.Model):
     role             = db.Column(db.String(50), default="IT Yardımcısı")
     firm             = db.Column(db.String(50), default="")
     is_admin         = db.Column(db.Boolean, default=False)
-    permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_manager | junior
+    permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_manager | it_specialist | junior
     can_access_board  = db.Column(db.Boolean, default=False)
     active            = db.Column(db.Boolean, default=True)
     o365_id          = db.Column(db.String(100), unique=True, nullable=True)
@@ -31,7 +31,7 @@ class User(db.Model):
 
     @property
     def is_manager_or_above(self):
-        return self.permission_level in ("super_admin", "it_manager")
+        return self.permission_level in ("super_admin", "it_manager", "it_specialist")
 
     def to_dict(self):
         return {"id":self.id,"username":self.username,"full_name":self.full_name,"email":self.email,
