@@ -57,7 +57,7 @@ echo OK: Push tamamlandi.
 
 echo.
 echo [2/5] Sunucuda DB yedegi aliniyor...
-ssh -t leventcan@10.34.0.62 "cd /home/leventcan/ittracker && if [ -f instance/it_tracker.db ]; then STAMP=$(date +%%Y%%m%%d_%%H%%M%%S); cp instance/it_tracker.db instance/it_tracker_backup_$STAMP.db && echo Yedek: instance/it_tracker_backup_$STAMP.db; else echo 'UYARI: instance/it_tracker.db bulunamadi'; fi"
+ssh -t leventcan@10.34.0.62 "cd /home/leventcan/ittracker && if sudo test -f instance/it_tracker.db; then STAMP=$(date +%%Y%%m%%d_%%H%%M%%S); sudo cp instance/it_tracker.db instance/it_tracker_backup_$STAMP.db && sudo chown leventcan:leventcan instance/it_tracker_backup_$STAMP.db && echo Yedek: instance/it_tracker_backup_$STAMP.db; else echo 'UYARI: instance/it_tracker.db bulunamadi'; fi"
 if errorlevel 1 goto :BACKUP_ERROR
 
 echo.
