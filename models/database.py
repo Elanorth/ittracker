@@ -20,7 +20,11 @@ class User(db.Model):
     o365_id          = db.Column(db.String(100), unique=True, nullable=True)
     password_hash    = db.Column(db.String(256), nullable=False)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
-    tasks            = db.relationship("Task", backref="user", lazy=True)
+    # v4.3 — Task'ta iki FK var (user_id sahip, assigned_by atayan). Sahip ilişkisini belirt.
+    tasks            = db.relationship("Task", backref="user", lazy=True,
+                                        foreign_keys="Task.user_id")
+    assigned_tasks   = db.relationship("Task", lazy=True,
+                                        foreign_keys="Task.assigned_by")
 
     def set_password(self, pw): self.password_hash = generate_password_hash(pw)
     def check_password(self, pw): return check_password_hash(self.password_hash, pw)
