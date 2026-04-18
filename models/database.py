@@ -14,7 +14,7 @@ class User(db.Model):
     role             = db.Column(db.String(50), default="IT Yardımcısı")
     firm             = db.Column(db.String(50), default="")
     is_admin         = db.Column(db.Boolean, default=False)
-    permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_manager | it_specialist | junior
+    permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_director | it_manager | it_specialist | junior
     can_access_board  = db.Column(db.Boolean, default=False)
     active            = db.Column(db.Boolean, default=True)
     o365_id          = db.Column(db.String(100), unique=True, nullable=True)
@@ -30,8 +30,13 @@ class User(db.Model):
         return self.permission_level == "super_admin"
 
     @property
+    def is_director_or_above(self):
+        """IT Müdürü ve üstü — firma bazlı geniş erişim"""
+        return self.permission_level in ("super_admin", "it_director")
+
+    @property
     def is_manager_or_above(self):
-        return self.permission_level in ("super_admin", "it_manager", "it_specialist")
+        return self.permission_level in ("super_admin", "it_director", "it_manager", "it_specialist")
 
     def to_dict(self):
         return {"id":self.id,"username":self.username,"full_name":self.full_name,"email":self.email,
@@ -42,6 +47,12 @@ class User(db.Model):
 
 import json as _json
 from datetime import timedelta, date as _date
+
+# v4.5 — SLA hedef süreleri (Jira service-desk varsayılanlarına paralel).
+# Destek talepleri (category=="support") için uygulanır.
+SLA_HOURS = {"yüksek": 4, "orta": 24, "düşük": 72}
+def _sla_target_hours(priority):
+    return SLA_HOURS.get((priority or "orta").strip().lower(), 24)
 
 def _next_due_date(period: str, from_date=None) -> _date:
     """Periyota göre bir sonraki deadline tarihini hesapla (gösterim amaçlı)."""
@@ -80,6 +91,8 @@ class Task(db.Model):
     checklist      = db.Column(db.Text, default="[]")
     checklist_done = db.Column(db.Text, default="[]")
     project_status = db.Column(db.Text, default="")   # Proje durum notu
+    manager_note   = db.Column(db.Text, default="")   # v4.3 — IT Müdürü notu (kırmızı font)
+    assigned_by    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # v4.3 — görevi atayan yönetici
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     backups        = db.relationship("ConfigBackup", backref="task", lazy=True,
                                      cascade="all, delete-orphan")
@@ -118,6 +131,29 @@ class Task(db.Model):
                 (self.created_at.year == year and self.created_at.month < month)
             )
 
+        # v4.5 — SLA hesaplamaları (destek talepleri için)
+        sla = None
+        if self.category == "support":
+            target_h = _sla_target_hours(self.priority)
+            deadline_dt = self.created_at + timedelta(hours=target_h) if self.created_at else None
+            now = datetime.utcnow()
+            if is_done and self.completed_at:
+                resolution_h = (self.completed_at - self.created_at).total_seconds() / 3600.0
+                breached = (self.completed_at > deadline_dt) if deadline_dt else False
+                remaining_h = 0.0
+            else:
+                resolution_h = None
+                remaining_seconds = (deadline_dt - now).total_seconds() if deadline_dt else 0
+                remaining_h = remaining_seconds / 3600.0
+                breached = remaining_seconds < 0
+            sla = {
+                "target_hours": target_h,
+                "deadline": deadline_dt.isoformat() if deadline_dt else None,
+                "remaining_hours": round(remaining_h, 2),
+                "resolution_hours": round(resolution_h, 2) if resolution_h is not None else None,
+                "breached": bool(breached),
+            }
+
         return {
             "id": self.id, "user_id": self.user_id, "title": self.title,
             "category": self.category, "period": self.period,
@@ -133,7 +169,10 @@ class Task(db.Model):
             "checklist": cl,
             "checklist_done": cld,
             "project_status": self.project_status or "",
+            "manager_note": self.manager_note or "",
+            "assigned_by": self.assigned_by,
             "from_previous_month": from_previous_month,
+            "sla": sla,
         }
 
 
@@ -273,6 +312,39 @@ class BoardComment(db.Model):
         }
 
 
+class AuditLog(db.Model):
+    """v4.4 — Denetim kaydı. Kim, ne zaman, ne yaptı."""
+    __tablename__ = "audit_logs"
+    id             = db.Column(db.Integer, primary_key=True)
+    actor_id       = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    actor_name     = db.Column(db.String(150), default="")  # snapshot (kullanıcı silinirse korunur)
+    action         = db.Column(db.String(60), nullable=False)   # task.create, task.update, task.delete, task.assign, task.manager_note, user.invite, user.update, user.delete, user.permission
+    entity_type    = db.Column(db.String(40), default="")        # task / user / invitation / firm / team
+    entity_id      = db.Column(db.Integer, nullable=True)
+    target_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    target_name    = db.Column(db.String(150), default="")
+    firm           = db.Column(db.String(50), default="")
+    summary        = db.Column(db.String(500), default="")        # kısa insan-okunabilir özet
+    details        = db.Column(db.Text, default="")               # JSON string — ek detaylar
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "actor_id": self.actor_id,
+            "actor_name": self.actor_name or "",
+            "action": self.action,
+            "entity_type": self.entity_type or "",
+            "entity_id": self.entity_id,
+            "target_user_id": self.target_user_id,
+            "target_name": self.target_name or "",
+            "firm": self.firm or "",
+            "summary": self.summary or "",
+            "details": self.details or "",
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 def init_db():
     import os
     from sqlalchemy import inspect, text
@@ -294,6 +366,20 @@ def init_db():
         db.session.execute(text("UPDATE tasks SET priority = 'orta' WHERE priority IS NULL OR priority = ''"))
         db.session.commit()
         print("✅ Migration: priority sütunu eklendi")
+
+    # Migration: v4.3 — manager_note sütunu ekle
+    cols = [c["name"] for c in inspector.get_columns("tasks")]
+    if "manager_note" not in cols:
+        db.session.execute(text("ALTER TABLE tasks ADD COLUMN manager_note TEXT DEFAULT ''"))
+        db.session.commit()
+        print("Migration: manager_note sutunu eklendi")
+
+    # Migration: v4.3 — assigned_by sütunu ekle
+    cols = [c["name"] for c in inspector.get_columns("tasks")]
+    if "assigned_by" not in cols:
+        db.session.execute(text("ALTER TABLE tasks ADD COLUMN assigned_by INTEGER"))
+        db.session.commit()
+        print("Migration: assigned_by sutunu eklendi")
 
     # Migration: permission_level sütunu ekle
     user_cols = [c["name"] for c in inspector.get_columns("users")]

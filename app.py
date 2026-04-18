@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from functools import wraps
 from datetime import datetime, date, timedelta
 import json as _json
-from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, BoardCard, BoardComment, init_db, _next_due_date
+from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, BoardCard, BoardComment, AuditLog, init_db, _next_due_date, SLA_HOURS, _sla_target_hours
 from services.report import generate_monthly_pdf
 from services.mailer import send_report_email, send_invite_email
 from services.storage import save_backup_file
@@ -71,6 +71,16 @@ def manager_required(f):
         return f(*args, **kwargs)
     return login_required(dec)
 
+def director_required(f):
+    """IT Müdürü veya Super Admin gerektirir (firma bazlı geniş erişim)"""
+    @wraps(f)
+    def dec(*args, **kwargs):
+        user = db.session.get(User, session.get("user_id"))
+        if not user or not user.is_director_or_above:
+            return jsonify({"error": "Yetkisiz"}), 403
+        return f(*args, **kwargs)
+    return login_required(dec)
+
 def super_admin_required(f):
     """Sadece Super Admin gerektirir"""
     @wraps(f)
@@ -94,6 +104,48 @@ def board_access_required(f):
 def _current_user():
     """Yardımcı: mevcut kullanıcıyı döndürür"""
     return db.session.get(User, session.get("user_id"))
+
+def log_audit(actor, action, *, entity_type="", entity_id=None,
+              target_user=None, firm="", summary="", details=None):
+    """v4.4 — denetim kaydı oluşturur. Hata fırlatmaz; log sessizce atılır.
+    commit yapılmaz — çağıran yerin db.session.commit() ile birlikte kaydeder."""
+    try:
+        entry = AuditLog(
+            actor_id=actor.id if actor else None,
+            actor_name=(actor.full_name if actor else "") or (actor.username if actor else ""),
+            action=action,
+            entity_type=entity_type or "",
+            entity_id=entity_id,
+            target_user_id=target_user.id if target_user else None,
+            target_name=(target_user.full_name if target_user else "") or (target_user.username if target_user else ""),
+            firm=firm or (actor.firm if actor else ""),
+            summary=(summary or "")[:500],
+            details=_json.dumps(details) if details else "",
+        )
+        db.session.add(entry)
+    except Exception as e:
+        print(f"[audit] log hatası: {e}")
+
+def _resolve_scope_uid(me, requested_uid):
+    """
+    v4.2 — firma bazlı kapsam çözümleyici.
+    - requested_uid yoksa: kendi id'si
+    - requested_uid == kendi id'si: kendi id'si
+    - super_admin: herkesin id'sini kullanabilir
+    - it_director: yalnızca kendi firmasındaki aktif kullanıcıların id'si
+    - diğerleri: başka kullanıcı görüntüleyemez (kendi id'si)
+    Dönüş: (uid, error_tuple_or_None)
+    """
+    if not requested_uid or int(requested_uid) == me.id:
+        return me.id, None
+    target = db.session.get(User, int(requested_uid))
+    if not target or not target.active:
+        return None, (jsonify({"error": "Kullanıcı bulunamadı"}), 404)
+    if me.is_super_admin:
+        return target.id, None
+    if me.permission_level == "it_director" and target.firm == me.firm:
+        return target.id, None
+    return None, (jsonify({"error": "Bu kullanıcının verilerine erişim yetkiniz yok"}), 403)
 
 @app.route("/")
 @login_required
@@ -197,14 +249,14 @@ def auth_callback():
         role = inv.role if inv else "IT Sorumlusu"
         firm = inv.firm if inv else ""
         # Permission level: role_label'dan türet
-        perm_map = {"Super Admin": "super_admin", "IT Yöneticisi": "it_manager", "IT Specialist": "it_specialist", "Junior": "junior"}
+        perm_map = {"Super Admin": "super_admin", "IT Müdürü": "it_director", "IT Yöneticisi": "it_manager", "IT Specialist": "it_specialist", "Junior": "junior"}
         perm = perm_map.get(role, "junior")
         user = User(
             username=email.split("@")[0].lower(),
             full_name=name, email=email,
             o365_id=o365_id, role=role, firm=firm,
             permission_level=perm,
-            is_admin=perm in ("super_admin", "it_manager")
+            is_admin=perm in ("super_admin", "it_director", "it_manager")
         )
         user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)
@@ -222,11 +274,32 @@ def auth_callback():
     session.pop("invite_token", None)
     return redirect(url_for("dashboard"))
 
+# ── FIRM USERS (v4.2 — director+) ──
+@app.route("/api/firm/users")
+@login_required
+def firm_users():
+    """Director+ için firma bazlı kullanıcı listesi (dashboard dropdown)."""
+    me = _current_user()
+    if not me:
+        return jsonify({"error": "Unauthorized"}), 401
+    # Sadece director+ bu listeyi çeker; diğerleri sadece kendilerini görür
+    if me.is_super_admin:
+        q = User.query.filter_by(active=True).order_by(User.full_name)
+    elif me.permission_level == "it_director":
+        q = User.query.filter_by(active=True, firm=me.firm).order_by(User.full_name)
+    else:
+        return jsonify([{"id": me.id, "full_name": me.full_name, "firm": me.firm}])
+    return jsonify([{"id": u.id, "full_name": u.full_name, "firm": u.firm,
+                     "role": u.role, "permission_level": u.permission_level}
+                    for u in q.all()])
+
 # ── TASKS ──
 @app.route("/api/tasks", methods=["GET"])
 @login_required
 def get_tasks():
-    uid   = session["user_id"]
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err: return err
     month = request.args.get("month", date.today().month, type=int)
     year  = request.args.get("year",  date.today().year,  type=int)
     firm_filter     = request.args.get("firm")
@@ -286,8 +359,8 @@ def get_tasks():
 @login_required
 def create_task():
     # Junior sadece anlık görev oluşturabilir
-    user = _current_user()
-    if user and user.permission_level == "junior":
+    me = _current_user()
+    if me and me.permission_level == "junior":
         cat = (request.form if request.content_type and "multipart" in request.content_type else request.get_json() or {}).get("category", "other")
         if cat in ("routine", "project", "backup"):
             return jsonify({"error": "Bu görev türünü oluşturma yetkiniz yok"}), 403
@@ -295,6 +368,12 @@ def create_task():
         data = request.form; backup_file = request.files.get("backup_file")
     else:
         data = request.get_json(); backup_file = None
+    # v4.3 — atama: director+ başka kullanıcıya görev oluşturabilir
+    target_uid, err = _resolve_scope_uid(me, data.get("user_id"))
+    if err: return err
+    assigned_by = me.id if target_uid != me.id else None
+    # manager_note yalnızca director+ tarafından atanabilir
+    manager_note = (data.get("manager_note", "") or "").strip() if me.is_director_or_above else ""
     category = data.get("category","other")
     priority = _normalize_priority(data.get("priority"))
     period   = data.get("period","Tek Seferlik")
@@ -309,25 +388,44 @@ def create_task():
     cl_raw = data.get("checklist", "[]")
     if isinstance(cl_raw, list): cl_raw = _json.dumps(cl_raw)
     cl_items = _json.loads(cl_raw) if isinstance(cl_raw, str) else []
-    task = Task(user_id=session["user_id"], title=data["title"], category=category,
+    task = Task(user_id=target_uid, title=data["title"], category=category,
                 priority=priority,
                 period=period, firm=data.get("firm",""), team=data.get("team",""),
                 notes=data.get("notes",""), deadline=deadline, next_due=next_due,
                 checklist=_json.dumps(cl_items),
-                checklist_done=_json.dumps([False]*len(cl_items)))
+                checklist_done=_json.dumps([False]*len(cl_items)),
+                manager_note=manager_note,
+                assigned_by=assigned_by)
     db.session.add(task); db.session.flush()
     if backup_file and backup_file.filename:
-        fp = save_backup_file(backup_file, task.id, session["user_id"])
-        db.session.add(ConfigBackup(task_id=task.id, user_id=session["user_id"],
+        fp = save_backup_file(backup_file, task.id, target_uid)
+        db.session.add(ConfigBackup(task_id=task.id, user_id=target_uid,
             filename=backup_file.filename, file_path=fp, device=data.get("backup_device",""),
             file_size=os.path.getsize(fp)))
+    # v4.4 — audit log
+    target = db.session.get(User, target_uid)
+    if assigned_by:
+        log_audit(me, "task.assign", entity_type="task", entity_id=task.id,
+                  target_user=target, firm=task.firm,
+                  summary=f"'{task.title}' görevi {target.full_name if target else '?'} kişisine atandı",
+                  details={"title": task.title, "category": task.category, "manager_note": bool(manager_note)})
+    else:
+        log_audit(me, "task.create", entity_type="task", entity_id=task.id,
+                  firm=task.firm,
+                  summary=f"'{task.title}' görevi oluşturuldu ({task.category})")
     db.session.commit()
     return jsonify(task.to_dict()), 201
 
 @app.route("/api/tasks/<int:task_id>", methods=["PATCH"])
 @login_required
 def update_task(task_id):
-    task = Task.query.filter_by(id=task_id, user_id=session["user_id"]).first_or_404()
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    # Sahibi veya director+ (firma bazlı) düzenleyebilir
+    if task.user_id != me.id:
+        owner = db.session.get(User, task.user_id)
+        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+            return jsonify({"error": "Bu görevi düzenleme yetkiniz yok"}), 403
     data = request.get_json()
     if "is_done" in data:
         if task.category == "routine" and task.period != "Tek Seferlik":
@@ -364,6 +462,29 @@ def update_task(task_id):
         cld = data["checklist_done"] if isinstance(data["checklist_done"], list) else _json.loads(data["checklist_done"])
         task.checklist_done = _json.dumps(cld)
     if "project_status" in data: task.project_status = data["project_status"]
+    # v4.3 — manager_note sadece director+ tarafından düzenlenebilir
+    mn_changed = False
+    old_manager_note = task.manager_note or ""
+    if "manager_note" in data and me.is_director_or_above:
+        new_mn = data["manager_note"] or ""
+        if new_mn != old_manager_note:
+            task.manager_note = new_mn
+            mn_changed = True
+    # v4.4 — audit log (manager_note değişimi + tamamlama)
+    owner = db.session.get(User, task.user_id)
+    if mn_changed:
+        log_audit(me, "task.manager_note", entity_type="task", entity_id=task.id,
+                  target_user=owner, firm=task.firm,
+                  summary=f"'{task.title}' görevine IT Müdürü notu {'eklendi/güncellendi' if task.manager_note else 'silindi'}",
+                  details={"before": old_manager_note, "after": task.manager_note})
+    if "is_done" in data:
+        log_audit(me, "task.complete" if data["is_done"] else "task.reopen",
+                  entity_type="task", entity_id=task.id, target_user=owner, firm=task.firm,
+                  summary=f"'{task.title}' görevi {'tamamlandı' if data['is_done'] else 'yeniden açıldı'}")
+    elif me.id != task.user_id:  # başka biri düzenliyorsa (director+)
+        log_audit(me, "task.update", entity_type="task", entity_id=task.id,
+                  target_user=owner, firm=task.firm,
+                  summary=f"'{task.title}' görevi güncellendi")
     db.session.commit()
     month_val = data.get("month", date.today().month)
     year_val  = data.get("year",  date.today().year)
@@ -372,7 +493,15 @@ def update_task(task_id):
 @app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
 @login_required
 def delete_task(task_id):
-    task = Task.query.filter_by(id=task_id, user_id=session["user_id"]).first_or_404()
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    owner = db.session.get(User, task.user_id)
+    if task.user_id != me.id:
+        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+            return jsonify({"error": "Bu görevi silme yetkiniz yok"}), 403
+    log_audit(me, "task.delete", entity_type="task", entity_id=task.id,
+              target_user=owner, firm=task.firm,
+              summary=f"'{task.title}' görevi silindi")
     db.session.delete(task); db.session.commit(); return jsonify({"ok":True})
 
 # ── CONFIG BACKUP ──
@@ -432,7 +561,9 @@ def add_task_backup(task_id):
 @app.route("/api/stats")
 @login_required
 def stats():
-    uid   = session["user_id"]
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err: return err
     month = request.args.get("month", date.today().month, type=int)
     year  = request.args.get("year",  date.today().year,  type=int)
 
@@ -474,6 +605,90 @@ def stats():
                     "by_category":by_cat,"by_team":by_team,"by_firm":by_firm,
                     "completion_rate":round(done/total*100,1) if total else 0})
 
+# ── v4.5 SLA STATS ──
+@app.route("/api/sla/stats")
+@login_required
+def sla_stats():
+    """v4.5 — Destek talepleri için SLA metrikleri.
+    Query: month, year, user_id (director+ için firma bazlı)"""
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err: return err
+    month = request.args.get("month", date.today().month, type=int)
+    year  = request.args.get("year",  date.today().year,  type=int)
+
+    # Destek görevleri — o ay içinde oluşturulanlar
+    q = Task.query.filter(
+        Task.user_id == uid,
+        Task.category == "support",
+        db.extract("month", Task.created_at) == month,
+        db.extract("year",  Task.created_at) == year,
+    )
+    tasks = q.all()
+    now = datetime.utcnow()
+
+    totals = {"total": 0, "open": 0, "resolved": 0, "breached": 0,
+              "resolved_on_time": 0, "avg_resolution_hours": 0.0}
+    by_priority = {}  # key: priority → dict
+    sum_resolution = 0.0
+    resolved_count = 0
+
+    for t in tasks:
+        prio = (t.priority or "orta").strip().lower()
+        target_h = _sla_target_hours(prio)
+        deadline_dt = t.created_at + timedelta(hours=target_h) if t.created_at else None
+        bucket = by_priority.setdefault(prio, {
+            "total": 0, "open": 0, "resolved": 0, "breached": 0,
+            "resolved_on_time": 0, "target_hours": target_h,
+            "avg_resolution_hours": 0.0, "_sum_resolution": 0.0, "_resolved_cnt": 0,
+        })
+        totals["total"] += 1
+        bucket["total"] += 1
+
+        if t.is_done and t.completed_at:
+            totals["resolved"] += 1
+            bucket["resolved"] += 1
+            res_h = (t.completed_at - t.created_at).total_seconds() / 3600.0
+            sum_resolution += res_h
+            resolved_count += 1
+            bucket["_sum_resolution"] += res_h
+            bucket["_resolved_cnt"] += 1
+            breached = bool(deadline_dt and t.completed_at > deadline_dt)
+            if breached:
+                totals["breached"] += 1
+                bucket["breached"] += 1
+            else:
+                totals["resolved_on_time"] += 1
+                bucket["resolved_on_time"] += 1
+        else:
+            totals["open"] += 1
+            bucket["open"] += 1
+            # Açık görev deadline geçtiyse breach sayılır
+            if deadline_dt and now > deadline_dt:
+                totals["breached"] += 1
+                bucket["breached"] += 1
+
+    # Ortalamaları hesapla
+    totals["avg_resolution_hours"] = round(sum_resolution / resolved_count, 2) if resolved_count else 0.0
+    # compliance_pct: resolved_on_time / total (açık breach'ler dahil değil, sadece kapanan işler üzerinden)
+    compliance_base = totals["resolved"]
+    totals["compliance_pct"] = round(totals["resolved_on_time"] / compliance_base * 100, 1) if compliance_base else 0.0
+
+    out_priority = {}
+    for p, b in by_priority.items():
+        b["avg_resolution_hours"] = round(b["_sum_resolution"] / b["_resolved_cnt"], 2) if b["_resolved_cnt"] else 0.0
+        base = b["resolved"]
+        b["compliance_pct"] = round(b["resolved_on_time"] / base * 100, 1) if base else 0.0
+        b.pop("_sum_resolution", None); b.pop("_resolved_cnt", None)
+        out_priority[p] = b
+
+    return jsonify({
+        **totals,
+        "by_priority": out_priority,
+        "sla_targets": SLA_HOURS,
+        "month": month, "year": year,
+    })
+
 # ── FIRMS & TEAMS ──
 @app.route("/api/firms")
 @login_required
@@ -509,22 +724,27 @@ def admin_update_user(uid):
     me = _current_user()
     target = User.query.get_or_404(uid)
     data = request.get_json()
-    # IT Yöneticisi super_admin'i düzenleyemez
-    if not me.is_super_admin and target.permission_level == "super_admin":
-        return jsonify({"error": "Super Admin kullanıcısını düzenleme yetkiniz yok"}), 403
+    # IT Yöneticisi super_admin veya IT Müdürü'nü düzenleyemez
+    if not me.is_super_admin and target.permission_level in ("super_admin", "it_director"):
+        return jsonify({"error": "Bu kullanıcıyı düzenleme yetkiniz yok"}), 403
     # permission_level güncellemesi
     if "permission_level" in data:
         new_level = data["permission_level"]
-        # IT Yöneticisi super_admin atayamaz
-        if not me.is_super_admin and new_level == "super_admin":
-            return jsonify({"error": "Super Admin rolü atama yetkiniz yok"}), 403
+        # IT Yöneticisi super_admin veya it_director atayamaz
+        if not me.is_super_admin and new_level in ("super_admin", "it_director"):
+            return jsonify({"error": "Bu rolü atama yetkiniz yok"}), 403
         target.permission_level = new_level
-        target.is_admin = new_level in ("super_admin", "it_manager")
+        target.is_admin = new_level in ("super_admin", "it_director", "it_manager")
     # can_access_board — sadece super_admin ayarlayabilir
     if "can_access_board" in data and me.is_super_admin:
         target.can_access_board = bool(data["can_access_board"])
     for f in ("role", "firm", "active"):
         if f in data: setattr(target, f, data[f])
+    # v4.4 — audit
+    log_audit(me, "user.update", entity_type="user", entity_id=target.id,
+              target_user=target, firm=target.firm,
+              summary=f"{target.full_name} kullanıcı bilgileri güncellendi",
+              details={k: data.get(k) for k in ("permission_level","role","firm","active","can_access_board") if k in data})
     db.session.commit(); return jsonify(target.to_dict())
 
 @app.route("/api/admin/users/<int:uid>", methods=["DELETE"])
@@ -532,9 +752,12 @@ def admin_update_user(uid):
 def admin_delete_user(uid):
     me = _current_user()
     target = User.query.get_or_404(uid)
-    # IT Yöneticisi super_admin silemez
-    if not me.is_super_admin and target.permission_level == "super_admin":
-        return jsonify({"error": "Super Admin kullanıcısını silme yetkiniz yok"}), 403
+    # IT Yöneticisi super_admin veya IT Müdürü silemez
+    if not me.is_super_admin and target.permission_level in ("super_admin", "it_director"):
+        return jsonify({"error": "Bu kullanıcıyı silme yetkiniz yok"}), 403
+    log_audit(me, "user.delete", entity_type="user", entity_id=target.id,
+              target_user=target, firm=target.firm,
+              summary=f"{target.full_name} kullanıcı silindi")
     db.session.delete(target); db.session.commit(); return jsonify({"ok":True})
 
 # ── INVITE ──
@@ -546,15 +769,20 @@ def invite_user():
     if not email: return jsonify({"error":"Mail boş"}),400
     if User.query.filter_by(email=email).first(): return jsonify({"error":"Kayıtlı"}),409
     perm = data.get("permission_level", "junior")
-    # IT Yöneticisi super_admin davet edemez
-    if not me.is_super_admin and perm == "super_admin":
-        return jsonify({"error": "Super Admin davet etme yetkiniz yok"}), 403
+    # IT Yöneticisi super_admin veya it_director davet edemez
+    if not me.is_super_admin and perm in ("super_admin", "it_director"):
+        return jsonify({"error": "Bu rolü davet etme yetkiniz yok"}), 403
     Invitation.query.filter_by(email=email,used=False).delete()
     token=secrets.token_urlsafe(32)
-    role_label = {"super_admin": "Super Admin", "it_manager": "IT Yöneticisi", "it_specialist": "IT Specialist", "junior": "Junior"}.get(perm, "Junior")
+    role_label = {"super_admin": "Super Admin", "it_director": "IT Müdürü", "it_manager": "IT Yöneticisi", "it_specialist": "IT Specialist", "junior": "Junior"}.get(perm, "Junior")
     inv=Invitation(email=email,full_name=data.get("full_name",""),role=role_label,
                    firm=data.get("firm",""),token=token,expires_at=datetime.utcnow()+timedelta(days=7),invited_by=session["user_id"])
-    db.session.add(inv); db.session.commit()
+    db.session.add(inv); db.session.flush()
+    log_audit(me, "user.invite", entity_type="invitation", entity_id=inv.id,
+              firm=inv.firm,
+              summary=f"{email} adresine {role_label} rolü için davet gönderildi",
+              details={"email": email, "role": role_label, "firm": inv.firm})
+    db.session.commit()
     url=f"{request.host_url}register?token={token}"
     result=send_invite_email(email,data.get("full_name",""),url,role_label)
     return jsonify({"ok":result.get("ok"),"invite_url":url,"permission_level":perm})
@@ -597,7 +825,11 @@ def register():
 @app.route("/api/report/pdf")
 @manager_required
 def download_report():
-    user=db.session.get(User, session["user_id"]); month=request.args.get("month",date.today().month,type=int); year=request.args.get("year",date.today().year,type=int)
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err: return err
+    user = db.session.get(User, uid)
+    month=request.args.get("month",date.today().month,type=int); year=request.args.get("year",date.today().year,type=int)
     tasks=Task.query.filter(Task.user_id==user.id,db.extract("month",Task.created_at)==month,db.extract("year",Task.created_at)==year).all()
     pdf=generate_monthly_pdf(user,tasks,month,year)
     resp = send_file(pdf, mimetype="application/pdf", as_attachment=False,
@@ -608,7 +840,11 @@ def download_report():
 @app.route("/api/report/send", methods=["POST"])
 @manager_required
 def send_report():
-    user=db.session.get(User, session["user_id"]); data=request.get_json() or {}
+    me = _current_user()
+    data=request.get_json() or {}
+    uid, err = _resolve_scope_uid(me, data.get("user_id"))
+    if err: return err
+    user = db.session.get(User, uid)
     month=data.get("month",date.today().month); year=data.get("year",date.today().year)
     tasks=Task.query.filter(Task.user_id==user.id,db.extract("month",Task.created_at)==month,db.extract("year",Task.created_at)==year).all()
     pdf=generate_monthly_pdf(user,tasks,month,year)
@@ -617,6 +853,44 @@ def send_report():
 @app.route("/api/me")
 @login_required
 def me(): return jsonify(db.session.get(User, session["user_id"]).to_dict())
+
+# ── v4.4 AUDIT LOG ──
+@app.route("/api/audit")
+@director_required
+def list_audit():
+    """Denetim kayıtları — director+ için.
+    Query: start, end (YYYY-MM-DD); action; actor_id; target_user_id; firm; limit (max 500), offset"""
+    me = _current_user()
+    q = AuditLog.query
+    # Firma kapsamı: super_admin tümünü görür, director sadece kendi firmasını
+    if not me.is_super_admin:
+        q = q.filter(AuditLog.firm == (me.firm or ""))
+    # Tarih aralığı
+    start = request.args.get("start")
+    end   = request.args.get("end")
+    try:
+        if start:
+            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(start))
+        if end:
+            end_dt = datetime.fromisoformat(end) + timedelta(days=1)  # inclusive gün sonu
+            q = q.filter(AuditLog.created_at < end_dt)
+    except ValueError:
+        return jsonify({"error": "Geçersiz tarih formatı (YYYY-MM-DD bekleniyor)"}), 400
+    # Filtreler
+    action = request.args.get("action")
+    if action: q = q.filter(AuditLog.action == action)
+    actor_id = request.args.get("actor_id", type=int)
+    if actor_id: q = q.filter(AuditLog.actor_id == actor_id)
+    target_uid = request.args.get("target_user_id", type=int)
+    if target_uid: q = q.filter(AuditLog.target_user_id == target_uid)
+    firm = request.args.get("firm")
+    if firm and me.is_super_admin: q = q.filter(AuditLog.firm == firm)
+
+    limit  = min(request.args.get("limit", 200, type=int), 500)
+    offset = request.args.get("offset", 0, type=int)
+    total  = q.count()
+    rows   = q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+    return jsonify({"total": total, "rows": [r.to_dict() for r in rows]})
 
 @app.route("/api/me", methods=["PATCH"])
 @login_required

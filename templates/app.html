@@ -573,7 +573,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="logo-hex"></div>
       <div class="logo-text">IT//TRACKER</div>
     </div>
-    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v3.0</div>
+    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.5</div>
   </div>
 
   <div class="user-block">
@@ -598,6 +598,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <a class="nav-item" data-perm="board" onclick="showPage('board')"><span class="nav-icon">📋</span>Ortak Alan</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
     <a class="nav-item admin-item" data-perm="manager" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
+    <a class="nav-item admin-item" data-perm="director" onclick="showPage('audit')"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
     <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
   </nav>
 
@@ -630,6 +631,13 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Perşembe · 26 Şubat 2026 · Şubat ayında 3 gün kaldı</div>
     </div>
     <div class="topbar-right">
+      <!-- v4.2 — Director+ kullanıcı filtresi -->
+      <div id="firm-user-filter-wrap" style="display:none;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.5px">👥 GÖRÜNTÜLE</span>
+        <select id="firm-user-filter" class="form-control" style="width:auto;min-width:180px;height:34px;padding:4px 10px;font-size:12px" onchange="onFirmUserChange()">
+          <option value="">— Kendim —</option>
+        </select>
+      </div>
       <div class="notif-wrap" id="notif-wrap">
         <div class="notif-btn" onclick="toggleNotifDropdown()" title="Bildirimler">
           🔔
@@ -658,6 +666,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="kpi c-orange"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
     <div class="kpi c-purple"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
     <div class="kpi c-gold"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+  </div>
+
+  <!-- v4.5 — SLA (Destek Talepleri) -->
+  <div id="sla-kpi-row" class="kpi-row" style="grid-template-columns:repeat(4,1fr);display:none;margin-top:-8px;">
+    <div class="kpi c-teal"><div class="kpi-icon">🎯</div><div class="kpi-label">SLA Uyum</div><div class="kpi-value" id="sla-kpi-compliance" style="color:var(--accent)">—</div><div class="kpi-sub" id="sla-kpi-compliance-sub">Henüz veri yok</div></div>
+    <div class="kpi c-orange"><div class="kpi-icon">⚠️</div><div class="kpi-label">SLA İhlali</div><div class="kpi-value" id="sla-kpi-breached" style="color:var(--danger)">0</div><div class="kpi-sub" id="sla-kpi-breached-sub">—</div></div>
+    <div class="kpi c-purple"><div class="kpi-icon">⏱️</div><div class="kpi-label">Ort. Çözüm</div><div class="kpi-value" id="sla-kpi-avg" style="color:var(--accent3)">—</div><div class="kpi-sub" id="sla-kpi-avg-sub">Destek talepleri</div></div>
+    <div class="kpi c-green"><div class="kpi-icon">🎫</div><div class="kpi-label">Açık Ticket</div><div class="kpi-value" id="sla-kpi-open" style="color:var(--green)">0</div><div class="kpi-sub" id="sla-kpi-open-sub">—</div></div>
   </div>
 
   <div class="grid-3">
@@ -979,6 +995,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div><div class="page-title">Yeni <span>Görev</span> Ekle</div></div>
   </div>
   <div style="max-width:680px">
+    <!-- v4.3 — Atama modu bildirimi -->
+    <div id="assign-mode-banner" class="hidden" style="background:rgba(245,180,0,.08);border:1px solid rgba(245,180,0,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:12px">
+      <span style="font-size:18px">👤</span>
+      <div>
+        <div style="font-weight:700;color:var(--gold, #f5b400)">Atama Modu</div>
+        <div style="color:var(--text-muted);margin-top:2px">Bu görev <span id="assign-target-name" style="color:var(--text);font-weight:600">—</span> kişisine atanacak. "Kendim" moduna dönmek için üstteki dropdown'ı kullanın.</div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header"><div class="card-title">GÖREV BİLGİLERİ</div></div>
       <div class="card-body">
@@ -1068,6 +1092,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-group" style="margin-bottom:14px">
           <label>Notlar</label>
           <input class="form-control" id="new-notes" placeholder="Kısa not...">
+        </div>
+
+        <!-- v4.3 — IT Müdürü notu (kırmızı font, sadece director+) -->
+        <div class="form-group hidden" id="new-manager-note-group" style="margin-bottom:14px">
+          <label style="color:#ef4444;font-weight:700">🛡️ IT Müdürü Notu</label>
+          <textarea class="form-control" id="new-manager-note"
+            style="min-height:50px;color:#ef4444;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.05);font-weight:500"
+            placeholder="Kullanıcıya kırmızı renkte gösterilir (opsiyonel)"></textarea>
         </div>
 
         <!-- Checklist (rutin görevler için opsiyonel) -->
@@ -1216,6 +1248,92 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <span id="bk-count-label" style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">0 kayıt</span>
       </div>
       <div id="backup-list-body" style="padding:0 18px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── v4.4 DENETİM KAYITLARI ─── -->
+<div id="page-audit" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Denetim <span>Kayıtları</span></div>
+      <div class="page-sub">Kim, ne zaman, ne yaptı · <span id="audit-scope-hint">Firmanız için tüm işlemler</span></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-outline btn-sm" onclick="resetAuditFilters()">Sıfırla</button>
+      <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Yenile</button>
+    </div>
+  </div>
+
+  <!-- Filtreler -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">FİLTRELER</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Başlangıç Tarihi</label>
+          <input type="date" class="form-control" id="audit-start">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Bitiş Tarihi</label>
+          <input type="date" class="form-control" id="audit-end">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Aksiyon</label>
+          <select class="form-control" id="audit-action">
+            <option value="">Tümü</option>
+            <option value="task.create">Görev Oluşturma</option>
+            <option value="task.assign">Görev Atama</option>
+            <option value="task.update">Görev Güncelleme</option>
+            <option value="task.complete">Görev Tamamlama</option>
+            <option value="task.reopen">Görev Yeniden Açma</option>
+            <option value="task.manager_note">IT Müdürü Notu</option>
+            <option value="task.delete">Görev Silme</option>
+            <option value="user.invite">Kullanıcı Daveti</option>
+            <option value="user.update">Kullanıcı Güncelleme</option>
+            <option value="user.delete">Kullanıcı Silme</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Kullanıcı (hedef)</label>
+          <select class="form-control" id="audit-target-user">
+            <option value="">Tümü</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="setAuditRange('today')">Bugün</button>
+        <button class="btn btn-outline btn-sm" onclick="setAuditRange('7d')">Son 7 Gün</button>
+        <button class="btn btn-outline btn-sm" onclick="setAuditRange('30d')">Son 30 Gün</button>
+        <button class="btn btn-outline btn-sm" onclick="setAuditRange('month')">Bu Ay</button>
+        <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Uygula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tablo -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">KAYITLAR</div>
+      <div style="font-size:11px;color:var(--text-muted)" id="audit-count">—</div>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div style="overflow-x:auto">
+        <table class="data-table" id="audit-table" style="width:100%">
+          <thead>
+            <tr>
+              <th style="width:150px">Tarih</th>
+              <th style="width:130px">Aksiyon</th>
+              <th style="width:150px">Yapan</th>
+              <th style="width:150px">Hedef Kullanıcı</th>
+              <th>Özet</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody">
+            <tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px">Filtreleri seçip "Uygula"ya tıklayın…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1546,6 +1664,13 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <label>Notlar</label>
       <textarea class="form-control" id="edit-task-notes" style="min-height:60px"></textarea>
     </div>
+    <!-- v4.3 — IT Müdürü Notu (kırmızı font) — sadece director+ görür/düzenler -->
+    <div class="form-group hidden" id="edit-manager-note-group" style="margin-bottom:4px">
+      <label style="color:#ef4444;font-weight:700">🛡️ IT Müdürü Notu</label>
+      <textarea class="form-control" id="edit-task-manager-note"
+        style="min-height:50px;color:#ef4444;border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.05);font-weight:500"
+        placeholder="Bu not kullanıcıya kırmızı renkte gösterilir (yalnızca IT Müdürü düzenleyebilir)"></textarea>
+    </div>
     <div id="edit-priority-row" class="hidden" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="form-group" style="margin:0">
         <label>Öncelik (Destek)</label>
@@ -1626,6 +1751,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <option value="junior">Junior</option>
           <option value="it_specialist">IT Specialist</option>
           <option value="it_manager">IT Yöneticisi</option>
+          <option value="it_director">IT Müdürü</option>
           <option value="super_admin">Super Admin</option>
         </select>
       </div>
@@ -1665,7 +1791,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="form-group" style="margin-bottom:12px"><label>Ad Soyad</label><input class="form-control" id="inv-name" placeholder="Ahmet Yılmaz"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="inv-email" placeholder="ahmet@inventist.com"></div>
     <div class="form-row">
-      <div class="form-group"><label>Yetki Seviyesi</label><select class="form-control" id="inv-perm"><option value="junior">Junior</option><option value="it_specialist">IT Specialist</option><option value="it_manager">IT Yöneticisi</option></select></div>
+      <div class="form-group"><label>Yetki Seviyesi</label><select class="form-control" id="inv-perm"><option value="junior">Junior</option><option value="it_specialist">IT Specialist</option><option value="it_manager">IT Yöneticisi</option><option value="it_director">IT Müdürü</option></select></div>
       <div class="form-group"><label>Firma</label><select class="form-control" id="inv-firm"><option value="inventist">İnventist</option><option value="assos">Assos</option></select></div>
     </div>
     <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:4px;font-size:11px;color:var(--text-muted)">
@@ -1688,14 +1814,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
   let theme = null;
-  let logoText = 'İnventist & Assos · v3.0';
+  let logoText = 'İnventist & Assos · v4.5';
 
   if (f.includes('assos')) {
     theme = 'assos';
-    logoText = 'Assos Pharma · v3.0';
+    logoText = 'Assos Pharma · v4.5';
   } else if (f.includes('inventist')) {
     theme = 'inventist';
-    logoText = 'İnventist · v3.0';
+    logoText = 'İnventist · v4.5';
   }
 
   if (theme) {
@@ -1715,6 +1841,12 @@ function applyPermissions(level) {
   // Nav item görünürlüğü
   document.querySelectorAll('[data-perm="manager"]').forEach(el => {
     el.style.display = (level === 'junior') ? 'none' : '';
+  });
+
+  // v4.4 — director+ özel (audit vb.)
+  const isDirectorUp = (level === 'super_admin' || level === 'it_director');
+  document.querySelectorAll('[data-perm="director"]').forEach(el => {
+    el.style.display = isDirectorUp ? '' : 'none';
   });
 
   // Ortak Alan — can_access_board veya super_admin
@@ -1767,7 +1899,7 @@ function applyJuniorTaskRestrictions() {
   }
 }
 
-const PERM_LABELS = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
+const PERM_LABELS = {super_admin:'Super Admin', it_director:'IT Müdürü', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
 const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board'];
 
 // ══════════════════════════════════════════════════════════
@@ -1804,6 +1936,8 @@ const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config
 let tasks = [];       // API'den yüklenir
 let USERS = [];       // API'den yüklenir
 let currentUser = {}; // /api/me
+let selectedUserId = null; // v4.2 — director+ tarafından görüntülenen kullanıcı (null = kendim)
+let firmUsers = [];   // v4.2 — director+'in firmasındaki kullanıcılar
 
 // ══════════════════════════════════════════════════════════
 //  AUTH
@@ -1842,10 +1976,62 @@ async function loadApp() {
   } catch(e) { console.warn('Me yüklenemedi', e); }
 
   await loadFirmsFromDB();
+  await initFirmUserFilter(); // v4.2 — director+ için
   await loadTasks();
   setDateDisplay('topbar-date-day', 'topbar-date-full');
   renderDashboard();
   setTimeout(() => buildNotifications(), 400);
+}
+
+// ── v4.2: Director+ kullanıcı filtresi ──
+async function initFirmUserFilter() {
+  const level = currentUser.permission_level || 'junior';
+  if (level !== 'super_admin' && level !== 'it_director') return;
+  try {
+    const res = await fetch('/api/firm/users');
+    if (!res.ok) return;
+    firmUsers = await res.json();
+    const sel = document.getElementById('firm-user-filter');
+    const wrap = document.getElementById('firm-user-filter-wrap');
+    if (!sel || !wrap) return;
+    // Options: kendim + diğer kullanıcılar (kendisini ayrı kategori "kendim" olarak sunuyoruz)
+    const others = firmUsers.filter(u => u.id !== currentUser.id);
+    sel.innerHTML = '<option value="">— Kendim —</option>' +
+      others.map(u => `<option value="${u.id}">${u.full_name}${u.firm ? ' · '+u.firm : ''}</option>`).join('');
+    wrap.style.display = others.length ? 'flex' : 'none';
+    refreshAssignModeUI();
+  } catch(e) { console.warn('firm users yüklenemedi', e); }
+}
+
+async function onFirmUserChange() {
+  const val = document.getElementById('firm-user-filter').value;
+  selectedUserId = val ? parseInt(val) : null;
+  refreshAssignModeUI();
+  await loadTasks();
+  renderDashboard();
+  // Hangi sayfadaysak yeniden render et
+  const activePage = document.querySelector('.page-section.active');
+  if (activePage && activePage.id === 'page-tasks') renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
+}
+
+// v4.3 — Yeni görev sayfasında atama modu banner'ı + IT Müdürü notu alanı görünürlüğü
+function refreshAssignModeUI() {
+  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  const banner = document.getElementById('assign-mode-banner');
+  const target = document.getElementById('assign-target-name');
+  const mnGroup = document.getElementById('new-manager-note-group');
+  const assignTo = (isDirectorUp && selectedUserId && selectedUserId !== currentUser.id) ? selectedUserId : null;
+  if (banner) {
+    if (assignTo) {
+      const u = firmUsers.find(u => u.id === assignTo);
+      if (target) target.textContent = u ? u.full_name : '—';
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
+  }
+  // IT Müdürü notu alanı: her zaman director+'a görünür
+  if (mnGroup) mnGroup.classList.toggle('hidden', !isDirectorUp);
 }
 
 async function loadTasks(month, year) {
@@ -1853,12 +2039,117 @@ async function loadTasks(month, year) {
     const now = new Date();
     const m = month || now.getMonth() + 1;
     const y = year  || now.getFullYear();
-    // Tüm görevleri çek — ay filtresi olmadan (dashboard ve listeler için)
-    const res = await fetch('/api/tasks?month=' + m + '&year=' + y);
+    // v4.2 — director+ başka kullanıcıyı görüntülüyorsa user_id eklenir
+    const userParam = selectedUserId ? '&user_id=' + selectedUserId : '';
+    const res = await fetch('/api/tasks?month=' + m + '&year=' + y + userParam);
     const data = await res.json();
     // API alanlarını frontend formatına normalize et
     tasks = data.map(normalizeTask);
   } catch(e) { console.error('Görevler yüklenemedi:', e); tasks = []; }
+}
+
+// v4.2 — başka kullanıcının görevlerine yazma izni yok (yalnızca görüntüleme)
+function isReadOnlyScope() { return !!selectedUserId && selectedUserId !== currentUser.id; }
+
+// v4.3 — HTML escape (kırmızı not ve benzeri güvenli gösterim için)
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ══════════════════════════════════════════════════════════
+//  v4.4 — AUDIT LOG SAYFASI
+// ══════════════════════════════════════════════════════════
+const AUDIT_ACTION_LABELS = {
+  'task.create':'Görev Oluşturma', 'task.assign':'Görev Atama',
+  'task.update':'Görev Güncelleme','task.complete':'Görev Tamamlama',
+  'task.reopen':'Görev Yeniden Açma','task.manager_note':'IT Müdürü Notu',
+  'task.delete':'Görev Silme',
+  'user.invite':'Kullanıcı Daveti','user.update':'Kullanıcı Güncelleme','user.delete':'Kullanıcı Silme',
+};
+const AUDIT_ACTION_COLORS = {
+  'task.create':'var(--accent)','task.assign':'var(--gold, #f5b400)',
+  'task.update':'var(--accent3)','task.complete':'var(--green)',
+  'task.reopen':'var(--accent2)','task.manager_note':'#ef4444',
+  'task.delete':'var(--danger)',
+  'user.invite':'var(--accent)','user.update':'var(--accent3)','user.delete':'var(--danger)',
+};
+
+function initAuditPage() {
+  // Hedef kullanıcı dropdown'u firmUsers'tan doldur
+  const sel = document.getElementById('audit-target-user');
+  if (sel && firmUsers.length) {
+    sel.innerHTML = '<option value="">Tümü</option>' +
+      firmUsers.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+  }
+  // Varsayılan: son 30 gün
+  const start = document.getElementById('audit-start');
+  const end   = document.getElementById('audit-end');
+  if (start && !start.value && end && !end.value) setAuditRange('30d');
+  // Otomatik yükle
+  loadAuditLog();
+}
+
+function setAuditRange(kind) {
+  const now = new Date();
+  const end = now.toISOString().slice(0,10);
+  let start = end;
+  if (kind === '7d')  { const d = new Date(now); d.setDate(d.getDate()-6);  start = d.toISOString().slice(0,10); }
+  if (kind === '30d') { const d = new Date(now); d.setDate(d.getDate()-29); start = d.toISOString().slice(0,10); }
+  if (kind === 'month') { start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10); }
+  if (kind === 'today') { start = end; }
+  document.getElementById('audit-start').value = start;
+  document.getElementById('audit-end').value   = end;
+}
+
+function resetAuditFilters() {
+  document.getElementById('audit-start').value = '';
+  document.getElementById('audit-end').value   = '';
+  document.getElementById('audit-action').value = '';
+  document.getElementById('audit-target-user').value = '';
+  loadAuditLog();
+}
+
+async function loadAuditLog() {
+  const tbody = document.getElementById('audit-tbody');
+  const count = document.getElementById('audit-count');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px">Yükleniyor…</td></tr>';
+  const params = new URLSearchParams();
+  const s = document.getElementById('audit-start').value;
+  const e = document.getElementById('audit-end').value;
+  const a = document.getElementById('audit-action').value;
+  const t = document.getElementById('audit-target-user').value;
+  if (s) params.set('start', s);
+  if (e) params.set('end', e);
+  if (a) params.set('action', a);
+  if (t) params.set('target_user_id', t);
+  try {
+    const res = await fetch('/api/audit?' + params.toString());
+    if (!res.ok) throw new Error((await res.json()).error || 'API hatası');
+    const data = await res.json();
+    if (count) count.textContent = `${data.rows.length} / ${data.total} kayıt`;
+    if (!data.rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px">Bu filtrelerle kayıt bulunamadı.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.rows.map(r => {
+      const label = AUDIT_ACTION_LABELS[r.action] || r.action;
+      const color = AUDIT_ACTION_COLORS[r.action] || 'var(--text-muted)';
+      const dt = r.created_at ? new Date(r.created_at) : null;
+      const dtStr = dt ? dt.toLocaleString('tr-TR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      return `<tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted)">${dtStr}</td>
+        <td><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:${color};color:#fff;font-weight:600;white-space:nowrap">${escapeHtml(label)}</span></td>
+        <td style="font-size:12px">${escapeHtml(r.actor_name || '—')}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${escapeHtml(r.target_name || '—')}</td>
+        <td style="font-size:12px">${escapeHtml(r.summary || '')}</td>
+      </tr>`;
+    }).join('');
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--danger);font-size:12px">Hata: ${escapeHtml(err.message)}</td></tr>`;
+  }
 }
 
 // API to_dict() → frontend format dönüşümü
@@ -1883,8 +2174,11 @@ function normalizeTask(t) {
     checklist:           t.checklist || [],
     checklist_done:      t.checklist_done || [],
     project_status:      t.project_status || '',
+    manager_note:        t.manager_note || '',
+    assigned_by:         t.assigned_by || null,
     completed_at:        t.completed_at || null,
     from_previous_month: t.from_previous_month || false,
+    sla:                 t.sla || null,
   };
 }
 
@@ -1897,6 +2191,8 @@ function showPage(name) {
   if (level === 'junior' && !JUNIOR_ALLOWED_PAGES.includes(name)) return;
   // Board guard: can_access_board veya super_admin
   if (name === 'board' && !currentUser.can_access_board && level !== 'super_admin') return;
+  // v4.4 — Denetim sayfası yalnızca director+
+  if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
 
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
@@ -1907,7 +2203,8 @@ function showPage(name) {
   if (name==='dashboard') renderDashboard();
   if (name==='tasks')     { _ftCat = 'task'; loadTasks().then(() => { document.getElementById('tasks-cat-filter').value = 'task'; renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup')); }); }
   if (name==='projects')  { loadTasks().then(() => renderProjectsPage()); }
-  if (name==='add')       { applyJuniorTaskRestrictions(); onCatChange(); }
+  if (name==='add')       { applyJuniorTaskRestrictions(); onCatChange(); refreshAssignModeUI(); }
+  if (name==='audit')     { initAuditPage(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
   if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); }
@@ -1922,7 +2219,13 @@ function showPage(name) {
 function renderDashboard() {
   const now = new Date();
   const el = document.getElementById('dash-name');
-  if (el) el.textContent = (currentUser.full_name || '').split(' ')[0] || 'Hoş Geldiniz';
+  // v4.2 — başka kullanıcıyı görüntülüyorsak onun adını göster
+  let displayName = (currentUser.full_name || '').split(' ')[0] || 'Hoş Geldiniz';
+  if (selectedUserId) {
+    const u = firmUsers.find(u => u.id === selectedUserId);
+    if (u) displayName = `👁 ${u.full_name}`;
+  }
+  if (el) el.textContent = displayName;
 
   const total   = tasks.length;
   const done    = tasks.filter(t => t.done).length;
@@ -1944,6 +2247,53 @@ function renderDashboard() {
   renderDashUpcoming();
   renderBars();
   renderTeamBars();
+  // v4.5 — SLA KPI kartları
+  loadSlaKpi();
+}
+
+// v4.5 — SLA KPI kartlarını yükler
+async function loadSlaKpi() {
+  const row = document.getElementById('sla-kpi-row');
+  if (!row) return;
+  try {
+    const now = new Date();
+    const q = new URLSearchParams();
+    q.set('month', now.getMonth() + 1); q.set('year', now.getFullYear());
+    if (selectedUserId) q.set('user_id', selectedUserId);
+    const r = await fetch('/api/sla/stats?' + q.toString());
+    if (!r.ok) { row.style.display = 'none'; return; }
+    const s = await r.json();
+    if (!s.total) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    // Compliance
+    const comp = s.compliance_pct;
+    const compEl = document.getElementById('sla-kpi-compliance');
+    compEl.textContent = `%${comp}`;
+    compEl.style.color = comp >= 90 ? 'var(--green)' : comp >= 70 ? 'var(--gold)' : 'var(--danger)';
+    document.getElementById('sla-kpi-compliance-sub').textContent =
+      s.resolved ? `${s.resolved_on_time}/${s.resolved} zamanında` : 'Çözülen ticket yok';
+    // Breached
+    document.getElementById('sla-kpi-breached').textContent = s.breached;
+    document.getElementById('sla-kpi-breached-sub').textContent =
+      s.breached ? 'Müdahale gerek' : 'İhlal yok';
+    // Avg resolution
+    const avg = s.avg_resolution_hours;
+    const avgEl = document.getElementById('sla-kpi-avg');
+    if (avg > 0) {
+      avgEl.textContent = avg >= 24 ? `${Math.round(avg/24*10)/10}g` : `${Math.round(avg*10)/10}s`;
+    } else {
+      avgEl.textContent = '—';
+    }
+    document.getElementById('sla-kpi-avg-sub').textContent =
+      s.resolved ? `${s.resolved} ticket üzerinden` : 'Destek talepleri';
+    // Open
+    document.getElementById('sla-kpi-open').textContent = s.open;
+    document.getElementById('sla-kpi-open-sub').textContent =
+      `Toplam ${s.total} talep`;
+  } catch (e) {
+    console.warn('[sla] kpi yüklenemedi', e);
+    row.style.display = 'none';
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2070,6 +2420,31 @@ function priorityBadge(t) {
   const dot = p === 'yüksek' ? '⬤' : (p === 'düşük' ? '⬤' : '⬤');
   return ` <span class="prio-badge ${cls}" title="Öncelik">${dot} ${label}</span>`;
 }
+// v4.5 — SLA rozeti (destek talepleri için)
+function slaBadge(t) {
+  if (!t || t.cat !== 'support' || !t.sla) return '';
+  const s = t.sla;
+  const tgt = s.target_hours;
+  // Çözüldü
+  if (t.done && s.resolution_hours != null) {
+    const h = s.resolution_hours;
+    const label = h >= 24 ? `${Math.round(h/24*10)/10}g` : `${Math.round(h*10)/10}s`;
+    if (s.breached) {
+      return ` <span class="prio-badge high" title="SLA aşıldı (hedef ${tgt}s)">⚠ SLA ${label}</span>`;
+    }
+    return ` <span class="prio-badge low" title="SLA içinde çözüldü (hedef ${tgt}s)">✓ SLA ${label}</span>`;
+  }
+  // Açık görev
+  const rem = s.remaining_hours;
+  if (s.breached) {
+    const over = Math.abs(rem);
+    const label = over >= 24 ? `${Math.round(over/24*10)/10}g` : `${Math.round(over*10)/10}s`;
+    return ` <span class="prio-badge high" title="SLA aşıldı (hedef ${tgt}s)">⚠ SLA +${label}</span>`;
+  }
+  const label = rem >= 24 ? `${Math.round(rem/24*10)/10}g` : `${Math.round(rem*10)/10}s`;
+  const cls = rem < (tgt * 0.25) ? 'med' : 'low';
+  return ` <span class="prio-badge ${cls}" title="SLA kalan süre (hedef ${tgt}s)">⏱ SLA ${label}</span>`;
+}
 function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
@@ -2095,13 +2470,17 @@ function taskRow(t) {
   const lcStr = (t.cat === 'routine' && t.last_completed)
     ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">✓ Son: ${new Date(t.last_completed).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</div>`
     : '';
+  // v4.3 — IT Müdürü notu (kırmızı kutu)
+  const mnStr = (t.manager_note && t.manager_note.trim())
+    ? `<div style="margin-top:4px;padding:4px 8px;border-left:3px solid #ef4444;background:rgba(239,68,68,.08);font-size:10px;color:#ef4444;font-weight:600;border-radius:3px">🛡️ ${escapeHtml(t.manager_note)}</div>`
+    : '';
   return `
   <div class="task-item" id="ti-${t.id}">
     <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${t.title}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
-      ${clProgress}${lcStr}
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
+      ${clProgress}${lcStr}${mnStr}
     </div>
     ${dl}
     <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
@@ -2277,6 +2656,10 @@ async function addTask() {
   if (!firm)  { showToast('err','Firma seçmediniz'); return; }
   const cat = document.getElementById('new-cat').value;
   const backupFile = document.getElementById('backup-file').files[0];
+  // v4.3 — atama modu: director+ başka kullanıcıyı görüntülüyorsa görev ona atanır
+  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  const assignTo = (isDirectorUp && selectedUserId && selectedUserId !== currentUser.id) ? selectedUserId : null;
+  const mgrNote = isDirectorUp ? (document.getElementById('new-manager-note')?.value || '').trim() : '';
   let body, fetchOpts;
   if (cat === 'backup' && backupFile) {
     const fd = new FormData();
@@ -2289,6 +2672,8 @@ async function addTask() {
     fd.append('deadline', document.getElementById('new-deadline').value || '');
     fd.append('backup_file', backupFile);
     fd.append('backup_device', document.getElementById('backup-device')?.value || '');
+    if (assignTo) fd.append('user_id', assignTo);
+    if (mgrNote) fd.append('manager_note', mgrNote);
     fetchOpts = { method:'POST', body: fd };
   } else {
     const clItems = _getNewChecklistItems();
@@ -2301,6 +2686,8 @@ async function addTask() {
       checklist: clItems,
     };
     if (cat === 'support') body.priority = document.getElementById('new-priority')?.value || 'orta';
+    if (assignTo) body.user_id = assignTo;
+    if (mgrNote) body.manager_note = mgrNote;
     fetchOpts = { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) };
   }
   try {
@@ -2322,7 +2709,16 @@ async function addTask() {
     document.getElementById('checklist-items').innerHTML = '';
     document.getElementById('new-checklist-item').value = '';
     onCatChange();
-    showToast('ok', cat === 'backup' ? 'Config Backup kaydedildi ✓' : 'Görev eklendi ✓');
+    // Manager note alanını temizle
+    const mnInput = document.getElementById('new-manager-note');
+    if (mnInput) mnInput.value = '';
+    let okMsg;
+    if (cat === 'backup') okMsg = 'Config Backup kaydedildi ✓';
+    else if (assignTo) {
+      const u = firmUsers.find(u => u.id === assignTo);
+      okMsg = `✓ ${u ? u.full_name : 'Kullanıcı'} kişisine görev atandı`;
+    } else okMsg = 'Görev eklendi ✓';
+    showToast('ok', okMsg);
     showPage(cat === 'backup' ? 'backups' : 'tasks');
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
@@ -2400,8 +2796,8 @@ function renderUserStats() {
 
   // Yetki dağılımı
   const permCounts = {};
-  const permLabels = {super_admin:'Super Admin', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
-  const permColors = {super_admin:'var(--accent)', it_manager:'var(--accent3)', it_specialist:'var(--accent2)', junior:'var(--text-muted)'};
+  const permLabels = {super_admin:'Super Admin', it_director:'IT Müdürü', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
+  const permColors = {super_admin:'var(--accent)', it_director:'var(--accent-gold, #f5b400)', it_manager:'var(--accent3)', it_specialist:'var(--accent2)', junior:'var(--text-muted)'};
   USERS.forEach(u => { const p = u.permission_level || 'junior'; permCounts[p] = (permCounts[p]||0)+1; });
   const maxP = Math.max(...Object.values(permCounts), 1);
   document.getElementById('perm-dist-body').innerHTML = Object.entries(permCounts).map(([k,v]) =>
@@ -2420,7 +2816,7 @@ function renderInvitations() {
     return `<tr>
       <td style="font-size:12px">${inv.full_name || '—'}</td>
       <td style="font-size:11px;font-family:'IBM Plex Mono',monospace">${inv.email}</td>
-      <td>${permBadge(inv.role === 'Super Admin' ? 'super_admin' : inv.role === 'IT Yöneticisi' ? 'it_manager' : inv.role === 'IT Specialist' ? 'it_specialist' : 'junior')}</td>
+      <td>${permBadge(inv.role === 'Super Admin' ? 'super_admin' : inv.role === 'IT Müdürü' ? 'it_director' : inv.role === 'IT Yöneticisi' ? 'it_manager' : inv.role === 'IT Specialist' ? 'it_specialist' : 'junior')}</td>
       <td>${firmChip(inv.firm)}</td>
       <td style="font-size:11px">${expLabel}</td>
       <td style="display:flex;gap:6px">
@@ -2432,7 +2828,7 @@ function renderInvitations() {
 }
 
 function permBadge(level) {
-  const map = {super_admin:['Super Admin','var(--accent)'], it_manager:['IT Yöneticisi','var(--accent3)'], it_specialist:['IT Specialist','var(--accent2)'], junior:['Junior','var(--text-muted)']};
+  const map = {super_admin:['Super Admin','var(--accent)'], it_director:['IT Müdürü','var(--accent-gold, #f5b400)'], it_manager:['IT Yöneticisi','var(--accent3)'], it_specialist:['IT Specialist','var(--accent2)'], junior:['Junior','var(--text-muted)']};
   const [label, color] = map[level] || map.junior;
   return `<span style="font-size:10px;padding:2px 8px;border-radius:12px;border:1px solid ${color};color:${color};font-family:'IBM Plex Mono',monospace">${label}</span>`;
 }
@@ -2472,7 +2868,12 @@ async function cancelInvite(id) {
 // ══════════════════════════════════════════════════════════
 //  INVITE MODAL
 // ══════════════════════════════════════════════════════════
-function openInviteModal() { document.getElementById('invite-modal').classList.remove('hidden'); }
+function openInviteModal() {
+  // IT Müdürü seçeneği sadece Super Admin'e görünür
+  const dirOpt = document.querySelector('#inv-perm option[value="it_director"]');
+  if (dirOpt) dirOpt.style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
+  document.getElementById('invite-modal').classList.remove('hidden');
+}
 function closeModal() { document.getElementById('invite-modal').classList.add('hidden'); }
 async function sendInvite() {
   const name  = document.getElementById('inv-name').value.trim();
@@ -3000,6 +3401,24 @@ function openEditTask(id) {
   document.getElementById('edit-task-deadline').value = t.deadline || '';
   document.getElementById('edit-task-done').value     = t.done ? 'true' : 'false';
   document.getElementById('edit-task-notes').value    = t.notes || '';
+  // v4.3 — IT Müdürü notu alanı: director+ düzenleyebilir, diğerleri sadece görür
+  const mnGroup = document.getElementById('edit-manager-note-group');
+  const mnArea  = document.getElementById('edit-task-manager-note');
+  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  if (mnGroup && mnArea) {
+    mnArea.value = t.manager_note || '';
+    // director+ her zaman görür; diğer kullanıcılar sadece not varsa görür (salt okunur)
+    const hasNote = !!(t.manager_note && t.manager_note.trim());
+    if (isDirectorUp) {
+      mnGroup.classList.remove('hidden');
+      mnArea.readOnly = false;
+    } else if (hasNote) {
+      mnGroup.classList.remove('hidden');
+      mnArea.readOnly = true;
+    } else {
+      mnGroup.classList.add('hidden');
+    }
+  }
   const prRow = document.getElementById('edit-priority-row');
   if (prRow) prRow.classList.toggle('hidden', t.cat !== 'support');
   const prSel = document.getElementById('edit-task-priority');
@@ -3074,6 +3493,12 @@ async function saveEditTask() {
     notes:    document.getElementById('edit-task-notes').value,
   };
   if (body.category === 'support') body.priority = document.getElementById('edit-task-priority')?.value || 'orta';
+  // v4.3 — director+ ise manager_note gönder
+  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  if (isDirectorUp) {
+    const mn = document.getElementById('edit-task-manager-note');
+    if (mn) body.manager_note = mn.value || '';
+  }
   // Checklist verisi (rutin görevlerde)
   const clSection = document.getElementById('edit-checklist-section');
   if (clSection && !clSection.classList.contains('hidden')) {
@@ -3232,10 +3657,18 @@ function openEditUser(id) {
   document.getElementById('edit-user-firm').value     = u.firm      || '';
   document.getElementById('edit-user-status').value   = u.active ? 'active' : 'inactive';
 
-  // IT Yöneticisi super_admin seçeneğini göremez
+  // IT Yöneticisi super_admin ve IT Müdürü seçeneklerini göremez
   const permSel = document.getElementById('edit-user-perm');
   const saOpt = permSel.querySelector('option[value="super_admin"]');
-  if (saOpt) saOpt.style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
+  const dirOpt = permSel.querySelector('option[value="it_director"]');
+  const canAssignTop = (currentUser.permission_level === 'super_admin');
+  if (saOpt) saOpt.style.display = canAssignTop ? '' : 'none';
+  if (dirOpt) dirOpt.style.display = canAssignTop ? '' : 'none';
+  // IT Müdürü düzenleniyorsa ve ben SA değilsem modalı açma
+  if (u.permission_level === 'it_director' && !canAssignTop) {
+    showToast('err', 'IT Müdürü kullanıcısını düzenleme yetkiniz yok');
+    return;
+  }
   // Super Admin düzenleniyorsa ve ben SA değilsem modalı açma
   if (u.permission_level === 'super_admin' && currentUser.permission_level !== 'super_admin') {
     showToast('err', 'Super Admin kullanıcısını düzenleme yetkiniz yok');
@@ -3543,7 +3976,8 @@ async function onReportMonthChange() {
   const body = document.getElementById('report-stats-body');
   if (body) body.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--text-muted)">Yükleniyor...</div>';
   try {
-    const res = await fetch(`/api/tasks?month=${my.month}&year=${my.year}`);
+    const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
+    const res = await fetch(`/api/tasks?month=${my.month}&year=${my.year}${userParam}`);
     const taskList = await res.json();
     renderReportStats(taskList, my.month, my.year);
   } catch(e) {
@@ -3587,7 +4021,8 @@ function renderReportStats(taskList, month, year) {
 function previewReportPdf() {
   const my = _getSelectedMonthYear();
   if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
-  window.open(`/api/report/pdf?month=${my.month}&year=${my.year}`, '_blank');
+  const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
+  window.open(`/api/report/pdf?month=${my.month}&year=${my.year}${userParam}`, '_blank');
 }
 
 async function sendReportMail() {
@@ -3601,7 +4036,7 @@ async function sendReportMail() {
     const res  = await fetch('/api/report/send', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ month: my.month, year: my.year, cc: cc||null })
+      body: JSON.stringify({ month: my.month, year: my.year, cc: cc||null, user_id: selectedUserId || null })
     });
     const data = await res.json();
     if (data.ok) {

@@ -5,3 +5,14 @@ __pycache__/
 instance/
 .env
 *.db
+
+# Secrets - asla commitlenmemeli
+ms_cer_secret.txt
+*_secret.txt
+*.secret
+*.pem
+*.key
+
+# Claude Code worktrees ve local settings
+.claude/worktrees/
+.claude/settings.local.json
