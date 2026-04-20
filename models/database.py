@@ -20,6 +20,10 @@ class User(db.Model):
     o365_id          = db.Column(db.String(100), unique=True, nullable=True)
     password_hash    = db.Column(db.String(256), nullable=False)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+    # v4.6 — Bildirim tercihleri
+    notify_overdue      = db.Column(db.Boolean, default=True)   # 3+ gün geciken görevler
+    notify_sla_warning  = db.Column(db.Boolean, default=True)   # SLA %75 eşiğine yaklaşan destek talepleri
+    notify_daily_digest = db.Column(db.Boolean, default=True)   # günlük özet maili
     # v4.3 — Task'ta iki FK var (user_id sahip, assigned_by atayan). Sahip ilişkisini belirt.
     tasks            = db.relationship("Task", backref="user", lazy=True,
                                         foreign_keys="Task.user_id")
@@ -47,6 +51,9 @@ class User(db.Model):
                 "role":self.role,"firm":self.firm,"is_admin":self.is_admin,"active":self.active,
                 "permission_level":self.permission_level or "junior",
                 "can_access_board":bool(self.can_access_board),
+                "notify_overdue":bool(self.notify_overdue) if self.notify_overdue is not None else True,
+                "notify_sla_warning":bool(self.notify_sla_warning) if self.notify_sla_warning is not None else True,
+                "notify_daily_digest":bool(self.notify_daily_digest) if self.notify_daily_digest is not None else True,
                 "o365_linked":bool(self.o365_id),"created_at":self.created_at.isoformat()}
 
 import json as _json
@@ -97,6 +104,9 @@ class Task(db.Model):
     project_status = db.Column(db.Text, default="")   # Proje durum notu
     manager_note   = db.Column(db.Text, default="")   # v4.3 — IT Müdürü notu (kırmızı font)
     assigned_by    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # v4.3 — görevi atayan yönetici
+    # v4.6 — Bildirim/alarm
+    alarm_enabled  = db.Column(db.Boolean, default=True)   # bu görev için bildirim/alarm aktif mi
+    last_notified  = db.Column(db.DateTime, nullable=True) # son bildirim maili atılan zaman (anti-spam)
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     backups        = db.relationship("ConfigBackup", backref="task", lazy=True,
                                      cascade="all, delete-orphan")
@@ -177,6 +187,8 @@ class Task(db.Model):
             "assigned_by": self.assigned_by,
             "from_previous_month": from_previous_month,
             "sla": sla,
+            "alarm_enabled": bool(self.alarm_enabled) if self.alarm_enabled is not None else True,
+            "last_notified": self.last_notified.isoformat() if self.last_notified else None,
         }
 
 
@@ -385,6 +397,21 @@ def init_db():
         db.session.commit()
         print("Migration: assigned_by sutunu eklendi")
 
+    # Migration: v4.6 — alarm_enabled sütunu ekle
+    cols = [c["name"] for c in inspector.get_columns("tasks")]
+    if "alarm_enabled" not in cols:
+        db.session.execute(text("ALTER TABLE tasks ADD COLUMN alarm_enabled BOOLEAN DEFAULT 1"))
+        db.session.execute(text("UPDATE tasks SET alarm_enabled = 1 WHERE alarm_enabled IS NULL"))
+        db.session.commit()
+        print("Migration: alarm_enabled sutunu eklendi")
+
+    # Migration: v4.6 — last_notified sütunu ekle
+    cols = [c["name"] for c in inspector.get_columns("tasks")]
+    if "last_notified" not in cols:
+        db.session.execute(text("ALTER TABLE tasks ADD COLUMN last_notified DATETIME"))
+        db.session.commit()
+        print("Migration: last_notified sutunu eklendi")
+
     # Migration: permission_level sütunu ekle
     user_cols = [c["name"] for c in inspector.get_columns("users")]
     if "permission_level" not in user_cols:
@@ -408,6 +435,15 @@ def init_db():
         db.session.execute(text("UPDATE users SET can_access_board = 1 WHERE permission_level = 'super_admin'"))
         db.session.commit()
         print("Migration: can_access_board sutunu eklendi")
+
+    # Migration: v4.6 — bildirim tercihleri
+    user_cols = [c["name"] for c in inspector.get_columns("users")]
+    for col_name in ("notify_overdue", "notify_sla_warning", "notify_daily_digest"):
+        if col_name not in user_cols:
+            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} BOOLEAN DEFAULT 1"))
+            db.session.execute(text(f"UPDATE users SET {col_name} = 1 WHERE {col_name} IS NULL"))
+            db.session.commit()
+            print(f"Migration: {col_name} sutunu eklendi")
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v4.5</title>
+<title>IT//TRACKER · v4.7</title>
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#00e5c0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -525,6 +525,26 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .cal-task-chip.done     { background:rgba(52,208,88,.08);  color:var(--green);   border-left-color:var(--green); text-decoration:line-through; opacity:.55; }
 .cal-more { font-size:9px; color:var(--text-dim); padding:1px 5px; cursor:default; font-family:'IBM Plex Mono',monospace; }
 .cal-cell.has-tasks { cursor:default; }
+
+/* v4.7 — KPI trend göstergesi */
+.kpi-trend { display:inline-flex; align-items:center; gap:2px; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:6px; font-family:'IBM Plex Mono',monospace; }
+.kpi-trend.up   { color:#34d058; background:rgba(52,208,88,.12); }
+.kpi-trend.down { color:#f85149; background:rgba(248,81,73,.12); }
+.kpi-trend.flat { color:var(--text-muted); background:var(--surface3); }
+
+/* v4.7 — Mobil responsive */
+@media (max-width: 1100px) {
+  .kpi-row { grid-template-columns:repeat(3,1fr); }
+  .grid-3, .grid-3r, .grid-2 { grid-template-columns:1fr !important; }
+  #sla-kpi-row { grid-template-columns:repeat(2,1fr) !important; }
+}
+@media (max-width: 720px) {
+  .kpi-row { grid-template-columns:repeat(2,1fr); gap:10px; }
+  #sla-kpi-row { grid-template-columns:repeat(2,1fr) !important; }
+  .kpi-value { font-size:24px; }
+  .chart-wrap { flex-direction:column; align-items:center; gap:12px; }
+  .btn-new-task { font-size:11px; padding:6px 10px; }
+}
 </style>
 </head>
 <body>
@@ -573,7 +593,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="logo-hex"></div>
       <div class="logo-text">IT//TRACKER</div>
     </div>
-    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.5</div>
+    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.7</div>
   </div>
 
   <div class="user-block">
@@ -600,6 +620,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <a class="nav-item admin-item" data-perm="manager" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
     <a class="nav-item admin-item" data-perm="director" onclick="showPage('audit')"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
     <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
+    <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
+    <a class="nav-item" data-perm="manager" onclick="showPage('notifications')"><span class="nav-icon">🔔</span>Bildirimler</a>
   </nav>
 
   <div class="sidebar-footer">
@@ -627,8 +649,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div id="page-dashboard" class="page-section active">
   <div class="topbar">
     <div>
-      <div class="page-title">Günaydın, <span id="dash-name">Levent</span> 👋</div>
-      <div class="page-sub">Perşembe · 26 Şubat 2026 · Şubat ayında 3 gün kaldı</div>
+      <div class="page-title"><span id="dash-greeting">Günaydın</span>, <span id="dash-name">Levent</span> 👋</div>
+      <div class="page-sub" id="dash-subtitle">—</div>
     </div>
     <div class="topbar-right">
       <!-- v4.2 — Director+ kullanıcı filtresi -->
@@ -678,7 +700,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
   <div class="grid-3">
     <!-- TODAY TASKS -->
-    <div class="card">
+    <div class="card" style="display:flex;flex-direction:column">
       <div class="card-header">
         <div class="card-title">BUGÜNÜN GÖREVLERİ</div>
         <div class="tabs" style="border:none;margin:0">
@@ -687,48 +709,21 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div class="tab" id="tab-done" onclick="filterTasks('done')">Bitti</div>
         </div>
       </div>
-      <div class="card-body" style="padding-top:6px" id="task-list-body"></div>
+      <div class="card-body" style="padding-top:6px;display:flex;flex-direction:column;flex:1;min-height:0" id="task-list-body"></div>
     </div>
 
     <!-- RIGHT COLUMN -->
     <div style="display:flex;flex-direction:column;gap:18px">
-      <!-- PIE CHART -->
+      <!-- PIE CHART (v4.7 — dinamik) -->
       <div class="card">
         <div class="card-header"><div class="card-title">KATEGORİ DAĞILIMI</div></div>
-        <div class="card-body">
-          <div class="chart-wrap">
-            <svg width="130" height="130" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3.4"/>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent)" stroke-width="3.4" stroke-dasharray="38 62" stroke-dashoffset="25" transform="rotate(-90 18 18)"/>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent3)" stroke-width="3.4" stroke-dasharray="25 75" stroke-dashoffset="-13" transform="rotate(-90 18 18)"/>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--accent2)" stroke-width="3.4" stroke-dasharray="20 80" stroke-dashoffset="-38" transform="rotate(-90 18 18)"/>
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--gold)" stroke-width="3.4" stroke-dasharray="17 83" stroke-dashoffset="-58" transform="rotate(-90 18 18)"/>
-              <text x="18" y="19" text-anchor="middle" fill="var(--text)" font-size="5.5" font-family="IBM Plex Mono" font-weight="700">71%</text>
-              <text x="18" y="22.5" text-anchor="middle" fill="var(--text-muted)" font-size="3">tamamlandı</text>
-            </svg>
-            <div class="chart-legend">
-              <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Rutin (38%)</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div>Destek (25%)</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Altyapı (20%)</div>
-              <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Backup (17%)</div>
-            </div>
-          </div>
-        </div>
+        <div class="card-body" id="dash-pie-wrap"></div>
       </div>
 
-      <!-- FIRMA DAĞILIMI -->
+      <!-- FIRMA DAĞILIMI (v4.7 — dinamik) -->
       <div class="card">
         <div class="card-header"><div class="card-title">FİRMA DAĞILIMI</div></div>
-        <div class="card-body">
-          <div class="progress-wrap">
-            <div class="progress-label"><span>İnventist</span><span style="color:var(--accent)">16 görev</span></div>
-            <div class="progress-bar"><div class="progress-fill" style="width:67%;background:var(--accent)"></div></div>
-          </div>
-          <div class="progress-wrap">
-            <div class="progress-label"><span>Assos</span><span style="color:var(--gold)">8 görev</span></div>
-            <div class="progress-bar"><div class="progress-fill" style="width:33%;background:var(--gold)"></div></div>
-          </div>
-        </div>
+        <div class="card-body" id="dash-firm-bars"></div>
       </div>
 
       <!-- YAKLAŞAN RUTİN GÖREVLER -->
@@ -1504,6 +1499,58 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <button class="btn btn-primary btn-sm" onclick="showToast('ok','Backup ayarları kaydedildi')">Kaydet</button>
       </div>
     </div>
+
+  </div>
+</div>
+
+<!-- ═══════ BİLDİRİMLER (v4.6) ═══════ -->
+<div id="page-notifications" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title"><span>Bildirimler</span></div>
+      <div class="page-sub">Her gün 09:00 (UTC) özet maili gönderilir · Uyarı tercihlerinizi ve test mailini buradan yönetin</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1100px">
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">TERCİHLER</div></div>
+      <div class="card-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+          Hangi durumlarda mail almak istediğinizi seçin. Tüm seçenekler varsayılan olarak açıktır.
+        </div>
+        <label class="alarm-toggle" style="margin-bottom:12px;">
+          <input type="checkbox" id="notify-overdue" style="margin-right:8px;">
+          <span><b>3+ gün geciken görevler</b><br><span style="color:var(--text-muted);font-size:10px">Deadline'ı veya oluşturulma tarihi 3 günü geçen, tamamlanmamış görevler</span></span>
+        </label>
+        <label class="alarm-toggle" style="margin-bottom:12px;">
+          <input type="checkbox" id="notify-sla-warning" style="margin-right:8px;">
+          <span><b>SLA uyarıları</b><br><span style="color:var(--text-muted);font-size:10px">Destek taleplerinde kalan süre ≤ %25'e düştüğünde veya aşıldığında</span></span>
+        </label>
+        <label class="alarm-toggle" style="margin-bottom:18px;">
+          <input type="checkbox" id="notify-daily-digest" style="margin-right:8px;">
+          <span><b>Günlük özet maili</b><br><span style="color:var(--text-muted);font-size:10px">Yukarıdaki uyarıların günde bir defa toplu e-posta olarak iletilmesi</span></span>
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="saveNotificationSettings()">Kaydet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">TEST & KAPSAM</div></div>
+      <div class="card-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+          Şu an kaç göreviniz bildirim eşiğinde? Test maili atarak kendinize deneme yapabilirsiniz.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-outline btn-sm" onclick="previewNotifications()">👁 Kapsamı Göster</button>
+          <button class="btn btn-primary btn-sm" onclick="runNotificationTest()">🔔 Test Mailini Gönder</button>
+        </div>
+        <div id="notify-preview" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:11px;color:var(--text-muted);max-height:320px;overflow:auto;line-height:1.6"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1814,14 +1861,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
   let theme = null;
-  let logoText = 'İnventist & Assos · v4.5';
+  let logoText = 'İnventist & Assos · v4.7';
 
   if (f.includes('assos')) {
     theme = 'assos';
-    logoText = 'Assos Pharma · v4.5';
+    logoText = 'Assos Pharma · v4.7';
   } else if (f.includes('inventist')) {
     theme = 'inventist';
-    logoText = 'İnventist · v4.5';
+    logoText = 'İnventist · v4.7';
   }
 
   if (theme) {
@@ -2167,8 +2214,9 @@ function normalizeTask(t) {
     done:     t.is_done,       // API: is_done → FE: done
     startDate: t.created_at ? t.created_at.substring(0,10) : null,
     backup:         t.has_backup ? '(dosya var)' : null,
-    alarm:          t.alarm !== undefined ? t.alarm : (t.category === 'routine'),
-    mailSent:       t.mail_sent || false,
+    alarm:          (t.alarm_enabled !== undefined && t.alarm_enabled !== null) ? !!t.alarm_enabled : (t.alarm !== undefined ? t.alarm : true),
+    last_notified:  t.last_notified || null,
+    mailSent:       !!t.last_notified,
     last_completed: t.last_completed || null,
     next_due:       t.next_due || null,
     checklist:           t.checklist || [],
@@ -2208,6 +2256,7 @@ function showPage(name) {
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
   if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); }
+  if (name==='notifications') loadNotificationsPage();
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
   if (name==='board')     renderBoard();
@@ -2227,6 +2276,27 @@ function renderDashboard() {
   }
   if (el) el.textContent = displayName;
 
+  // Dinamik selamlama + tarih altyazısı
+  const GUN_TR = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const AY_TR  = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const hr = now.getHours();
+  const greet = (hr < 5) ? 'İyi geceler' : (hr < 12) ? 'Günaydın' : (hr < 18) ? 'İyi günler' : 'İyi akşamlar';
+  const gEl = document.getElementById('dash-greeting');
+  if (gEl) gEl.textContent = greet;
+
+  // "Perşembe · 20 Nisan 2026 · Nisan ayında 11 gün kaldı"
+  const gunAdi = GUN_TR[now.getDay()];
+  const ayAdi  = AY_TR[now.getMonth()];
+  const tarihStr = `${gunAdi} · ${now.getDate()} ${ayAdi} ${now.getFullYear()}`;
+  // Ay sonuna kalan gün
+  const ayLastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const kalanGun = ayLastDay - now.getDate();
+  const aySonu = (kalanGun === 0)
+    ? `${ayAdi} ayının son günü`
+    : `${ayAdi} ayında ${kalanGun} gün kaldı`;
+  const subEl = document.getElementById('dash-subtitle');
+  if (subEl) subEl.textContent = `${tarihStr} · ${aySonu}`;
+
   const total   = tasks.length;
   const done    = tasks.filter(t => t.done).length;
   const pending = tasks.filter(t => !t.done).length;
@@ -2234,21 +2304,121 @@ function renderDashboard() {
   const backups = tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
-  // KPI kartları — dinamik güncelle
+  // KPI kartları — dinamik güncelle (v4.7: trend rozetleri)
   const kpiEls = document.querySelectorAll('.kpi-value');
   const kpiSubs = document.querySelectorAll('.kpi-sub');
+
+  // Tamamlanma oran trendi — hedef %70
+  const rateTrend = rate >= 70
+    ? `<span class="kpi-trend up">▲ hedef üstü</span>`
+    : rate >= 40
+      ? `<span class="kpi-trend flat">◆ hedef civarı</span>`
+      : `<span class="kpi-trend down">▼ hedef altı</span>`;
+  // Geciken trendi
+  const lateTrend = late === 0
+    ? `<span class="kpi-trend up">✓ temiz</span>`
+    : late <= 2
+      ? `<span class="kpi-trend flat">⚠ takip et</span>`
+      : `<span class="kpi-trend down">▼ müdahale</span>`;
+
   if (kpiEls[0]) { kpiEls[0].textContent = total; if(kpiSubs[0]) kpiSubs[0].textContent = 'Bu dönem'; }
-  if (kpiEls[1]) { kpiEls[1].textContent = done;  if(kpiSubs[1]) kpiSubs[1].textContent = `%${rate} oran`; }
-  if (kpiEls[2]) { kpiEls[2].textContent = pending; }
-  if (kpiEls[3]) { kpiEls[3].textContent = late; }
+  if (kpiEls[1]) { kpiEls[1].textContent = done;  if(kpiSubs[1]) kpiSubs[1].innerHTML = `%${rate} oran ${rateTrend}`; }
+  if (kpiEls[2]) { kpiEls[2].textContent = pending; if(kpiSubs[2]) kpiSubs[2].textContent = pending ? 'Aktif görev' : 'Tamamlandı'; }
+  if (kpiEls[3]) { kpiEls[3].textContent = late; if(kpiSubs[3]) kpiSubs[3].innerHTML = late ? `Müdahale gerek ${lateTrend}` : `Temiz ${lateTrend}`; }
   if (kpiEls[4]) { kpiEls[4].textContent = backups; }
 
-  filterTasks(currentFilter);
+  dashPage = 0; // dashboard açılışında sayfayı sıfırla
+  renderDashboardTaskList();
   renderDashUpcoming();
   renderBars();
   renderTeamBars();
+  // v4.7 — dinamik pie chart + firma dağılımı
+  renderCategoryPie();
+  renderFirmBars();
   // v4.5 — SLA KPI kartları
   loadSlaKpi();
+}
+
+// v4.7 — KATEGORİ DAĞILIMI: gerçek verilerden pie chart
+function renderCategoryPie() {
+  const wrap = document.getElementById('dash-pie-wrap');
+  if (!wrap) return;
+
+  const CAT_META = {
+    routine : { label:'Rutin',       color:'var(--accent)'  },
+    support : { label:'Destek',      color:'var(--accent3)' },
+    infra   : { label:'Altyapı',     color:'var(--accent2)' },
+    backup  : { label:'Backup',      color:'var(--gold)'    },
+    project : { label:'Proje',       color:'var(--green)'   },
+    other   : { label:'Diğer',       color:'var(--surface3)'}
+  };
+
+  const counts = {};
+  tasks.forEach(t => {
+    const k = (t.cat && CAT_META[t.cat]) ? t.cat : 'other';
+    counts[k] = (counts[k] || 0) + 1;
+  });
+
+  const total = tasks.length;
+  const done  = tasks.filter(t => t.done).length;
+  const rate  = total ? Math.round(done / total * 100) : 0;
+
+  if (!total) {
+    wrap.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:30px 0">Henüz görev yok</div>';
+    return;
+  }
+
+  // stroke-dasharray + stroke-dashoffset ile halka dilimleri üret
+  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  let offset = 25; // -90° rotasyon ile 12 saat konumundan başlar
+  const circles = [];
+  const legend  = [];
+  entries.forEach(([cat, n]) => {
+    const pct = (n / total) * 100;
+    const meta = CAT_META[cat] || CAT_META.other;
+    circles.push(`<circle cx="18" cy="18" r="15.9" fill="none" stroke="${meta.color}" stroke-width="3.4" stroke-dasharray="${pct.toFixed(2)} ${(100-pct).toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 18 18)"/>`);
+    legend.push(`<div class="legend-item"><div class="legend-dot" style="background:${meta.color}"></div>${meta.label} (${Math.round(pct)}%)</div>`);
+    offset = (offset - pct + 100) % 100; // sonraki dilimin başlangıç konumu
+  });
+
+  wrap.innerHTML = `
+    <div class="chart-wrap">
+      <svg width="130" height="130" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3.4"/>
+        ${circles.join('')}
+        <text x="18" y="19" text-anchor="middle" fill="var(--text)" font-size="5.5" font-family="IBM Plex Mono" font-weight="700">${rate}%</text>
+        <text x="18" y="22.5" text-anchor="middle" fill="var(--text-muted)" font-size="3">tamamlandı</text>
+      </svg>
+      <div class="chart-legend">
+        ${legend.join('')}
+      </div>
+    </div>`;
+}
+
+// v4.7 — FİRMA DAĞILIMI: gerçek verilerden progress bars
+function renderFirmBars() {
+  const el = document.getElementById('dash-firm-bars');
+  if (!el) return;
+  const firmMap = {};
+  tasks.forEach(t => {
+    const f = (t.firm && String(t.firm).trim()) || '—';
+    firmMap[f] = (firmMap[f] || 0) + 1;
+  });
+  const sorted = Object.entries(firmMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
+  if (!sorted.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">Henüz görev yok</div>';
+    return;
+  }
+  const total = sorted.reduce((s, [,n]) => s + n, 0);
+  const colors = ['var(--accent)','var(--gold)','var(--accent3)','var(--accent2)','var(--green)','var(--surface3)'];
+  el.innerHTML = sorted.map(([name, n], i) => {
+    const pct = Math.round((n / total) * 100);
+    return `
+      <div class="progress-wrap">
+        <div class="progress-label"><span>${name}</span><span style="color:${colors[i]}">${n} görev · %${pct}</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
+      </div>`;
+  }).join('');
 }
 
 // v4.5 — SLA KPI kartlarını yükler
@@ -2491,17 +2661,105 @@ function taskRow(t) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  DASHBOARD TASK LIST
+//  DASHBOARD TASK LIST (sayfalı, 5'er)
 // ══════════════════════════════════════════════════════════
 let currentFilter = 'all';
+let dashPage = 0;
+const DASH_PAGE_SIZE = 5;
+
 function filterTasks(f) {
   currentFilter = f;
+  dashPage = 0; // filtre değiştiğinde ilk sayfaya dön
   document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-'+f)?.classList.add('active');
+  renderDashboardTaskList();
+}
+
+function setDashPage(p) {
+  dashPage = Math.max(0, p);
+  renderDashboardTaskList();
+}
+
+// v4.7 — akıllı gruplama: geciken → bugün → yarın → ileri → tarihsiz → bitmiş
+const DASH_GROUP_META = {
+  overdue    : { label:'Geciken',        icon:'🔴', color:'var(--danger)' },
+  today      : { label:'Bugün',          icon:'⚡', color:'var(--gold)' },
+  tomorrow   : { label:'Yarın',          icon:'📅', color:'var(--accent2)' },
+  upcoming   : { label:'İleri Tarih',    icon:'⏭', color:'var(--accent3)' },
+  no_deadline: { label:'Tarihsiz',       icon:'—',  color:'var(--text-muted)' },
+  done       : { label:'Tamamlandı',     icon:'✓',  color:'var(--green)' }
+};
+const DASH_GROUP_ORDER = ['overdue','today','tomorrow','upcoming','no_deadline','done'];
+
+function _dashGroupKey(t) {
+  if (t.done) return 'done';
+  if (!t.deadline) return 'no_deadline';
+  const today = TODAY;
+  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })();
+  if (t.deadline <  today)    return 'overdue';
+  if (t.deadline === today)   return 'today';
+  if (t.deadline === tomorrow)return 'tomorrow';
+  return 'upcoming';
+}
+
+function renderDashboardTaskList() {
+  const body = document.getElementById('task-list-body');
+  if (!body) return;
   let list = tasks;
-  if (f === 'open') list = tasks.filter(t => !t.done);
-  if (f === 'done') list = tasks.filter(t => t.done);
-  document.getElementById('task-list-body').innerHTML = list.map(taskRow).join('') || '<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">Görev yok</div>';
+  if (currentFilter === 'open') list = tasks.filter(t => !t.done);
+  if (currentFilter === 'done') list = tasks.filter(t => t.done);
+  if (!list.length) {
+    body.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">Görev yok</div>';
+    return;
+  }
+
+  // Gruplara göre sırala (group order + group içinde deadline'a göre artan)
+  list = [...list].sort((a, b) => {
+    const ka = DASH_GROUP_ORDER.indexOf(_dashGroupKey(a));
+    const kb = DASH_GROUP_ORDER.indexOf(_dashGroupKey(b));
+    if (ka !== kb) return ka - kb;
+    const da = a.deadline || '9999-12-31';
+    const db = b.deadline || '9999-12-31';
+    return da.localeCompare(db);
+  });
+
+  const total = list.length;
+  const pageCount = Math.ceil(total / DASH_PAGE_SIZE);
+  if (dashPage >= pageCount) dashPage = pageCount - 1;
+  const start = dashPage * DASH_PAGE_SIZE;
+  const slice = list.slice(start, start + DASH_PAGE_SIZE);
+
+  // Grup başlıkları ekleyerek render et (grup değiştiğinde ya da sayfa ilkinde)
+  let lastGroup = null;
+  let html = slice.map(t => {
+    const g = _dashGroupKey(t);
+    let prefix = '';
+    if (g !== lastGroup) {
+      const m = DASH_GROUP_META[g];
+      prefix = `<div style="font-size:9px;color:${m.color};font-weight:700;letter-spacing:1.1px;text-transform:uppercase;padding:8px 4px 4px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);margin-top:${lastGroup?'8px':'0'}"><span>${m.icon}</span><span>${m.label}</span></div>`;
+      lastGroup = g;
+    }
+    return prefix + taskRow(t);
+  }).join('');
+
+  if (pageCount > 1) {
+    const prevDisabled = dashPage === 0 ? 'disabled' : '';
+    const nextDisabled = dashPage >= pageCount - 1 ? 'disabled' : '';
+    html += `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 6px 2px;border-top:1px solid var(--border);margin-top:auto">
+        <div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
+          ${start+1}–${Math.min(start+DASH_PAGE_SIZE, total)} / ${total}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline btn-sm" ${prevDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${dashPage-1})">‹ Önceki</button>
+          <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
+            ${dashPage+1} / ${pageCount}
+          </span>
+          <button class="btn btn-outline btn-sm" ${nextDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${dashPage+1})">Sonraki ›</button>
+        </div>
+      </div>`;
+  }
+  body.innerHTML = html;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2625,7 +2883,7 @@ async function apiToggleTask(id) {
     if (wasRoutineComplete) {
       // Gerçek veriyle hemen güncelle — geçici done gösterme
       Object.assign(t, normalized);
-      filterTasks(currentFilter);
+      renderDashboardTaskList();
       renderFullList(tasks);
       renderDashUpcoming();
       buildNotifications();
@@ -2635,7 +2893,7 @@ async function apiToggleTask(id) {
       showToast('ok', `✓ Tamamlandı — sonraki: ${nextStr}`);
     } else {
       Object.assign(t, normalized);
-      filterTasks(currentFilter);
+      renderDashboardTaskList();
       renderFullList(tasks);
       renderDashUpcoming();
       buildNotifications();
@@ -3230,6 +3488,7 @@ function _renderSchedRow(t) {
       <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${firmChip(t.firm)} <span>· ${t.team||''}</span>
+        ${t.last_notified ? `<span title="Son bildirim: ${formatDateTR(t.last_notified.substring(0,10))}" style="color:var(--accent3);font-size:9px">📧 bildirildi</span>` : ''}
       </div>
     </div>
     <div>
@@ -3248,11 +3507,25 @@ function _renderSchedRow(t) {
 }
 
 
-function toggleAlarm(taskId) {
+async function toggleAlarm(taskId) {
   const t = tasks.find(t => t.id === taskId); if (!t) return;
-  t.alarm = !t.alarm;
+  const next = !t.alarm;
+  t.alarm = next;
   renderScheduledList(); buildNotifications();
-  showToast('ok', t.alarm ? `🔔 Alarm açıldı` : `Alarm kapatıldı`);
+  try {
+    const r = await fetch(`/api/tasks/${taskId}/alarm`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alarm_enabled: next })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Sunucu hatası');
+    showToast('ok', next ? `🔔 Alarm açıldı` : `Alarm kapatıldı`);
+  } catch(err) {
+    // Başarısızsa geri al
+    t.alarm = !next;
+    renderScheduledList(); buildNotifications();
+    showToast('error', `Alarm değiştirilemedi: ${err.message}`);
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -3516,7 +3789,7 @@ async function saveEditTask() {
     const idx = tasks.findIndex(t => t.id === id);
     if (idx > -1) tasks[idx] = normalizeTask(updated);
     closeEditTaskModal();
-    filterTasks(currentFilter);
+    renderDashboardTaskList();
     renderFullList(tasks);
     renderDashUpcoming();
     buildNotifications();
@@ -3556,7 +3829,7 @@ async function saveAndCompleteTask() {
     const idx = tasks.findIndex(t => t.id === id);
     if (idx > -1) tasks[idx] = normalizeTask(updated);
     closeEditTaskModal();
-    filterTasks(currentFilter);
+    renderDashboardTaskList();
     renderFullList(tasks);
     if (document.getElementById('page-scheduled')?.classList.contains('active')) renderScheduledPage();
     if (document.getElementById('page-projects')?.classList.contains('active'))  renderProjectsPage();
@@ -3574,7 +3847,7 @@ async function deleteTask() {
     if (!res.ok) throw new Error('Silme hatası');
     tasks.splice(tasks.findIndex(t => t.id === id), 1);
     closeEditTaskModal();
-    filterTasks(currentFilter);
+    renderDashboardTaskList();
     renderFullList(tasks);
     renderDashUpcoming();
     buildNotifications();
@@ -3913,6 +4186,93 @@ async function testSmtp() {
     else showToast('err', data.error || 'Baglanti basarisiz');
   } catch(e) {
     showToast('err', 'Sunucu hatasi: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BİLDİRİM AYARLARI (v4.6)
+// ══════════════════════════════════════════════════════════
+async function loadNotificationsPage() {
+  // Preview alanını temizle
+  const box = document.getElementById('notify-preview');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  try {
+    const nRes = await fetch('/api/notifications/settings');
+    if (!nRes.ok) return;
+    const n = await nRes.json();
+    const o = document.getElementById('notify-overdue');
+    const s = document.getElementById('notify-sla-warning');
+    const d = document.getElementById('notify-daily-digest');
+    if (o) o.checked = !!n.notify_overdue;
+    if (s) s.checked = !!n.notify_sla_warning;
+    if (d) d.checked = !!n.notify_daily_digest;
+  } catch(e) { console.warn('Bildirim ayarları yüklenemedi:', e); }
+}
+
+async function saveNotificationSettings() {
+  const body = {
+    notify_overdue:      document.getElementById('notify-overdue')?.checked ?? true,
+    notify_sla_warning:  document.getElementById('notify-sla-warning')?.checked ?? true,
+    notify_daily_digest: document.getElementById('notify-daily-digest')?.checked ?? true,
+  };
+  try {
+    const r = await fetch('/api/notifications/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Kaydedilemedi');
+    showToast('ok', 'Bildirim tercihleri kaydedildi');
+  } catch(e) {
+    showToast('err', 'Hata: ' + e.message);
+  }
+}
+
+async function previewNotifications() {
+  const box = document.getElementById('notify-preview');
+  if (box) { box.style.display='block'; box.textContent = 'Yükleniyor…'; }
+  try {
+    const r = await fetch('/api/notifications/preview');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Hata');
+    if (!j.total) {
+      box.textContent = 'Şu an bildirim gerektiren bir göreviniz yok.';
+      return;
+    }
+    const lines = [];
+    lines.push(`Toplam ${j.total} uyarı:`);
+    if (j.overdue.length)      lines.push(`• ${j.overdue.length} geciken görev`);
+    if (j.sla_breached.length) lines.push(`• ${j.sla_breached.length} SLA aşan destek`);
+    if (j.sla_warning.length)  lines.push(`• ${j.sla_warning.length} SLA uyarısı destek`);
+    lines.push('');
+    const listAll = [...j.overdue.map(t=>`#${t.id} ${t.title} — ${t.days_late}g gecikme`),
+                     ...j.sla_breached.map(t=>`#${t.id} ${t.title} — SLA AŞILDI`),
+                     ...j.sla_warning.map(t=>`#${t.id} ${t.title} — ${t.sla_remaining_hours}s kaldı`)];
+    box.innerHTML = lines.map(escapeHtml).join('<br>') + '<br>' + listAll.map(escapeHtml).join('<br>');
+  } catch(e) {
+    if (box) box.textContent = 'Hata: ' + e.message;
+  }
+}
+
+async function runNotificationTest() {
+  if (!confirm('Test maili şimdi adresinize gönderilecek. Onaylıyor musunuz?')) return;
+  showToast('ok', 'Test maili gönderiliyor…');
+  try {
+    const r = await fetch('/api/notifications/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Hata');
+    const row = (j.results || [])[0];
+    if (!row) { showToast('ok', 'Job çalıştı ama kayıt döndürmedi'); return; }
+    if (row.skipped) showToast('ok', 'Şu an bildirilecek göreviniz yok (mail atılmadı).');
+    else if (row.sent) showToast('ok', `Mail gönderildi: ${row.count} uyarı`);
+    else showToast('err', `Gönderim hatası: ${row.error || 'bilinmiyor'}`);
+  } catch(e) {
+    showToast('err', 'Hata: ' + e.message);
   }
 }
 

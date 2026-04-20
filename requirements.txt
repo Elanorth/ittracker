@@ -6,3 +6,4 @@ msal
 werkzeug
 reportlab
 weasyprint
+apscheduler>=3.10

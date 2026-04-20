@@ -14,6 +14,7 @@ from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitati
 from services.report import generate_monthly_pdf
 from services.mailer import send_report_email, send_invite_email
 from services.storage import save_backup_file
+from services.notifier import run_digest_job, collect_user_alerts
 
 try:
     import msal
@@ -982,6 +983,92 @@ def test_smtp():
         return jsonify({"ok": False, "error": str(e)}), 400
 
 # ══════════════════════════════════════════════════════════
+#  v4.6 — BİLDİRİMLER / ALARM
+# ══════════════════════════════════════════════════════════
+@app.route("/api/tasks/<int:task_id>/alarm", methods=["PATCH"])
+@login_required
+def update_task_alarm(task_id):
+    """Tek görevin alarm_enabled durumunu günceller."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if task.user_id != me.id:
+        owner = db.session.get(User, task.user_id)
+        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+            return jsonify({"error": "Bu görevin alarmını düzenleme yetkiniz yok"}), 403
+    data = request.get_json() or {}
+    if "alarm_enabled" in data:
+        task.alarm_enabled = bool(data["alarm_enabled"])
+        db.session.commit()
+    return jsonify({"ok": True, "alarm_enabled": bool(task.alarm_enabled)})
+
+
+@app.route("/api/notifications/settings", methods=["GET"])
+@login_required
+def get_notification_settings():
+    me = _current_user()
+    return jsonify({
+        "notify_overdue":      bool(me.notify_overdue) if me.notify_overdue is not None else True,
+        "notify_sla_warning":  bool(me.notify_sla_warning) if me.notify_sla_warning is not None else True,
+        "notify_daily_digest": bool(me.notify_daily_digest) if me.notify_daily_digest is not None else True,
+        "overdue_days":        3,
+        "sla_warning_ratio":   0.25,
+        "schedule":            "Her gün 09:00 (UTC)",
+    })
+
+
+@app.route("/api/notifications/settings", methods=["PATCH"])
+@login_required
+def update_notification_settings():
+    me = _current_user()
+    data = request.get_json() or {}
+    for field in ("notify_overdue", "notify_sla_warning", "notify_daily_digest"):
+        if field in data:
+            setattr(me, field, bool(data[field]))
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "notify_overdue": bool(me.notify_overdue),
+        "notify_sla_warning": bool(me.notify_sla_warning),
+        "notify_daily_digest": bool(me.notify_daily_digest),
+    })
+
+
+@app.route("/api/notifications/preview")
+@login_required
+def notifications_preview():
+    """Kendi uyarı listesini dry-run olarak döner (mail atmaz)."""
+    me = _current_user()
+    groups = collect_user_alerts(me)
+    return jsonify({
+        "overdue":      groups["overdue"],
+        "sla_warning":  groups["sla_warning"],
+        "sla_breached": groups["sla_breached"],
+        "total": sum(len(v) for v in groups.values()),
+    })
+
+
+@app.route("/api/notifications/test", methods=["POST"])
+@login_required
+def notifications_test():
+    """Digest mail testini anında kendi kullanıcın için çalıştırır."""
+    me = _current_user()
+    data = request.get_json(silent=True) or {}
+    dry = bool(data.get("dry_run", False))
+    report = run_digest_job(dry_run=dry, only_user_id=me.id)
+    return jsonify(report)
+
+
+@app.route("/api/notifications/run-now", methods=["POST"])
+@super_admin_required
+def notifications_run_now():
+    """Super admin — tüm kullanıcılar için digest job'u tetikler."""
+    data = request.get_json(silent=True) or {}
+    dry = bool(data.get("dry_run", False))
+    report = run_digest_job(dry_run=dry)
+    return jsonify(report)
+
+
+# ══════════════════════════════════════════════════════════
 #  ORTAK ALAN (BOARD) API
 # ══════════════════════════════════════════════════════════
 @app.route("/api/board/cards", methods=["GET"])
@@ -1076,6 +1163,63 @@ def board_list_users():
     return jsonify([{"id": u.id, "full_name": u.full_name, "firm": u.firm} for u in users])
 
 
+# ══════════════════════════════════════════════════════════
+#  v4.6 — Scheduler (APScheduler)
+# ══════════════════════════════════════════════════════════
+_scheduler = None
+
+def start_scheduler():
+    """Günlük digest job'unu APScheduler ile planlar.
+    - ENABLE_SCHEDULER=0 ise başlatılmaz.
+    - Flask debug reloader altında ikinci process'te başlatılmaz.
+    - Tek seferlik (singleton) başlatma garantisi.
+    """
+    global _scheduler
+    if _scheduler is not None:
+        return
+    if os.environ.get("ENABLE_SCHEDULER", "1") != "1":
+        print("[scheduler] devre dışı (ENABLE_SCHEDULER=0)")
+        return
+    # Flask debug reloader — sadece ikinci (asıl) process başlatır
+    if app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+    except ImportError:
+        print("[scheduler] apscheduler kurulu değil — bildirimler pasif")
+        return
+
+    hour = int(os.environ.get("NOTIFY_HOUR", "9"))
+    minute = int(os.environ.get("NOTIFY_MINUTE", "0"))
+
+    def _job_wrapper():
+        with app.app_context():
+            try:
+                rep = run_digest_job()
+                print(f"[scheduler] digest job tamamlandı: {rep.get('users_processed',0)} kullanıcı")
+            except Exception as e:
+                print(f"[scheduler] digest job HATA: {e}")
+
+    sch = BackgroundScheduler(daemon=True, timezone=os.environ.get("SCHEDULER_TZ", "UTC"))
+    sch.add_job(_job_wrapper, "cron", hour=hour, minute=minute, id="daily_digest",
+                replace_existing=True, misfire_grace_time=3600)
+    sch.start()
+    _scheduler = sch
+    print(f"[scheduler] günlük digest planlandı: {hour:02d}:{minute:02d} ({sch.timezone})")
+
+
 if __name__ == "__main__":
-    with app.app_context(): init_db()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Debug modunda reloader iki process çalıştırır — sadece ikinci (main) process
+    # init_db + scheduler çalıştırmalı. WERKZEUG_RUN_MAIN sadece reloader child'ında set olur.
+    is_reloader_parent = os.environ.get("WERKZEUG_RUN_MAIN") != "true"
+    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    if not (debug_mode and is_reloader_parent):
+        with app.app_context():
+            init_db()
+        start_scheduler()
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)
+else:
+    # WSGI (gunicorn vb.) import yolu: init_db + scheduler tek seferlik
+    with app.app_context():
+        init_db()
+    start_scheduler()

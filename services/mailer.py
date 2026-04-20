@@ -55,6 +55,72 @@ def send_report_email(user, pdf_path, month, year, cc=None, o365_token=None):
     except OSError as e:
         return {"ok":False,"error":f"Ağ hatası: {host}:{port} adresine ulaşılamıyor. ({str(e)})"}
 
+def send_alarm_digest(user, groups):
+    """v4.6 — Bildirim özeti maili.
+    groups: dict — {"overdue": [task_dict,...], "sla_warning": [...], "sla_breached": [...]}
+    task_dict minimum: {id, title, firm, team, days_late, priority, sla_remaining_hours}
+    """
+    host,port,smtp_user,smtp_pass = _smtp()
+    if not smtp_user or not smtp_pass:
+        return {"ok":False,"error":"SMTP ayarları eksik"}
+
+    overdue     = groups.get("overdue") or []
+    sla_warning = groups.get("sla_warning") or []
+    sla_breach  = groups.get("sla_breached") or []
+
+    total = len(overdue) + len(sla_warning) + len(sla_breach)
+    if total == 0:
+        return {"ok":True,"skipped":True,"message":"Bildirilecek görev yok"}
+
+    subject = f"IT Tracker — {total} bildirim ({user.full_name})"
+
+    parts = [f"Merhaba {user.full_name},", "",
+             f"Bugünkü görev özetiniz aşağıdadır (toplam {total} uyarı).", ""]
+
+    def _fmt_task(t, kind="overdue"):
+        firm_team = " / ".join(x for x in [t.get("firm") or "", t.get("team") or ""] if x)
+        prefix = f"[{t.get('priority','orta').upper()}]" if t.get("priority") else ""
+        if kind == "overdue":
+            return f"  - #{t['id']} {prefix} {t['title']} — {t.get('days_late','?')} gün gecikmeli" + (f" ({firm_team})" if firm_team else "")
+        if kind == "sla_warning":
+            rh = t.get("sla_remaining_hours")
+            rem = f"{rh:.1f} saat kaldı" if isinstance(rh, (int,float)) else "süresi azaldı"
+            return f"  - #{t['id']} {prefix} {t['title']} — SLA: {rem}" + (f" ({firm_team})" if firm_team else "")
+        if kind == "sla_breached":
+            return f"  - #{t['id']} {prefix} {t['title']} — SLA AŞILDI" + (f" ({firm_team})" if firm_team else "")
+        return f"  - #{t['id']} {t['title']}"
+
+    if overdue:
+        parts.append(f"3+ gün geciken görevler ({len(overdue)}):")
+        parts += [_fmt_task(t, "overdue") for t in overdue]
+        parts.append("")
+    if sla_breach:
+        parts.append(f"SLA aşan destek talepleri ({len(sla_breach)}):")
+        parts += [_fmt_task(t, "sla_breached") for t in sla_breach]
+        parts.append("")
+    if sla_warning:
+        parts.append(f"SLA'sı yaklaşan destek talepleri ({len(sla_warning)}):")
+        parts += [_fmt_task(t, "sla_warning") for t in sla_warning]
+        parts.append("")
+
+    parts += ["—", "IT Görev Takip Sistemi", "https://ittracker.inventist.com.tr"]
+    body = "\n".join(parts)
+
+    msg = MIMEMultipart(); msg["From"]=smtp_user; msg["To"]=user.email; msg["Subject"]=subject
+    msg.attach(MIMEText(body,"plain","utf-8"))
+    import ssl
+    ctx = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(host, port, timeout=15) as s:
+            s.ehlo(); s.starttls(context=ctx); s.ehlo(); s.login(smtp_user, smtp_pass)
+            s.sendmail(smtp_user, [user.email], msg.as_string())
+        return {"ok":True,"count":total,"message":f"Bildirim {user.email} adresine gönderildi"}
+    except smtplib.SMTPAuthenticationError as e:
+        return {"ok":False,"error":f"Kimlik doğrulama hatası: {str(e)}"}
+    except Exception as e:
+        return {"ok":False,"error":f"{type(e).__name__}: {str(e)}"}
+
+
 def send_invite_email(email, name, invite_url, role):
     host,port,smtp_user,smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
