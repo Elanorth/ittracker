@@ -606,6 +606,69 @@ def stats():
                     "by_category":by_cat,"by_team":by_team,"by_firm":by_firm,
                     "completion_rate":round(done/total*100,1) if total else 0})
 
+# ── v4.8 DASHBOARD TRENDS — bu ay vs geçen ay karşılaştırması ──
+def _stats_for_month(uid, month, year):
+    """Tek ay için total/done/overdue hesaplar — /api/stats ile aynı mantık."""
+    created_match  = db.and_(db.extract("month", Task.created_at)==month,
+                              db.extract("year",  Task.created_at)==year)
+    deadline_match = db.and_(Task.deadline!=None,
+                              db.extract("month", Task.deadline)==month,
+                              db.extract("year",  Task.deadline)==year)
+    routines = Task.query.filter_by(user_id=uid, category="routine").all()
+    projects = Task.query.filter_by(user_id=uid, category="project").filter(
+        db.or_(Task.is_done==False,
+               db.and_(Task.completed_at!=None,
+                       db.extract("month", Task.completed_at)==month,
+                       db.extract("year",  Task.completed_at)==year))
+    ).all()
+    others   = Task.query.filter(Task.user_id==uid,
+                                  Task.category.notin_(["routine","project"]),
+                                  db.or_(created_match, deadline_match)).all()
+    tasks = routines + projects + others
+    completed_ids = {c.task_id for c in TaskCompletion.query.filter_by(year=year, month=month).all()}
+    def _is_done(t):
+        if t.category == "routine" and t.period != "Tek Seferlik":
+            return t.id in completed_ids
+        return t.is_done
+    total = len(tasks)
+    done  = sum(1 for t in tasks if _is_done(t))
+    overdue = sum(1 for t in tasks if not _is_done(t) and t.deadline and t.deadline < date.today())
+    return {"total": total, "done": done, "overdue": overdue,
+            "rate": round(done/total*100, 1) if total else 0.0}
+
+@app.route("/api/dashboard/trends")
+@login_required
+def dashboard_trends():
+    """v4.8 — Bu ay vs geçen ay KPI karşılaştırması.
+    Döner: { current:{total,done,overdue,rate}, previous:{...},
+             delta:{total,done,overdue,rate} }  (delta'lar işaretli sayı)
+    """
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err: return err
+    today = date.today()
+    cur_m, cur_y = today.month, today.year
+    if cur_m == 1:
+        prev_m, prev_y = 12, cur_y - 1
+    else:
+        prev_m, prev_y = cur_m - 1, cur_y
+
+    cur  = _stats_for_month(uid, cur_m,  cur_y)
+    prev = _stats_for_month(uid, prev_m, prev_y)
+
+    def _delta(c, p):
+        return round(c - p, 1)
+    return jsonify({
+        "current":  cur,
+        "previous": prev,
+        "delta": {
+            "total":   _delta(cur["total"],   prev["total"]),
+            "done":    _delta(cur["done"],    prev["done"]),
+            "overdue": _delta(cur["overdue"], prev["overdue"]),
+            "rate":    _delta(cur["rate"],    prev["rate"]),
+        }
+    })
+
 # ── v4.5 SLA STATS ──
 @app.route("/api/sla/stats")
 @login_required

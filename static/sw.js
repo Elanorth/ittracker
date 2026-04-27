@@ -1,4 +1,4 @@
-const CACHE = 'ittracker-v4.7';
+const CACHE = 'ittracker-v4.8';
 
 // Uygulama shell'ini önbellekle
 self.addEventListener('install', e => {
