@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<!-- DEMO: Soru 3 — Tıklama Davranışı (3 Seçenek)
+     Seçenek A: Karta tıkla → firm-user-filter dropdown'a ilk kullanıcı set olur
+     Seçenek B: Karta tıkla → firm bazlı aggregated görünüm (yeni state)
+     Seçenek C: Karta tıkla → sadece görsel highlight, filtreleme yok
+
+     NEYE BAKMALISIN:
+     1. Her seçenekte firma kartına tıkla, altındaki panel değişimini izle
+     2. Hangi seçenek senin iş akışına uyuyor: kullanıcı bazlı mı, firma bazlı mı, yoksa salt bilgi mi?
+     3. Tablet/mobilde hangi seçenek daha az tıklama gerektiriyor?
+-->
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO Q3 — Tıklama Davranışı</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0f1419;
+  --surface2: #161d26;
+  --surface3: #1e2733;
+  --border: #242d38;
+  --border2: #2e3a47;
+  --accent: #00e5c0;
+  --accent-dim: rgba(0,229,192,.10);
+  --accent2: #ff5f3d;
+  --accent2-dim: rgba(255,95,61,.10);
+  --gold: #f4b942;
+  --gold-dim: rgba(244,185,66,.10);
+  --green: #34d058;
+  --green-dim: rgba(52,208,88,.10);
+  --danger: #f85149;
+  --danger-dim: rgba(248,81,73,.10);
+  --text: #dce6f0;
+  --text-muted: #6b7e93;
+  --text-dim: #3d4f61;
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 32px 24px;
+}
+
+/* ── Demo başlık ── */
+.demo-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.demo-header h1 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.demo-header p {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 580px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Tab seçimi ── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  overflow: hidden;
+  max-width: 600px;
+  margin: 0 auto 32px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 11px 16px;
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: .15s;
+  border-right: 1px solid var(--border);
+  text-align: center;
+}
+.tab-btn:last-child { border-right: none; }
+.tab-btn:hover { color: var(--text); background: var(--surface3); }
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+}
+.tab-note {
+  font-size: 10px;
+  color: var(--text-dim);
+  display: block;
+  margin-top: 3px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+/* ── Seçenek paneli ── */
+.option-panel { display: none; max-width: 900px; margin: 0 auto; }
+.option-panel.active { display: block; }
+
+/* ── Seçenek açıklama kutusu ── */
+.option-desc {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.option-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.badge-a { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+.badge-b { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); }
+.badge-c { background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border2); }
+.option-text h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.option-text p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.option-when {
+  margin-top: 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+.option-when strong { color: var(--text-muted); font-style: normal; }
+
+/* ── Firma şeridi (yatay) ── */
+.firm-strip-horiz {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.firm-strip-horiz::-webkit-scrollbar { height: 4px; }
+.firm-strip-horiz::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── Firma kartı ── */
+.firm-card {
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  min-width: 180px;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+  flex-shrink: 0;
+  user-select: none;
+}
+.firm-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+}
+.firm-card.selected-a {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.firm-card.selected-b {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+.firm-card.selected-c {
+  border-color: var(--text-muted);
+  box-shadow: 0 0 0 3px rgba(107,126,147,.12);
+}
+.firm-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.firm-rate {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.firm-rate.good { color: var(--green); }
+.firm-rate.warn { color: var(--gold); }
+.firm-rate.bad  { color: var(--danger); }
+.firm-progress-track {
+  height: 3px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.firm-progress-fill { height: 100%; border-radius: 2px; }
+.firm-progress-fill.good { background: var(--green); }
+.firm-progress-fill.warn { background: var(--gold); }
+.firm-progress-fill.bad  { background: var(--danger); }
+.firm-stat-mini {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+}
+.firm-stat-mini .ov { color: var(--danger); }
+
+/* ── Sonuç paneli ── */
+.result-panel {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 140px;
+  transition: all .2s;
+}
+.result-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ── Seçenek A: dropdown alanı ── */
+.dropdown-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+}
+.dropdown-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.dropdown-select {
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  padding: 6px 10px;
+  flex: 1;
+  cursor: pointer;
+}
+.dropdown-change-hint {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--accent);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.dropdown-change-hint.visible { opacity: 1; }
+.result-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.result-info strong { color: var(--text); }
+.result-info .highlight-a { color: var(--accent); font-weight: 700; }
+.result-info .highlight-b { color: var(--gold); font-weight: 700; }
+.result-info .highlight-c { color: var(--text-muted); }
+
+/* ── Seçenek B: firma banner ── */
+.firm-banner {
+  display: none;
+  background: var(--gold-dim);
+  border: 1px solid rgba(244,185,66,.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 16px;
+  align-items: center;
+  gap: 10px;
+}
+.firm-banner.visible { display: flex; }
+.firm-banner-icon { font-size: 14px; }
+.mini-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.mini-kpi {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.mini-kpi-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.mini-kpi-val.good { color: var(--green); }
+.mini-kpi-val.warn { color: var(--gold); }
+.mini-kpi-val.bad  { color: var(--danger); }
+.mini-kpi-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+
+/* ── Seçenek C: salt highlight ── */
+.info-strip {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+.info-strip.visible { display: flex; }
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.info-row-label { color: var(--text-muted); }
+.info-row-val { font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--text); }
+.info-row-val.good { color: var(--green); }
+.info-row-val.warn { color: var(--gold); }
+.info-row-val.bad  { color: var(--danger); }
+.no-nav-note {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 8px;
+}
+</style>
+</head>
+<body>
+
+<div class="demo-header">
+  <h1>Demo Q3 — Tıklama Davranışı</h1>
+  <p>
+    Her seçenekte firma kartlarına tıkla ve altındaki panelin nasıl tepki verdiğini gözlemle.
+    Hangi davranış senin iş akışına en uygun?
+  </p>
+</div>
+
+<!-- Tab bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('a')">
+    Seçenek A
+    <span class="tab-note">Kullanıcı filtresi</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('b')">
+    Seçenek B
+    <span class="tab-note">Firma görünümü</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('c')">
+    Seçenek C
+    <span class="tab-note">Salt bilgi</span>
+  </button>
+</div>
+
+<!-- ══════════ SEÇENEK A ══════════ -->
+<div id="panel-a" class="option-panel active">
+  <div class="option-desc">
+    <div class="option-badge badge-a">A</div>
+    <div class="option-text">
+      <h3>Kullanıcı Filtresi Otomatik Set</h3>
+      <p>Firma kartına tıklamak, topbardaki kullanıcı dropdown'unu o firmanın ilk kullanıcısına çeker. Dashboard mevcut tek-kullanıcı mantığıyla çalışmaya devam eder.</p>
+      <div class="option-when">
+        <strong>Ne zaman tercih edilir:</strong> IT Müdürü çoğunlukla "bir kullanıcının görevlerini" görmek istiyorsa. Backend değişikliği minimal.
+      </div>
+    </div>
+  </div>
+
+  <!-- Simüle edilmiş topbar dropdown -->
+  <div class="dropdown-row">
+    <div class="dropdown-label">Kullanıcı filtresi:</div>
+    <select id="user-dropdown-a" class="dropdown-select">
+      <option value="">— Kullanıcı seç —</option>
+      <option value="inventist_1">Ahmet Yılmaz (İnventist)</option>
+      <option value="inventist_2">Büşra Kaya (İnventist)</option>
+      <option value="assos_1">Mehmet Şahin (Assos Pharma)</option>
+      <option value="assos_2">Gül Çelik (Assos Pharma)</option>
+      <option value="cag_1">Ömer Güneş (Şirket Çağ)</option>
+      <option value="test_1">İlknur Doğan (Test Firma)</option>
+    </select>
+    <div id="dropdown-hint-a" class="dropdown-change-hint">Otomatik değişti</div>
+  </div>
+
+  <!-- Firma kartları -->
+  <div class="firm-strip-horiz" id="strip-a">
+    <div class="firm-card" onclick="selectFirmA('inventist','Ahmet Yılmaz (İnventist)','inventist_1',this)">
+      <div class="firm-name">İnventist</div>
+      <div class="firm-rate good">68%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill good" style="width:68%"></div></div>
+      <div class="firm-stat-mini"><span>47 görev</span><span class="ov">5 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmA('assos','Mehmet Şahin (Assos Pharma)','assos_1',this)">
+      <div class="firm-name">Assos Pharma</div>
+      <div class="firm-rate warn">54%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill warn" style="width:54%"></div></div>
+      <div class="firm-stat-mini"><span>28 görev</span><span class="ov">8 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmA('cag','Ömer Güneş (Şirket Çağ)','cag_1',this)">
+      <div class="firm-name">Şirket Çağ</div>
+      <div class="firm-rate good">82%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill good" style="width:82%"></div></div>
+      <div class="firm-stat-mini"><span>33 görev</span><span class="ov">1 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmA('test','İlknur Doğan (Test Firma)','test_1',this)">
+      <div class="firm-name">Test Firma</div>
+      <div class="firm-rate bad">31%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill bad" style="width:31%"></div></div>
+      <div class="firm-stat-mini"><span>16 görev</span><span class="ov">6 geciken</span></div>
+    </div>
+  </div>
+
+  <div class="result-panel" id="result-a">
+    <div class="result-empty">Bir firma kartına tıkla</div>
+  </div>
+</div>
+
+<!-- ══════════ SEÇENEK B ══════════ -->
+<div id="panel-b" class="option-panel">
+  <div class="option-desc">
+    <div class="option-badge badge-b">B</div>
+    <div class="option-text">
+      <h3>Firma Bazlı Aggregated Görünüm</h3>
+      <p>Firma kartına tıklamak dashboard'u o firmanın tüm görevlerini gösteren yeni bir state'e sokar. Kullanıcı filtresi devre dışı kalır; KPI'lar firma toplamını gösterir.</p>
+      <div class="option-when">
+        <strong>Ne zaman tercih edilir:</strong> IT Müdürü firma genelini görmek istiyorsa ve yeni /api/dashboard/firm-summary endpoint eklenecekse. En güçlü seçenek ama en fazla geliştirme gerektiren.
+      </div>
+    </div>
+  </div>
+
+  <!-- Firma banner -->
+  <div class="firm-banner" id="firm-banner-b">
+    <div class="firm-banner-icon">&#9634;</div>
+    <div id="firm-banner-text">Firma seçildi</div>
+    <div style="margin-left:auto; font-size:10px; opacity:.6; cursor:pointer;" onclick="clearFirmB()">Temizle</div>
+  </div>
+
+  <!-- Firma kartları -->
+  <div class="firm-strip-horiz" id="strip-b">
+    <div class="firm-card" onclick="selectFirmB('İnventist','68','47','32','5','good',this)">
+      <div class="firm-name">İnventist</div>
+      <div class="firm-rate good">68%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill good" style="width:68%"></div></div>
+      <div class="firm-stat-mini"><span>47 görev</span><span class="ov">5 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmB('Assos Pharma','54','28','15','8','warn',this)">
+      <div class="firm-name">Assos Pharma</div>
+      <div class="firm-rate warn">54%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill warn" style="width:54%"></div></div>
+      <div class="firm-stat-mini"><span>28 görev</span><span class="ov">8 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmB('Şirket Çağ','82','33','27','1','good',this)">
+      <div class="firm-name">Şirket Çağ</div>
+      <div class="firm-rate good">82%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill good" style="width:82%"></div></div>
+      <div class="firm-stat-mini"><span>33 görev</span><span class="ov">1 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmB('Test Firma','31','16','5','6','bad',this)">
+      <div class="firm-name">Test Firma</div>
+      <div class="firm-rate bad">31%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill bad" style="width:31%"></div></div>
+      <div class="firm-stat-mini"><span>16 görev</span><span class="ov">6 geciken</span></div>
+    </div>
+  </div>
+
+  <div class="result-panel" id="result-b">
+    <div class="result-empty" id="result-b-empty">Bir firma kartına tıkla</div>
+    <div id="result-b-kpi" style="display:none;">
+      <div class="mini-kpi-row" id="kpi-row-b"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SEÇENEK C ══════════ -->
+<div id="panel-c" class="option-panel">
+  <div class="option-desc">
+    <div class="option-badge badge-c">C</div>
+    <div class="option-text">
+      <h3>Salt Görsel Highlight</h3>
+      <p>Karta tıklamak sadece aktif border ve bir bilgi satırı gösterir. Dashboard filtresi değişmez. Şerit saf "genel bakış" aracı olarak kalır.</p>
+      <div class="option-when">
+        <strong>Ne zaman tercih edilir:</strong> Şerit salt referans amaçlıysa ve IT Müdürü dashboard navigasyonunu ayrı kontroller üzerinden yapıyorsa. En az geliştirme eforlu.
+      </div>
+    </div>
+  </div>
+
+  <!-- Firma kartları -->
+  <div class="firm-strip-horiz" id="strip-c">
+    <div class="firm-card" onclick="selectFirmC('İnventist','68%','47','32','5','good',this)">
+      <div class="firm-name">İnventist</div>
+      <div class="firm-rate good">68%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill good" style="width:68%"></div></div>
+      <div class="firm-stat-mini"><span>47 görev</span><span class="ov">5 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmC('Assos Pharma','54%','28','15','8','warn',this)">
+      <div class="firm-name">Assos Pharma</div>
+      <div class="firm-rate warn">54%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill warn" style="width:54%"></div></div>
+      <div class="firm-stat-mini"><span>28 görev</span><span class="ov">8 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmC('Şirket Çağ','82%','33','27','1','good',this)">
+      <div class="firm-name">Şirket Çağ</div>
+      <div class="firm-rate good">82%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill good" style="width:82%"></div></div>
+      <div class="firm-stat-mini"><span>33 görev</span><span class="ov">1 geciken</span></div>
+    </div>
+    <div class="firm-card" onclick="selectFirmC('Test Firma','31%','16','5','6','bad',this)">
+      <div class="firm-name">Test Firma</div>
+      <div class="firm-rate bad">31%</div>
+      <div class="firm-progress-track"><div class="firm-progress-fill bad" style="width:31%"></div></div>
+      <div class="firm-stat-mini"><span>16 görev</span><span class="ov">6 geciken</span></div>
+    </div>
+  </div>
+
+  <div class="result-panel" id="result-c">
+    <div class="result-empty" id="result-c-empty">Bir firma kartına tıkla — dashboard değişmez, sadece kart vurgulanır</div>
+    <div class="info-strip" id="info-strip-c">
+      <div class="info-row">
+        <div class="info-row-label">Seçili firma</div>
+        <div class="info-row-val" id="c-firm-name">—</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-label">Tamamlanma oranı</div>
+        <div class="info-row-val" id="c-rate">—</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-label">Toplam görev</div>
+        <div class="info-row-val" id="c-total">—</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-label">Tamamlanan</div>
+        <div class="info-row-val good" id="c-done">—</div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-label">Geciken</div>
+        <div class="info-row-val bad" id="c-overdue">—</div>
+      </div>
+      <div class="no-nav-note">Dashboard filtrelenmedi — bu sadece bilgi paneli</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Tab geçişi ── */
+function switchTab(t) {
+  document.querySelectorAll('.option-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('panel-' + t).classList.add('active');
+  document.querySelectorAll('.tab-btn')[{a:0,b:1,c:2}[t]].classList.add('active');
+}
+
+/* ── Seçenek A ── */
+function selectFirmA(firmSlug, firstUser, userVal, cardEl) {
+  document.querySelectorAll('#strip-a .firm-card').forEach(function(c) { c.classList.remove('selected-a'); });
+  cardEl.classList.add('selected-a');
+
+  var sel = document.getElementById('user-dropdown-a');
+  sel.value = userVal;
+
+  var hint = document.getElementById('dropdown-hint-a');
+  hint.classList.add('visible');
+  setTimeout(function() { hint.classList.remove('visible'); }, 2000);
+
+  var resultEl = document.getElementById('result-a');
+  resultEl.innerHTML =
+    '<div class="result-info">' +
+    '<strong class="highlight-a">' + cardEl.querySelector('.firm-name').textContent + '</strong> firması seçildi. ' +
+    'Kullanıcı dropdown\'u otomatik olarak <strong>' + firstUser + '</strong> olarak set edildi. ' +
+    'Dashboard bu kullanıcının görevlerini filtreleyerek yükler.' +
+    '<br><br>' +
+    '<span style="color:var(--text-dim);font-size:11px;">Not: Firma değişikliği kullanıcı bazlı gösterimi değiştirdi — ' +
+    'diğer firmanın kullanıcılarını da görmek için dropdown\'u manuel değiştirmen gerekiyor.</span>' +
+    '</div>';
+}
+
+/* ── Seçenek B ── */
+function selectFirmB(firmName, rate, total, done, overdue, rateClass, cardEl) {
+  document.querySelectorAll('#strip-b .firm-card').forEach(function(c) { c.classList.remove('selected-b'); });
+  cardEl.classList.add('selected-b');
+
+  var banner = document.getElementById('firm-banner-b');
+  banner.classList.add('visible');
+  document.getElementById('firm-banner-text').textContent =
+    firmName + ' firmasının tüm görevleri gösteriliyor — kullanıcı filtresi devre dışı';
+
+  document.getElementById('result-b-empty').style.display = 'none';
+  document.getElementById('result-b-kpi').style.display = 'block';
+
+  document.getElementById('kpi-row-b').innerHTML =
+    '<div class="mini-kpi"><div class="mini-kpi-val">' + total + '</div><div class="mini-kpi-label">Toplam</div></div>' +
+    '<div class="mini-kpi"><div class="mini-kpi-val good">' + done + '</div><div class="mini-kpi-label">Tamamlanan</div></div>' +
+    '<div class="mini-kpi"><div class="mini-kpi-val bad">' + overdue + '</div><div class="mini-kpi-label">Geciken</div></div>' +
+    '<div class="mini-kpi"><div class="mini-kpi-val ' + rateClass + '">' + rate + '%</div><div class="mini-kpi-label">Oran</div></div>';
+}
+
+function clearFirmB() {
+  document.querySelectorAll('#strip-b .firm-card').forEach(function(c) { c.classList.remove('selected-b'); });
+  document.getElementById('firm-banner-b').classList.remove('visible');
+  document.getElementById('result-b-empty').style.display = 'flex';
+  document.getElementById('result-b-kpi').style.display = 'none';
+}
+
+/* ── Seçenek C ── */
+function selectFirmC(firmName, rate, total, done, overdue, rateClass, cardEl) {
+  document.querySelectorAll('#strip-c .firm-card').forEach(function(c) { c.classList.remove('selected-c'); });
+  cardEl.classList.add('selected-c');
+
+  document.getElementById('result-c-empty').style.display = 'none';
+  var strip = document.getElementById('info-strip-c');
+  strip.classList.add('visible');
+
+  document.getElementById('c-firm-name').textContent = firmName;
+  document.getElementById('c-rate').textContent = rate;
+  document.getElementById('c-rate').className = 'info-row-val ' + rateClass;
+  document.getElementById('c-total').textContent = total;
+  document.getElementById('c-done').textContent = done;
+  document.getElementById('c-overdue').textContent = overdue;
+}
+</script>
+</body>
+</html>

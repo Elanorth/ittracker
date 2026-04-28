@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<!-- DEMO: Soru 2 — Veri Kaynağı Görsel Farkı
+     BLOK A: Mevcut tasks array kullanılırsa (seçili kullanıcının görevleri)
+     BLOK B: Yeni /api/dashboard/firm-summary endpoint kullanılırsa (tüm firmalar)
+
+     NEYE BAKMALISIN:
+     1. Blok A'da kullanıcı İnventist'te olduğu için diğer firmalar boş/sıfır görünür
+        — bu yanıltıcı: firma gerçekten boş değil, sadece bu kullanıcının görevi yok
+     2. Blok B'de her firma kendi gerçek toplamını gösteriyor
+     3. Hangi veri kaynağının daha güvenilir karar vermeyi sağladığına bak
+-->
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEMO Q2 — Veri Kaynağı Farkı</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0f1419;
+  --surface2: #161d26;
+  --surface3: #1e2733;
+  --border: #242d38;
+  --border2: #2e3a47;
+  --accent: #00e5c0;
+  --accent-dim: rgba(0,229,192,.10);
+  --accent2: #ff5f3d;
+  --accent2-dim: rgba(255,95,61,.10);
+  --gold: #f4b942;
+  --gold-dim: rgba(244,185,66,.10);
+  --green: #34d058;
+  --green-dim: rgba(52,208,88,.10);
+  --danger: #f85149;
+  --danger-dim: rgba(248,81,73,.10);
+  --text: #dce6f0;
+  --text-muted: #6b7e93;
+  --text-dim: #3d4f61;
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 32px 24px;
+}
+
+/* ── Sayfa başlık ── */
+.demo-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.demo-header h1 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.demo-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 640px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── İki blok yan yana ── */
+.compare-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+@media (max-width: 900px) {
+  .compare-wrap { grid-template-columns: 1fr; }
+}
+
+/* ── Blok ── */
+.blok {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 24px;
+}
+.blok-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.blok-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.blok-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.blok-desc strong { color: var(--accent2); }
+.blok-b .blok-desc strong { color: var(--green); }
+
+/* ── Firma şeridi ── */
+.firm-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Firma kartı ── */
+.firm-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.firm-card.empty-card {
+  opacity: 0.45;
+  border-style: dashed;
+}
+.firm-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.firm-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.firm-rate {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+}
+.firm-rate.good { color: var(--green); }
+.firm-rate.warn { color: var(--gold); }
+.firm-rate.bad  { color: var(--danger); }
+.firm-rate.none { color: var(--text-dim); }
+
+/* progress bar */
+.firm-progress-track {
+  height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.firm-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s;
+}
+.firm-progress-fill.good { background: var(--green); }
+.firm-progress-fill.warn { background: var(--gold); }
+.firm-progress-fill.bad  { background: var(--danger); }
+.firm-progress-fill.none { background: var(--text-dim); width: 0 !important; }
+
+/* stat chips */
+.firm-stats {
+  display: flex;
+  gap: 12px;
+}
+.firm-stat {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.firm-stat span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  color: var(--text);
+}
+.firm-stat.overdue span { color: var(--danger); }
+
+/* boş durum notu */
+.empty-note {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* sla breach badge */
+.sla-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--danger-dim);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  padding: 1px 6px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* ── Uyarı banner ── */
+.warning-banner {
+  background: rgba(255,95,61,.08);
+  border: 1px solid rgba(255,95,61,.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--accent2);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.success-banner {
+  background: var(--green-dim);
+  border: 1px solid rgba(52,208,88,.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--green);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div class="demo-header">
+  <h1>Demo Q2 — Veri Kaynağı Karşılaştırması</h1>
+  <p>
+    Seçili kullanıcı <strong>İnventist</strong> firmasında çalışıyor.
+    Blok A mevcut tasks array'ini kullanır — sadece bu kullanıcının görevlerini bilir.
+    Blok B yeni bir endpoint kullanır — tüm firmaların gerçek toplamlarını getirir.
+  </p>
+</div>
+
+<div class="compare-wrap">
+
+  <!-- ══════════ BLOK A ══════════ -->
+  <div class="blok blok-a">
+    <div class="blok-label">Blok A — Mevcut Yöntem</div>
+    <div class="blok-title">tasks array filtreleme</div>
+    <div class="blok-desc">
+      Kaynak: <code>loadedTasks</code> (seçili kullanıcının görevleri).
+      Kullanıcı İnventist'te olduğu için <strong>diğer firmaların verileri sıfır görünür</strong> —
+      ama o firmalar aslında boş değil.
+    </div>
+
+    <div class="warning-banner">
+      Dikkat: Bu kullanıcı Assos ve Şirket Çağ firmalarında kayıtlı görev göremiyor.
+      "0 görev" bilgisi yanıltıcı — o firmalar boş değil.
+    </div>
+
+    <div class="firm-strip">
+
+      <!-- İnventist — kullanıcının firması, veri var -->
+      <div class="firm-card">
+        <div class="firm-card-top">
+          <div class="firm-name">İnventist</div>
+          <div class="firm-rate good">68%</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill good" style="width:68%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span>47</span></div>
+          <div class="firm-stat">Tamamlanan: <span>32</span></div>
+          <div class="firm-stat overdue">Geciken: <span>5</span></div>
+        </div>
+      </div>
+
+      <!-- Assos — bu kullanıcı o firmada değil, sıfır görünür -->
+      <div class="firm-card empty-card">
+        <div class="firm-card-top">
+          <div class="firm-name">Assos Pharma</div>
+          <div class="firm-rate none">—</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill none" style="width:0%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span style="color:var(--text-dim)">0</span></div>
+          <div class="firm-stat">Tamamlanan: <span style="color:var(--text-dim)">0</span></div>
+          <div class="firm-stat">Geciken: <span style="color:var(--text-dim)">0</span></div>
+        </div>
+        <div class="empty-note">Bu firmada bu kullanıcının görevi yok — firma boş değil</div>
+      </div>
+
+      <!-- Test Firma — bu kullanıcı o firmada değil -->
+      <div class="firm-card empty-card">
+        <div class="firm-card-top">
+          <div class="firm-name">Şirket Çağ</div>
+          <div class="firm-rate none">—</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill none" style="width:0%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span style="color:var(--text-dim)">0</span></div>
+          <div class="firm-stat">Tamamlanan: <span style="color:var(--text-dim)">0</span></div>
+          <div class="firm-stat">Geciken: <span style="color:var(--text-dim)">0</span></div>
+        </div>
+        <div class="empty-note">Bu firmada bu kullanıcının görevi yok — firma boş değil</div>
+      </div>
+
+      <!-- Test Firma 2 -->
+      <div class="firm-card empty-card">
+        <div class="firm-card-top">
+          <div class="firm-name">Test Firma</div>
+          <div class="firm-rate none">—</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill none" style="width:0%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span style="color:var(--text-dim)">0</span></div>
+          <div class="firm-stat">Tamamlanan: <span style="color:var(--text-dim)">0</span></div>
+          <div class="firm-stat">Geciken: <span style="color:var(--text-dim)">0</span></div>
+        </div>
+        <div class="empty-note">Bu firmada bu kullanıcının görevi yok — firma boş değil</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ BLOK B ══════════ -->
+  <div class="blok blok-b">
+    <div class="blok-label">Blok B — Önerilen Yöntem</div>
+    <div class="blok-title">/api/dashboard/firm-summary endpoint</div>
+    <div class="blok-desc">
+      Kaynak: Backend'in tüm firmalara bakarak hesapladığı aggregated veriler.
+      <strong>Her kart gerçek firma toplamını gösteriyor</strong> —
+      hangi kullanıcının seçili olduğundan bağımsız.
+    </div>
+
+    <div class="success-banner">
+      Tüm firmalar kendi gerçek verilerini gösteriyor. IT Müdürü doğru karar verebilir.
+    </div>
+
+    <div class="firm-strip">
+
+      <!-- İnventist -->
+      <div class="firm-card">
+        <div class="firm-card-top">
+          <div class="firm-name">İnventist</div>
+          <div class="firm-rate good">68%</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill good" style="width:68%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span>47</span></div>
+          <div class="firm-stat">Tamamlanan: <span>32</span></div>
+          <div class="firm-stat overdue">Geciken: <span>5</span></div>
+        </div>
+      </div>
+
+      <!-- Assos — artık gerçek veri var -->
+      <div class="firm-card">
+        <div class="sla-badge">2 SLA ihlali</div>
+        <div class="firm-card-top">
+          <div class="firm-name">Assos Pharma</div>
+          <div class="firm-rate warn">54%</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill warn" style="width:54%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span>28</span></div>
+          <div class="firm-stat">Tamamlanan: <span>15</span></div>
+          <div class="firm-stat overdue">Geciken: <span>8</span></div>
+        </div>
+      </div>
+
+      <!-- Şirket Çağ -->
+      <div class="firm-card">
+        <div class="firm-card-top">
+          <div class="firm-name">Şirket Çağ</div>
+          <div class="firm-rate good">82%</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill good" style="width:82%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span>33</span></div>
+          <div class="firm-stat">Tamamlanan: <span>27</span></div>
+          <div class="firm-stat overdue">Geciken: <span>1</span></div>
+        </div>
+      </div>
+
+      <!-- Test Firma -->
+      <div class="firm-card">
+        <div class="firm-card-top">
+          <div class="firm-name">Test Firma</div>
+          <div class="firm-rate bad">31%</div>
+        </div>
+        <div class="firm-progress-track">
+          <div class="firm-progress-fill bad" style="width:31%"></div>
+        </div>
+        <div class="firm-stats">
+          <div class="firm-stat">Toplam: <span>16</span></div>
+          <div class="firm-stat">Tamamlanan: <span>5</span></div>
+          <div class="firm-stat overdue">Geciken: <span>6</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /compare-wrap -->
+
+</body>
+</html>
