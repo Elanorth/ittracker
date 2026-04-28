@@ -1,5 +1,6 @@
 """Veritabanı Modelleri v3 — TaskCompletion + project_status"""
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
@@ -12,7 +13,10 @@ class User(db.Model):
     full_name        = db.Column(db.String(100), nullable=False)
     email            = db.Column(db.String(150), unique=True, nullable=False)
     role             = db.Column(db.String(50), default="IT Yardımcısı")
-    firm             = db.Column(db.String(50), default="")
+    # firm: tek string. "Boş firma" semantiği = "" (boş string).
+    # @validates ile None → "" coerce edilir, böylece kod her yerde tutarlı
+    # olarak `if not user.firm` veya `user.firm == ""` kontrolü kullanabilir.
+    firm             = db.Column(db.String(50), nullable=False, default="")
     is_admin         = db.Column(db.Boolean, default=False)
     permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_director | it_manager | it_specialist | junior
     can_access_board  = db.Column(db.Boolean, default=False)
@@ -29,6 +33,17 @@ class User(db.Model):
                                         foreign_keys="Task.user_id")
     assigned_tasks   = db.relationship("Task", lazy=True,
                                         foreign_keys="Task.assigned_by")
+
+    @validates("firm")
+    def _validate_firm(self, key, value):
+        """firm=None gönderilse de "" olarak saklanır.
+
+        Sebep: v4.9 öncesi `firm` string'di ve `default=""` olarak tanımlıydı,
+        ama `User(firm=None)` çağrısında SQLAlchemy default'u uygulamıyordu —
+        sonuç olarak NULL ile "" arasında semantik karışıklık oluşuyordu.
+        Tek doğru "boş firma" temsili: "" (boş string).
+        """
+        return value if value is not None else ""
 
     def set_password(self, pw): self.password_hash = generate_password_hash(pw)
     def check_password(self, pw): return check_password_hash(self.password_hash, pw)

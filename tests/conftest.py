@@ -17,7 +17,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 import pytest
 from app import app as flask_app
-from models.database import db as _db, init_db
+from models.database import db as _db, init_db, User, Task, TaskCompletion, Firm, Team, AuditLog
 
 
 @pytest.fixture(scope="session")
@@ -42,12 +42,18 @@ def client(app):
 
 @pytest.fixture
 def db(app):
-    """Her test sonrası tabloları temizle — izolasyon için."""
+    """Her test sonrası tabloları temizle — izolasyon için.
+
+    session.remove() → session.close() eşdeğeri: session'ı döndürür ve
+    bir sonraki işlemde yeni session açılır. Böylece testtler arası
+    SQLAlchemy identity map'indeki stale/detached instance problemi önlenir.
+    """
     yield _db
     _db.session.rollback()
     for table in reversed(_db.metadata.sorted_tables):
         _db.session.execute(table.delete())
     _db.session.commit()
+    _db.session.remove()
 
 
 @pytest.fixture
@@ -58,3 +64,82 @@ def login_as(client):
             s["user_id"] = user.id
         return user
     return _login
+
+
+@pytest.fixture
+def user_factory(db):
+    """
+    Kullanıcı fabrikası: her test için bağımsız kullanıcı oluşturur.
+
+    Kullanım:
+        user = user_factory(username="cagla", full_name="Çağla Öztürk",
+                            firm="inventist", permission_level="junior")
+    """
+    created = []
+
+    def _make(
+        username="test_user",
+        full_name="Test Kullanıcı",
+        email=None,
+        firm="inventist",
+        permission_level="junior",
+        is_admin=False,
+        password="test_pw_123",
+        active=True,
+        can_access_board=False,
+    ):
+        # Aynı username ile tekrar çağrılırsa unique suffix ekle
+        if email is None:
+            email = f"{username}_{len(created)}@example.com"
+        u = User(
+            username=f"{username}_{len(created)}",
+            full_name=full_name,
+            email=email,
+            firm=firm,
+            permission_level=permission_level,
+            is_admin=is_admin,
+            active=active,
+            can_access_board=can_access_board,
+        )
+        u.set_password(password)
+        db.session.add(u)
+        db.session.commit()
+        created.append(u)
+        return u
+
+    return _make
+
+
+@pytest.fixture
+def task_factory(db):
+    """
+    Görev fabrikası.
+
+    Kullanım:
+        task = task_factory(user_id=user.id, title="Sunucu yedeği", category="routine")
+    """
+    def _make(
+        user_id,
+        title="Test Görevi",
+        category="other",
+        priority="orta",
+        period="Tek Seferlik",
+        firm="inventist",
+        is_done=False,
+    ):
+        from datetime import datetime
+        t = Task(
+            user_id=user_id,
+            title=title,
+            category=category,
+            priority=priority,
+            period=period,
+            firm=firm,
+            is_done=is_done,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(t)
+        db.session.commit()
+        return t
+
+    return _make

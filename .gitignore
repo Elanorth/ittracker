@@ -6,6 +6,11 @@ instance/
 .env
 *.db
 
+# Test artefakları
+.coverage
+.pytest_cache/
+htmlcov/
+
 # Secrets - asla commitlenmemeli
 ms_cer_secret.txt
 *_secret.txt

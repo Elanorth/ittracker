@@ -45,11 +45,44 @@ def _normalize_priority(val):
     v = (val or "").strip().lower()
     return v if v in ALLOWED_PRIORITIES else "orta"
 
+# Türkçe-uyumlu küçük harf/slug haritası: Python `.lower()` 'İ' → 'i̇' (i + combining dot)
+# döndürür ve slug'larda hayalet karakter bırakır. Aşağıdaki tablo Türkçe karakterleri
+# slug-safe ASCII'ye eşler.
+_TR_SLUG_MAP = str.maketrans({
+    "İ": "i", "I": "i", "ı": "i",
+    "Ş": "s", "ş": "s",
+    "Ğ": "g", "ğ": "g",
+    "Ü": "u", "ü": "u",
+    "Ö": "o", "ö": "o",
+    "Ç": "c", "ç": "c",
+})
+
+def _slugify_tr(s):
+    """Türkçe-aware slug üretimi.
+
+    Örnek: 'İnventist' → 'inventist', 'Şirket Çağ' → 'sirket_cag'
+    Saf `.lower().replace(" ","_")` 'İnventist' için 'i̇nventist' üretir
+    (combining dot above) — slug bozulur. Bu helper Türkçe harfleri ASCII
+    karşılıklarına eşler ve sonra slug'lar.
+    """
+    if not s:
+        return ""
+    return s.translate(_TR_SLUG_MAP).lower().strip().replace(" ", "_")
+
 def login_required(f):
     @wraps(f)
     def dec(*args, **kwargs):
         if "user_id" not in session:
-            return redirect(url_for("login")) if not request.is_json else (jsonify({"error": "Unauthorized"}), 401)
+            # API path veya JSON Accept/Content-Type → JSON 401 dön (302 redirect değil).
+            # Frontend fetch() çağrılarının redirect'ten dolayı opaque/HTML cevap almaması için.
+            wants_json = (
+                request.is_json
+                or request.path.startswith("/api/")
+                or "application/json" in request.headers.get("Accept", "")
+            )
+            if wants_json:
+                return jsonify({"error": "Unauthorized"}), 401
+            return redirect(url_for("login"))
         return f(*args, **kwargs)
     return dec
 
@@ -761,7 +794,7 @@ def get_firms(): return jsonify([f.to_dict() for f in Firm.query.order_by(Firm.n
 @app.route("/api/firms", methods=["POST"])
 @manager_required
 def create_firm():
-    data=request.get_json(); firm=Firm(name=data["name"],slug=data["name"].lower().replace(" ","_")); db.session.add(firm); db.session.commit(); return jsonify(firm.to_dict()),201
+    data=request.get_json(); firm=Firm(name=data["name"],slug=_slugify_tr(data["name"])); db.session.add(firm); db.session.commit(); return jsonify(firm.to_dict()),201
 
 @app.route("/api/firms/<int:fid>/teams")
 @login_required
