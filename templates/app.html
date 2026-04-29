@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v4.8</title>
+<title>IT//TRACKER · v4.9</title>
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#00e5c0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -530,6 +530,50 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .kpi-clickable { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
 .kpi-clickable:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
 
+/* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
+   IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
+   Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
+#director-firms-strip { margin-top:14px; }
+.firm-strip-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:0 2px; }
+.firm-strip-title { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); }
+.firm-strip-title::after { content:''; display:inline-block; width:24px; height:1px; background:var(--accent3); margin-left:10px; vertical-align:middle; }
+.firm-strip-count { font-size:10px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; }
+.firm-strip-track {
+  display:flex; gap:12px; overflow-x:auto; padding:2px 2px 8px;
+  scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:var(--border2) transparent;
+}
+.firm-strip-track::-webkit-scrollbar { height:4px; }
+.firm-strip-track::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.firm-card {
+  flex:0 0 220px; min-width:220px; scroll-snap-align:start;
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; cursor:pointer; transition:.12s; user-select:none; position:relative;
+}
+.firm-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent3); border-radius:var(--radius) var(--radius) 0 0; }
+.firm-card.fc-inv::after  { background:var(--accent); }
+.firm-card.fc-assos::after { background:var(--gold); }
+.firm-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.25); border-color:var(--border2); }
+.firm-card:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.firm-card.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+.firm-card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.firm-card-name { font-size:12px; font-weight:700; color:var(--text); }
+.firm-card-rate { font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:700; }
+.firm-card-rate.r-good { color:var(--green); }
+.firm-card-rate.r-warn { color:var(--gold); }
+.firm-card-rate.r-bad  { color:var(--danger); }
+.firm-card-rate.r-none { color:var(--text-dim); }
+.firm-card-progress { height:3px; background:var(--surface3); border-radius:2px; overflow:hidden; margin-bottom:8px; }
+.firm-card-progress-fill { height:100%; transition:width .3s; }
+.firm-card-progress-fill.r-good { background:var(--green); }
+.firm-card-progress-fill.r-warn { background:var(--gold); }
+.firm-card-progress-fill.r-bad  { background:var(--danger); }
+.firm-card-stats { display:flex; gap:10px; font-size:10px; color:var(--text-muted); }
+.firm-card-stats .ov { color:var(--danger); font-family:'IBM Plex Mono',monospace; font-weight:700; }
+.firm-card-sla { position:absolute; top:8px; right:10px; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; padding:1px 6px; border-radius:4px; background:var(--accent2-dim); color:var(--accent2); border:1px solid rgba(255,95,61,.3); }
+[data-theme="inventist"] .firm-card::after { background:var(--accent3); }
+[data-theme="inventist"] .firm-card.fc-inv::after { background:var(--accent3); }
+/* /v4.9 — şerit */
+
 /* v4.7 — KPI trend göstergesi */
 .kpi-trend { display:inline-flex; align-items:center; gap:2px; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:6px; font-family:'IBM Plex Mono',monospace; }
 .kpi-trend.up   { color:#34d058; background:rgba(52,208,88,.12); }
@@ -541,6 +585,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
   .kpi-row { grid-template-columns:repeat(3,1fr); }
   .grid-3, .grid-3r, .grid-2 { grid-template-columns:1fr !important; }
   #sla-kpi-row { grid-template-columns:repeat(2,1fr) !important; }
+  /* v4.9 — şerit kartları tablet'te biraz daralır, daha çok kart aynı anda görünür */
+  .firm-card { flex:0 0 200px; min-width:200px; }
 }
 @media (max-width: 720px) {
   .kpi-row { grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -548,6 +594,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
   .kpi-value { font-size:24px; }
   .chart-wrap { flex-direction:column; align-items:center; gap:12px; }
   .btn-new-task { font-size:11px; padding:6px 10px; }
+  /* v4.9 — mobil şerit: kart genişliği viewport'a oranlı, swipe öncelikli */
+  .firm-card { flex:0 0 78vw; min-width:78vw; max-width:280px; }
+  .firm-strip-track { scroll-snap-type:x mandatory; }
 }
 </style>
 </head>
@@ -597,7 +646,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="logo-hex"></div>
       <div class="logo-text">IT//TRACKER</div>
     </div>
-    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.8</div>
+    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.9</div>
   </div>
 
   <div class="user-block">
@@ -692,6 +741,15 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" onclick="kpiJump('open')"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
     <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" onclick="kpiJump('overdue')"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
     <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" onclick="kpiJump('backup')"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+  </div>
+
+  <!-- v4.9 — Yönetilen Firmalar Şeridi (IT Müdürü 2+ firma yönetiyorsa görünür) -->
+  <div id="director-firms-strip" style="display:none">
+    <div class="firm-strip-head">
+      <div class="firm-strip-title">Yönettiğin Firmalar</div>
+      <div class="firm-strip-count" id="firm-strip-count">—</div>
+    </div>
+    <div class="firm-strip-track" id="firm-strip-track" role="list" aria-label="Yönetilen firmaların özeti"></div>
   </div>
 
   <!-- v4.5 — SLA (Destek Talepleri) -->
@@ -1858,6 +1916,6 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <!-- ─── TOAST CONTAINER ─── -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script defer src="/static/app.js?v=4.8"></script>
+<script defer src="/static/app.js?v=4.9"></script>
 </body>
 </html>

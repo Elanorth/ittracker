@@ -486,6 +486,8 @@ function renderDashboard() {
   renderFirmBars();
   // v4.5 — SLA KPI kartları
   loadSlaKpi();
+  // v4.9 — IT Müdürü için yönetilen firma şeridi (super_admin/it_director only)
+  loadDirectorFirmsStrip();
 }
 
 // v4.8 — Gerçek trend rozetleri (backend /api/dashboard/trends)
@@ -617,6 +619,87 @@ function renderFirmBars() {
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
       </div>`;
   }).join('');
+}
+
+// v4.9 — Yönetilen Firmalar Şeridi (IT Müdürü dashboard'ında)
+// Backend: /api/dashboard/firm-summary (super_admin tüm firmaları, it_director managed_firms'ı görür)
+// Tıklama (Q3-A): firm-user-filter dropdown o firmanın ilk kullanıcısına auto-set olur
+async function loadDirectorFirmsStrip() {
+  const stripEl = document.getElementById('director-firms-strip');
+  if (!stripEl) return;
+  const lvl = (currentUser && currentUser.permission_level) || 'junior';
+  // Yetki kapısı — diğer roller için gizli kalır
+  if (lvl !== 'super_admin' && lvl !== 'it_director') {
+    stripEl.style.display = 'none';
+    return;
+  }
+  try {
+    const r = await fetch('/api/dashboard/firm-summary');
+    if (!r.ok) { stripEl.style.display = 'none'; return; }
+    const data = await r.json();
+    // Levent kararı: 1 veya 0 firma yönetiliyorsa şerit gizli (gürültü ekleme)
+    if (!Array.isArray(data) || data.length <= 1) {
+      stripEl.style.display = 'none';
+      return;
+    }
+    // Levent kararı: ilk 9 kart (slice tavanı, sınırsız scroll değil)
+    const firms = data.slice(0, 9);
+    const track = document.getElementById('firm-strip-track');
+    const countEl = document.getElementById('firm-strip-count');
+    if (countEl) countEl.textContent = (data.length > 9 ? `${firms.length}/${data.length}` : `${data.length}`) + ' firma';
+    track.innerHTML = firms.map(f => {
+      const rateClass = f.rate >= 70 ? 'r-good' : (f.rate >= 40 ? 'r-warn' : (f.rate > 0 ? 'r-bad' : 'r-none'));
+      const themeClass = f.slug === 'inventist' ? 'fc-inv' : (f.slug === 'assos' ? 'fc-assos' : '');
+      const slaTag = f.sla_breach > 0 ? `<div class="firm-card-sla" title="Açık SLA ihlali">${f.sla_breach} SLA</div>` : '';
+      const aria = `${f.name}: ${f.total} görev, ${f.done} tamamlandı, ${f.overdue} gecikmiş, %${f.rate} oran`;
+      const slugAttr = escapeHtml(f.slug || '');
+      return `
+        <div class="firm-card ${themeClass}" role="listitem" tabindex="0"
+             data-firm-slug="${slugAttr}"
+             onclick="onFirmStripClick('${slugAttr}', this)"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();onFirmStripClick('${slugAttr}', this)}"
+             aria-label="${escapeHtml(aria)}">
+          ${slaTag}
+          <div class="firm-card-top">
+            <div class="firm-card-name">${escapeHtml(f.name || f.slug)}</div>
+            <div class="firm-card-rate ${rateClass}">${f.total > 0 ? '%' + f.rate : '—'}</div>
+          </div>
+          <div class="firm-card-progress"><div class="firm-card-progress-fill ${rateClass}" style="width:${f.total > 0 ? f.rate : 0}%"></div></div>
+          <div class="firm-card-stats">
+            <span>${f.total} görev</span>
+            ${f.overdue > 0 ? `<span class="ov">${f.overdue} geciken</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    stripEl.style.display = 'block';
+  } catch (e) {
+    console.warn('[firm-strip] yüklenemedi', e);
+    stripEl.style.display = 'none';
+  }
+}
+
+// v4.9 Q3-A — Karta tıklayınca firm-user-filter dropdown o firmanın ilk
+// kullanıcısına auto-set olur, dashboard tek-kullanıcı mantığıyla yeniden yüklenir.
+function onFirmStripClick(firmSlug, cardEl) {
+  // Aktif kart vurgusu (single-select)
+  document.querySelectorAll('#firm-strip-track .firm-card').forEach(c => c.classList.remove('active'));
+  if (cardEl) cardEl.classList.add('active');
+
+  if (!firmSlug) return;
+  // firmUsers (initFirmUserFilter'da yüklenir) içinden bu firma'nın ilk
+  // kullanıcısını bul. Self ise filtreyi temizle (kendim).
+  const sel = document.getElementById('firm-user-filter');
+  if (!sel) return;
+  const candidates = (firmUsers || []).filter(u => (u.firm || '') === firmSlug);
+  // Önce kendim olmayanı seç (varsa); yoksa kendim
+  let pick = candidates.find(u => u.id !== currentUser.id) || candidates[0];
+  if (pick && pick.id !== currentUser.id) {
+    sel.value = String(pick.id);
+  } else {
+    sel.value = ''; // Kendim
+  }
+  onFirmUserChange();
 }
 
 // v4.5 — SLA KPI kartlarını yükler

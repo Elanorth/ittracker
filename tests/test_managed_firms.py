@@ -17,7 +17,6 @@ Planlanan iş kuralları (henüz implement edilmedi):
 import pytest
 
 
-@pytest.mark.skip(reason="v4.9 migration bekliyor — User.managed_firms henüz yok")
 class TestManagedFirmsModel:
     """User.managed_firms ilişkisi — model seviyesi testler."""
 
@@ -31,11 +30,12 @@ class TestManagedFirmsModel:
 
     def test_it_director_birden_fazla_firma_yonetebilir(self, db, user_factory):
         """
-        it_director 2+ firma yönetebilir.
-        Beklenen: managed_firms listesine birden fazla Firm nesnesi eklenebilir.
+        it_director 2+ firma yönetebilir (kendi firma'sı + ek olarak yönettiği firmalar).
+        Beklenen: managed_firms listesi kendi firma'sı + manuel eklenen firmaları içerir.
         """
         from models.database import Firm
         director = user_factory(username="mfm_u2", firm="inventist", permission_level="it_director")
+        # Auto-link: director.managed_firms zaten 'inventist' içerir.
         firm_a = Firm(name="Test Firma A", slug="test-firma-a")
         firm_b = Firm(name="Test Firma B", slug="test-firma-b")
         db.session.add_all([firm_a, firm_b])
@@ -47,7 +47,12 @@ class TestManagedFirmsModel:
 
         from models.database import User
         refreshed = User.query.get(director.id)
-        assert len(refreshed.managed_firms) == 2
+        slugs = {f.slug for f in refreshed.managed_firms}
+        # Kendi firma'sı (auto-link) + iki ek = 3 firma yönetiyor
+        assert "inventist" in slugs
+        assert "test-firma-a" in slugs
+        assert "test-firma-b" in slugs
+        assert len(refreshed.managed_firms) >= 2
 
     def test_managed_firms_association_tablosu_var(self, db):
         """
@@ -57,17 +62,33 @@ class TestManagedFirmsModel:
         from models.database import db as _db
         assert "user_managed_firms" in _db.metadata.tables
 
-    def test_managed_firms_bos_liste_yeni_kullanici(self, db, user_factory):
+    def test_yeni_director_kendi_firmasini_otomatik_yonetir(self, db, user_factory):
         """
-        Yeni oluşturulan it_director'ın managed_firms listesi boş başlar.
+        Yeni oluşturulan it_director'ın managed_firms listesi kendi firma'sını
+        otomatik içerir (after_insert event listener üzerinden auto-link).
+
+        Bu, "yeni IT Müdürü en azından kendi firma'sını yönetir" sözleşmesini
+        garanti eder — backend `_resolve_scope_uid` ve `firm_users` bu varsayım
+        üzerinde çalışır.
         """
         director = user_factory(username="mfm_u3", firm="assos", permission_level="it_director")
         from models.database import User
         refreshed = User.query.get(director.id)
+        slugs = [f.slug for f in refreshed.managed_firms]
+        assert "assos" in slugs
+        assert len(refreshed.managed_firms) == 1
+
+    def test_director_olmayan_kullanici_auto_link_yapilmaz(self, db, user_factory):
+        """
+        permission_level it_director değilse auto-link tetiklenmez.
+        Junior/specialist/manager kullanıcıların managed_firms'ı boş kalır.
+        """
+        junior = user_factory(username="mfm_u3b", firm="inventist", permission_level="junior")
+        from models.database import User
+        refreshed = User.query.get(junior.id)
         assert len(refreshed.managed_firms) == 0
 
 
-@pytest.mark.skip(reason="v4.9 migration bekliyor — geriye dönük uyumluluk migration'ı")
 class TestManagedFirmsMigrationBackcompat:
     """Migration geriye dönük uyumluluk — mevcut it_director'lar."""
 
@@ -117,7 +138,6 @@ class TestManagedFirmsMigrationBackcompat:
         )
 
 
-@pytest.mark.skip(reason="v4.9 migration bekliyor — /api/dashboard/firm-summary henüz yok")
 class TestFirmSummaryEndpoint:
     """/api/dashboard/firm-summary endpoint testleri."""
 
@@ -218,7 +238,6 @@ class TestFirmSummaryEndpoint:
         assert elapsed_ms < 500, f"Endpoint {elapsed_ms:.0f}ms aldı (hedef: <500ms)"
 
 
-@pytest.mark.skip(reason="v4.9 migration bekliyor — /api/firm/users managed_firms desteği")
 class TestFirmUsersV49:
     """/api/firm/users v4.9 davranışı — it_director managed_firms kapsamı."""
 
