@@ -42,11 +42,15 @@ def client(app):
 
 @pytest.fixture
 def db(app):
-    """Her test sonrası tabloları temizle — izolasyon için.
+    """Her test sonrası tabloları temizle, sonra seed datayı yeniden kur.
 
     session.remove() → session.close() eşdeğeri: session'ı döndürür ve
     bir sonraki işlemde yeni session açılır. Böylece testtler arası
     SQLAlchemy identity map'indeki stale/detached instance problemi önlenir.
+
+    init_db() yeniden çağrılır: firms (İnventist, Assos), teams ve admin
+    kullanıcısı yeniden seed edilir. v4.9'da firma şeridi testleri Firm
+    satırlarının var olmasına dayanır.
     """
     yield _db
     _db.session.rollback()
@@ -54,6 +58,8 @@ def db(app):
         _db.session.execute(table.delete())
     _db.session.commit()
     _db.session.remove()
+    # Seed datayı geri getir — sonraki test bunlara güvenebilsin
+    init_db()
 
 
 @pytest.fixture

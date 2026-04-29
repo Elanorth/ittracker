@@ -1,10 +1,21 @@
 """Veritabanı Modelleri v3 — TaskCompletion + project_status"""
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
 from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
 db = SQLAlchemy()
+
+# v4.9 — IT Müdürü çoklu firma yönetimi için many-to-many ilişki tablosu.
+# User.firm (kendi firması) tek string olarak kalır; managed_firms ise
+# yönetim kapsamı (super_admin gibi geniş ama firmaya kısıtlı erişim).
+user_managed_firms = db.Table(
+    "user_managed_firms",
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("firm_id", db.Integer, db.ForeignKey("firms.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -33,6 +44,9 @@ class User(db.Model):
                                         foreign_keys="Task.user_id")
     assigned_tasks   = db.relationship("Task", lazy=True,
                                         foreign_keys="Task.assigned_by")
+    # v4.9 — IT Müdürü'nün yönettiği firmalar (many-to-many)
+    managed_firms    = db.relationship("Firm", secondary=user_managed_firms,
+                                        lazy="select", backref="managers")
 
     @validates("firm")
     def _validate_firm(self, key, value):
@@ -61,11 +75,34 @@ class User(db.Model):
     def is_manager_or_above(self):
         return self.permission_level in ("super_admin", "it_director", "it_manager", "it_specialist")
 
+    @property
+    def managed_firm_slugs(self):
+        """v4.9 — yönetilen firmaların slug listesi (önbelleksiz, lazy)."""
+        return [f.slug for f in (self.managed_firms or [])]
+
+    def has_firm_scope(self, firm_value):
+        """v4.9 — verilen firm slug değeri yönetim kapsamımda mı?
+
+        super_admin için her zaman True.
+        it_director için: managed_firms slug listesinde VEYA kendi firm'i (geriye dönük).
+        Diğer roller için: yalnızca kendi firm'i ile eşleşirse True.
+        """
+        if not firm_value:
+            return False
+        if self.is_super_admin:
+            return True
+        if self.permission_level == "it_director":
+            if firm_value in self.managed_firm_slugs:
+                return True
+        # Geriye dönük: kendi firması ile eşleşirse evet
+        return firm_value == self.firm
+
     def to_dict(self):
         return {"id":self.id,"username":self.username,"full_name":self.full_name,"email":self.email,
                 "role":self.role,"firm":self.firm,"is_admin":self.is_admin,"active":self.active,
                 "permission_level":self.permission_level or "junior",
                 "can_access_board":bool(self.can_access_board),
+                "managed_firm_slugs": self.managed_firm_slugs,  # v4.9 — IT Müdürü dashboard şeridi için
                 "notify_overdue":bool(self.notify_overdue) if self.notify_overdue is not None else True,
                 "notify_sla_warning":bool(self.notify_sla_warning) if self.notify_sla_warning is not None else True,
                 "notify_daily_digest":bool(self.notify_daily_digest) if self.notify_daily_digest is not None else True,
@@ -376,6 +413,39 @@ class AuditLog(db.Model):
         }
 
 
+# v4.9 — IT Müdürü kullanıcısı insert edildikten sonra kendi firma'sı otomatik
+# olarak managed_firms'a eklensin. `after_insert` mapper event'i raw SQL ile
+# user_managed_firms tablosuna bağlantı satırı ekler — ORM relationship
+# lazy-load taraması yapmaz, böylece flush sırasındaki recursion riski yok.
+@event.listens_for(User, "after_insert")
+def _auto_link_director_to_own_firm(mapper, connection, target):
+    """it_director eklendikten sonra kendi firma'sı managed_firms'a eklenir.
+
+    Çalışma anı: User INSERT'inden hemen sonra (target.id artık dolu).
+    Yöntem: `firms` tablosunda slug eşleşmesi varsa user_managed_firms tablosuna
+    raw INSERT. Mevcut bağlantı varsa idempotent (UNIQUE primary_key sayesinde).
+    """
+    if target.permission_level != "it_director" or not target.firm:
+        return
+    from sqlalchemy import text as _text
+    firm_row = connection.execute(
+        _text("SELECT id FROM firms WHERE slug = :s"),
+        {"s": target.firm}
+    ).first()
+    if not firm_row:
+        return
+    # Çift eklemeyi önle
+    existing = connection.execute(
+        _text("SELECT 1 FROM user_managed_firms WHERE user_id=:u AND firm_id=:f"),
+        {"u": target.id, "f": firm_row[0]}
+    ).first()
+    if existing:
+        return
+    connection.execute(
+        user_managed_firms.insert().values(user_id=target.id, firm_id=firm_row[0])
+    )
+
+
 def init_db():
     import os
     from sqlalchemy import inspect, text
@@ -468,6 +538,24 @@ def init_db():
         admin_fix.is_admin = True
         db.session.commit()
         print(f"Migration: {admin_uname} super_admin yapildi")
+
+    # v4.9 Migration — Mevcut it_director'lar için managed_firms backfill.
+    # Yeni kayıtlar `before_flush` event listener ile zaten otomatik link'lenir;
+    # bu blok prod'daki ESKİ direktörler için tek seferlik geriye dönük doldurma.
+    directors = User.query.filter_by(permission_level="it_director").all()
+    backfilled = 0
+    for d in directors:
+        if not d.firm:
+            continue
+        if any(f.slug == d.firm for f in d.managed_firms):
+            continue
+        f = Firm.query.filter_by(slug=d.firm).first()
+        if f and f not in d.managed_firms:
+            d.managed_firms.append(f)
+            backfilled += 1
+    if backfilled:
+        db.session.commit()
+        print(f"v4.9 Migration: {backfilled} it_director için managed_firms backfill edildi")
 
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")

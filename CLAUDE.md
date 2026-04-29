@@ -40,10 +40,11 @@ docker-compose.override.yml  # Dev hot-reload mount'ları
 - `other` — Diğer
 
 ## Temel Modeller
-- **User**: username, full_name, email, role, firm, is_admin, o365_id
+- **User**: username, full_name, email, role, firm, is_admin, o365_id, **managed_firms** (v4.9 — IT Müdürü çoklu firma yönetimi, many-to-many `Firm` ile)
 - **Task**: title, category, priority (düşük/orta/yüksek), period (Günlük/Haftalık/Aylık/Yıllık/Tek Seferlik), firm, team, deadline, checklist, project_status
 - **TaskCompletion**: rutin görevlerin aylık tamamlanma kaydı (task_id + year + month unique)
 - **ConfigBackup**: göreve bağlı yüklenen config dosyaları
+- **user_managed_firms**: v4.9 association tablosu (User ↔ Firm)
 
 ## Geliştirme
 ```bash
@@ -69,6 +70,11 @@ docker-compose up --build
 ## Önemli Notlar
 - Admin ilk çalıştırmada ADMIN_PASSWORD yoksa `RuntimeError` fırlatır
 - Rutin görevlerin `is_done` durumu `TaskCompletion` tablosundan hesaplanır, `Task.is_done` flag'inden değil
+- **Boş firma semantiği:** `User.firm` için "boş" daima `""` (string), asla `None`. `@validates('firm')` decorator None→"" coerce eder. Kontroller `not user.firm` veya `user.firm == ""` ile yapılmalı, `is None` ile değil.
+- **`it_director` çoklu firma (v4.9):** Yetki kontrolü için `me.has_firm_scope(target.firm)` kullan; yeni director oluşturulunca `after_insert` event'i kendi firma'sını otomatik `managed_firms`'a ekler.
+- **Türkçe slug:** `_slugify_tr(name)` helper Türkçe karakterleri ASCII'ye eşler ('İnventist' → 'inventist'). Saf `.lower()` U+0307 hayalet karakter bırakır — direkt kullanma.
+- **API auth:** `login_required` `request.path.startswith('/api/')` veya `Accept: application/json` veya `Content-Type: application/json` ile JSON 401 döner; diğer durumlarda `/login`'e 302.
 - Tüm API route'ları `/api/` prefix'i ile başlar
 - Admin işlemleri `@admin_required` decorator gerektirir
 - Config backup dosyaları `BACKUP_DIR` (varsayılan: `/srv/it_tracker/backups`) altına kaydedilir
+- **Test:** `pytest -q` (138+ test), `requirements-dev.txt` (pytest, flask, cov, bs4, freezegun, responses). `tests/conftest.py` `db` fixture her test sonrası `init_db()` ile seed datayı yeniden kurar.

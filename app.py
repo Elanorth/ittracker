@@ -163,10 +163,12 @@ def log_audit(actor, action, *, entity_type="", entity_id=None,
 def _resolve_scope_uid(me, requested_uid):
     """
     v4.2 — firma bazlı kapsam çözümleyici.
+    v4.9 — it_director için managed_firms (çoklu firma yönetimi) desteği eklendi.
     - requested_uid yoksa: kendi id'si
     - requested_uid == kendi id'si: kendi id'si
     - super_admin: herkesin id'sini kullanabilir
-    - it_director: yalnızca kendi firmasındaki aktif kullanıcıların id'si
+    - it_director: yönettiği herhangi bir firmadaki (managed_firms slug'larında
+      VEYA kendi firm'inde — geriye dönük) aktif kullanıcıların id'si
     - diğerleri: başka kullanıcı görüntüleyemez (kendi id'si)
     Dönüş: (uid, error_tuple_or_None)
     """
@@ -177,7 +179,7 @@ def _resolve_scope_uid(me, requested_uid):
         return None, (jsonify({"error": "Kullanıcı bulunamadı"}), 404)
     if me.is_super_admin:
         return target.id, None
-    if me.permission_level == "it_director" and target.firm == me.firm:
+    if me.permission_level == "it_director" and me.has_firm_scope(target.firm):
         return target.id, None
     return None, (jsonify({"error": "Bu kullanıcının verilerine erişim yetkiniz yok"}), 403)
 
@@ -312,7 +314,11 @@ def auth_callback():
 @app.route("/api/firm/users")
 @login_required
 def firm_users():
-    """Director+ için firma bazlı kullanıcı listesi (dashboard dropdown)."""
+    """Director+ için firma bazlı kullanıcı listesi (dashboard dropdown).
+
+    v4.9 — it_director için yönettiği TÜM firmaların kullanıcıları döner
+    (managed_firms slug listesi + geriye dönük olarak kendi firm'i).
+    """
     me = _current_user()
     if not me:
         return jsonify({"error": "Unauthorized"}), 401
@@ -320,12 +326,79 @@ def firm_users():
     if me.is_super_admin:
         q = User.query.filter_by(active=True).order_by(User.full_name)
     elif me.permission_level == "it_director":
-        q = User.query.filter_by(active=True, firm=me.firm).order_by(User.full_name)
+        # v4.9 — managed_firms kapsamı (kendi firm'i her zaman dahil)
+        scope_slugs = set(me.managed_firm_slugs)
+        if me.firm:
+            scope_slugs.add(me.firm)
+        q = (User.query
+             .filter(User.active == True, User.firm.in_(list(scope_slugs)))
+             .order_by(User.full_name))
     else:
         return jsonify([{"id": me.id, "full_name": me.full_name, "firm": me.firm}])
     return jsonify([{"id": u.id, "full_name": u.full_name, "firm": u.firm,
                      "role": u.role, "permission_level": u.permission_level}
                     for u in q.all()])
+
+
+# v4.9 — Dashboard firma şeridi için aggregated özet endpoint'i.
+# IT Müdürü yönettiği her firma için tek satırlık özet (total/done/overdue/rate/sla_breach) alır.
+@app.route("/api/dashboard/firm-summary")
+@director_required
+def dashboard_firm_summary():
+    """v4.9 — IT Müdürü dashboard şeridi için her yönetilen firma özeti.
+
+    Response: [{firm, slug, name, total, done, overdue, rate, sla_breach}, ...]
+    Sıralama: tamamlanma oranı azalan (en sorunlu firma altta görünür).
+    Pratik karar: rutin görevlerde Task.is_done flag kullanılır (TaskCompletion
+    sorgusu N+1 maliyeti yaratır; şerit canlı snapshot, raporlama için /api/stats var).
+    SLA breach yalnızca açık (is_done=False) destek talepleri için sayılır.
+    """
+    me = _current_user()
+    if me.is_super_admin:
+        firms = Firm.query.order_by(Firm.name).all()
+    else:
+        # it_director: yönettiği firmalar + kendi firma'sı (geriye dönük)
+        scope_slugs = set(me.managed_firm_slugs)
+        if me.firm:
+            scope_slugs.add(me.firm)
+        if not scope_slugs:
+            return jsonify([])
+        firms = (Firm.query
+                 .filter(Firm.slug.in_(list(scope_slugs)))
+                 .order_by(Firm.name).all())
+
+    today = date.today()
+    now = datetime.utcnow()
+    summary = []
+    for f in firms:
+        tasks = Task.query.filter(Task.firm == f.slug).all()
+        total = len(tasks)
+        done = sum(1 for t in tasks if t.is_done)
+        overdue = sum(1 for t in tasks
+                      if (not t.is_done) and t.deadline and t.deadline < today)
+        rate = round((done / total) * 100) if total else 0
+        # SLA ihlali — açık destek talepleri için (resolved değil, deadline geçmiş)
+        sla_breach = 0
+        for t in tasks:
+            if t.category != "support" or t.is_done or not t.created_at:
+                continue
+            target_h = _sla_target_hours(t.priority)
+            deadline_dt = t.created_at + timedelta(hours=target_h)
+            if now > deadline_dt:
+                sla_breach += 1
+        summary.append({
+            "firm": f.slug,
+            "slug": f.slug,
+            "name": f.name,
+            "total": total,
+            "done": done,
+            "overdue": overdue,
+            "rate": rate,
+            "sla_breach": sla_breach,
+        })
+    # En düşük tamamlanma oranı altta (dikkat çekecek olan üstte)
+    summary.sort(key=lambda s: s["rate"])
+    return jsonify(summary)
 
 # ── TASKS ──
 @app.route("/api/tasks", methods=["GET"])
