@@ -545,9 +545,24 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .firm-strip-track::-webkit-scrollbar { height:4px; }
 .firm-strip-track::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
 .firm-card {
-  flex:0 0 220px; min-width:220px; scroll-snap-align:start;
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-  padding:14px 16px; cursor:pointer; transition:.12s; user-select:none; position:relative;
+  /* flex shorthand bazı eski browser'larda parse edilmiyorsa diye explicit
+     width fallback'i + flex-shrink:0 ile defansif: kart kesinlikle 220px kalır,
+     content uzunluğu kartı genişletmez. */
+  flex: 0 0 220px;
+  flex-shrink: 0;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  scroll-snap-align: start;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: .12s;
+  user-select: none;
+  position: relative;
 }
 .firm-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent3); border-radius:var(--radius) var(--radius) 0 0; }
 .firm-card.fc-inv::after  { background:var(--accent); }
@@ -586,7 +601,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   .grid-3, .grid-3r, .grid-2 { grid-template-columns:1fr !important; }
   #sla-kpi-row { grid-template-columns:repeat(2,1fr) !important; }
   /* v4.9 — şerit kartları tablet'te biraz daralır, daha çok kart aynı anda görünür */
-  .firm-card { flex:0 0 200px; min-width:200px; }
+  .firm-card { flex:0 0 200px; width:200px; min-width:200px; max-width:200px; }
 }
 @media (max-width: 720px) {
   .kpi-row { grid-template-columns:repeat(2,1fr); gap:10px; }
@@ -595,7 +610,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   .chart-wrap { flex-direction:column; align-items:center; gap:12px; }
   .btn-new-task { font-size:11px; padding:6px 10px; }
   /* v4.9 — mobil şerit: kart genişliği viewport'a oranlı, swipe öncelikli */
-  .firm-card { flex:0 0 78vw; min-width:78vw; max-width:280px; }
+  .firm-card { flex:0 0 78vw; width:78vw; min-width:78vw; max-width:280px; }
   .firm-strip-track { scroll-snap-type:x mandatory; }
 }
 </style>
@@ -1916,6 +1931,6 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <!-- ─── TOAST CONTAINER ─── -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script defer src="/static/app.js?v=4.9"></script>
+<script defer src="/static/app.js?v=4.9.1"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-﻿// IT Tracker — main client bundle (v4.8)
-// templates/app.html içinden çıkarıldı (v4.8 madde #17). Davranış değişmedi.
+﻿// IT Tracker — main client bundle (v4.9)
+// templates/app.html içinden çıkarıldı (v4.9 madde #17). Davranış değişmedi.
 
 // ══════════════════════════════════════════════════════════
 //  KULLANICI FİRMA BAZLI TEMA (v3)
@@ -7,14 +7,14 @@
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
   let theme = null;
-  let logoText = 'İnventist & Assos · v4.8';
+  let logoText = 'İnventist & Assos · v4.9';
 
   if (f.includes('assos')) {
     theme = 'assos';
-    logoText = 'Assos Pharma · v4.8';
+    logoText = 'Assos Pharma · v4.9';
   } else if (f.includes('inventist')) {
     theme = 'inventist';
-    logoText = 'İnventist · v4.8';
+    logoText = 'İnventist · v4.9';
   }
 
   if (theme) {
@@ -207,7 +207,7 @@ async function onFirmUserChange() {
   if (activePage && activePage.id === 'page-tasks') renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
 }
 
-// v4.8 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
+// v4.9 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
 function applyAssignModeDefaults() {
   const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
   const inAssignMode = isDirectorUp && selectedUserId && selectedUserId !== currentUser.id;
@@ -463,7 +463,7 @@ function renderDashboard() {
   const backups = tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
-  // KPI kartları — dinamik güncelle (v4.8: backend'den gelen gerçek trend)
+  // KPI kartları — dinamik güncelle (v4.9: backend'den gelen gerçek trend)
   const kpiEls = document.querySelectorAll('.kpi-value');
   const kpiSubs = document.querySelectorAll('.kpi-sub');
 
@@ -473,7 +473,7 @@ function renderDashboard() {
   if (kpiEls[3]) { kpiEls[3].textContent = late; if(kpiSubs[3]) kpiSubs[3].textContent = late ? 'Müdahale gerek' : 'Temiz'; }
   if (kpiEls[4]) { kpiEls[4].textContent = backups; }
 
-  // v4.8 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
+  // v4.9 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
   loadKpiTrends();
 
   dashPage = 0; // dashboard açılışında sayfayı sıfırla
@@ -490,7 +490,7 @@ function renderDashboard() {
   loadDirectorFirmsStrip();
 }
 
-// v4.8 — Gerçek trend rozetleri (backend /api/dashboard/trends)
+// v4.9 — Gerçek trend rozetleri (backend /api/dashboard/trends)
 async function loadKpiTrends() {
   try {
     const url = '/api/dashboard/trends' + (selectedUserId ? `?user_id=${selectedUserId}` : '');
@@ -518,7 +518,7 @@ async function loadKpiTrends() {
   } catch(e) { /* sessiz başarısızlık — rozet yoksa metin kalır */ }
 }
 
-// v4.8 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
+// v4.9 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
 function kpiJump(kind) {
   if (kind === 'backup') { showPage('backups'); return; }
   if (kind === 'overdue') {
@@ -900,7 +900,7 @@ function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
 }
-// v4.8 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
+// v4.9 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
 function _slaRemainingHuman(t) {
   if (t.cat !== 'support' || !t.sla) return null;
   const rem = t.sla.remaining_hours;
@@ -918,7 +918,7 @@ function _slaRemainingHuman(t) {
 }
 
 function taskRow(t) {
-  // v4.8 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
+  // v4.9 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
   let dl;
   const slaRem = _slaRemainingHuman(t);
   if (t.cat === 'support' && slaRem) {
@@ -1563,7 +1563,7 @@ function setDateDisplay(dayId, fullId) {
 // ══════════════════════════════════════════════════════════
 let notifications = [];
 
-// v4.8 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
+// v4.9 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
 // (rutin gecikmeleri + tüm overdue + SLA warning + SLA breach). Yerel rutin
 // scan'i fallback olarak kalır; backend cevapsızsa kullanıcı yine bilgilendirilir.
 const NOTIF_READ_KEY = 'itt_notif_read_v1';
