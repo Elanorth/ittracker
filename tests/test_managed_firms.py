@@ -262,3 +262,88 @@ class TestFirmUsersV49:
         data = resp.get_json()
         ids = {d["id"] for d in data}
         assert assos_user.id in ids, "managed_firms içindeki firma kullanıcısı listede görünmeli"
+
+
+class TestManagedFirmsDetailEndpoint:
+    """/api/managed-firms/detail v5.0 — Yönettiğim Firmalar sayfası ana endpoint."""
+
+    def test_yetkisiz_kullanici_403(self, db, client, user_factory, login_as):
+        """junior /api/managed-firms/detail'a 403 alır."""
+        junior = user_factory(username="mfd_jr", firm="inventist", permission_level="junior")
+        login_as(junior)
+        resp = client.get("/api/managed-firms/detail")
+        assert resp.status_code == 403
+
+    def test_director_sadece_kendi_yonettiklerini_gorer(self, db, client, user_factory, login_as):
+        """it_director sadece managed_firms + kendi firma'sının detayını görür."""
+        director = user_factory(username="mfd_dir", firm="inventist", permission_level="it_director", is_admin=True)
+        login_as(director)
+        resp = client.get("/api/managed-firms/detail")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        slugs = [d["slug"] for d in data]
+        assert "inventist" in slugs
+        assert "assos" not in slugs, "Yönetilmeyen firma görünmemeli"
+
+    def test_super_admin_tum_firmalari_gorer(self, db, client, user_factory, login_as):
+        """super_admin tüm firmaları görür."""
+        admin = user_factory(username="mfd_sa", firm="inventist", permission_level="super_admin", is_admin=True)
+        login_as(admin)
+        resp = client.get("/api/managed-firms/detail")
+        assert resp.status_code == 200
+        slugs = [d["slug"] for d in resp.get_json()]
+        assert "inventist" in slugs and "assos" in slugs
+
+    def test_response_zorunlu_alanlar(self, db, client, user_factory, login_as, task_factory):
+        """Her firma kaydı zorunlu alanları içerir."""
+        admin = user_factory(username="mfd_fields", firm="inventist", permission_level="super_admin", is_admin=True)
+        u = user_factory(username="mfd_u", firm="inventist", permission_level="junior")
+        task_factory(user_id=u.id, title="Sunucu güncellemesi", category="other")
+        login_as(admin)
+        resp = client.get("/api/managed-firms/detail")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        for entry in data:
+            assert "slug" in entry and "name" in entry
+            assert "kpi" in entry and all(k in entry["kpi"] for k in ("total", "done", "overdue", "rate"))
+            assert "trend" in entry and len(entry["trend"]) == 6
+            assert "category_breakdown" in entry
+            assert "overdue_top3" in entry
+            assert "users" in entry
+            assert "sla_breach_count" in entry
+
+    def test_geciken_sayisina_gore_sirali(self, db, client, user_factory, login_as, task_factory):
+        """Sıralama: geciken sayısı azalan (en kritik üstte)."""
+        from datetime import date, timedelta
+        admin = user_factory(username="mfd_sort", firm="inventist", permission_level="super_admin", is_admin=True)
+        u_inv = user_factory(username="mfd_sort_inv", firm="inventist", permission_level="junior")
+        u_assos = user_factory(username="mfd_sort_assos", firm="assos", permission_level="junior")
+        # Assos'a 2 geciken görev, İnventist'e 1 geciken görev
+        old_deadline = date.today() - timedelta(days=10)
+        t1 = task_factory(user_id=u_assos.id, title="Geciken 1", category="support", firm="assos")
+        t1.deadline = old_deadline
+        t2 = task_factory(user_id=u_assos.id, title="Geciken 2", category="support", firm="assos")
+        t2.deadline = old_deadline
+        t3 = task_factory(user_id=u_inv.id, title="Geciken 3", category="support", firm="inventist")
+        t3.deadline = old_deadline
+        from models.database import db as _db
+        _db.session.commit()
+
+        login_as(admin)
+        resp = client.get("/api/managed-firms/detail")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        # İlk firma assos olmalı (2 geciken), ikinci inventist (1 geciken)
+        assert data[0]["slug"] == "assos"
+        assert data[0]["kpi"]["overdue"] == 2
+        # İnventist daha sonra
+        inv_idx = next((i for i, d in enumerate(data) if d["slug"] == "inventist"), None)
+        assert inv_idx is not None and inv_idx > 0
+
+    def test_period_parametresi_kabul_edilir(self, db, client, user_factory, login_as):
+        """period=3m / 1y parametresi 200 döner (kategori dağılımı periyota göre)."""
+        admin = user_factory(username="mfd_period", firm="inventist", permission_level="super_admin", is_admin=True)
+        login_as(admin)
+        for p in ("1m", "3m", "1y", "invalid"):
+            resp = client.get(f"/api/managed-firms/detail?period={p}")
+            assert resp.status_code == 200, f"period={p} 200 dönmedi"

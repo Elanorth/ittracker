@@ -400,6 +400,165 @@ def dashboard_firm_summary():
     summary.sort(key=lambda s: s["rate"])
     return jsonify(summary)
 
+
+# v5.0 — "Yönettiğim Firmalar" sayfası için detaylı endpoint.
+# Her yönetilen firma için: KPI + 6 aylık trend + kategori dağılımı + geciken
+# top-3 + kullanıcı dağılımı + SLA breach. Sıralama: geciken sayısı azalan
+# (en kritik firma üstte).
+_TR_MONTHS_SHORT = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
+_CAT_LABELS = {
+    'routine': 'Rutin', 'support': 'Destek', 'infra': 'Altyapı',
+    'backup': 'Backup', 'project': 'Proje', 'task': 'Anlık',
+    'other': 'Diğer',
+}
+
+@app.route("/api/managed-firms/detail")
+@director_required
+def managed_firms_detail():
+    """v5.0 — Yönettiğim Firmalar sayfası ana endpoint'i.
+
+    Query: period=1m|3m|1y (default 1m) — kategori dağılımı + trend için.
+    KPI/SLA breach periyot bağımsız (anlık durum).
+
+    super_admin: tüm firmalar.
+    it_director: managed_firms + kendi firma'sı (geriye dönük).
+    """
+    me = _current_user()
+    period = request.args.get("period", "1m")
+    months_back_for_cat = {"1m": 1, "3m": 3, "1y": 12}.get(period, 1)
+
+    if me.is_super_admin:
+        firms = Firm.query.order_by(Firm.name).all()
+    else:
+        scope_slugs = set(me.managed_firm_slugs)
+        if me.firm:
+            scope_slugs.add(me.firm)
+        if not scope_slugs:
+            return jsonify([])
+        firms = (Firm.query
+                 .filter(Firm.slug.in_(list(scope_slugs)))
+                 .order_by(Firm.name).all())
+
+    today = date.today()
+    now = datetime.utcnow()
+    period_start = today - timedelta(days=30 * months_back_for_cat)
+
+    result = []
+    for f in firms:
+        all_tasks = Task.query.filter(Task.firm == f.slug).all()
+
+        # KPI — anlık durum, periyot bağımsız
+        total = len(all_tasks)
+        done = sum(1 for t in all_tasks if t.is_done)
+        overdue = sum(1 for t in all_tasks
+                      if (not t.is_done) and t.deadline and t.deadline < today)
+        rate = round((done / total) * 100) if total else 0
+
+        # SLA ihlali — açık destek talepleri
+        sla_breach = 0
+        for t in all_tasks:
+            if t.category != "support" or t.is_done or not t.created_at:
+                continue
+            target_h = _sla_target_hours(t.priority)
+            deadline_dt = t.created_at + timedelta(hours=target_h)
+            if now > deadline_dt:
+                sla_breach += 1
+
+        # Trend — son 6 ay (en yaşlı önce, en yeni sonda)
+        trend = []
+        for i in range(5, -1, -1):
+            tm = today.month - i
+            ty = today.year
+            while tm <= 0:
+                tm += 12
+                ty -= 1
+            month_tasks = [t for t in all_tasks
+                           if t.created_at and t.created_at.year == ty and t.created_at.month == tm]
+            trend.append({
+                "month": _TR_MONTHS_SHORT[tm - 1],
+                "year": ty,
+                "total": len(month_tasks),
+                "done": sum(1 for t in month_tasks if t.is_done),
+            })
+
+        # Kategori dağılımı — periyot içindeki görevler için count
+        cat_count = {}
+        for t in all_tasks:
+            if not t.created_at:
+                continue
+            if t.created_at.date() < period_start:
+                continue
+            c = t.category or 'other'
+            cat_count[c] = cat_count.get(c, 0) + 1
+        category_breakdown = [
+            {"cat": c, "label": _CAT_LABELS.get(c, c), "count": n}
+            for c, n in sorted(cat_count.items(), key=lambda x: -x[1])
+        ]
+
+        # Overdue top-3 — en eski (en kötü) önce
+        overdue_tasks = sorted(
+            [t for t in all_tasks if not t.is_done and t.deadline and t.deadline < today],
+            key=lambda t: t.deadline
+        )
+        overdue_top3 = []
+        for t in overdue_tasks[:3]:
+            owner = db.session.get(User, t.user_id) if t.user_id else None
+            overdue_top3.append({
+                "id": t.id,
+                "title": t.title,
+                "deadline": t.deadline.isoformat(),
+                "days_overdue": (today - t.deadline).days,
+                "assigned_to": owner.full_name if owner else "—",
+            })
+
+        # Kullanıcı dağılımı — max 8, açık görev sayısına göre azalan
+        user_stats = {}
+        for t in all_tasks:
+            if not t.user_id:
+                continue
+            stats = user_stats.setdefault(t.user_id, {'open': 0, 'done': 0})
+            if t.is_done:
+                stats['done'] += 1
+            else:
+                stats['open'] += 1
+        users = []
+        for uid, stats in user_stats.items():
+            u = db.session.get(User, uid)
+            if not u:
+                continue
+            users.append({
+                "id": uid,
+                "full_name": u.full_name,
+                "open_tasks": stats['open'],
+                "done_tasks": stats['done'],
+            })
+        users.sort(key=lambda u: -u['open_tasks'])
+        users = users[:8]
+
+        theme_class = (
+            "fc-inv" if f.slug == "inventist"
+            else "fc-assos" if f.slug == "assos"
+            else ""
+        )
+
+        result.append({
+            "slug": f.slug,
+            "name": f.name,
+            "theme_class": theme_class,
+            "kpi": {"total": total, "done": done, "overdue": overdue, "rate": rate},
+            "trend": trend,
+            "category_breakdown": category_breakdown,
+            "overdue_top3": overdue_top3,
+            "users": users,
+            "sla_breach_count": sla_breach,
+            "last_updated": now.isoformat(),
+        })
+
+    # Levent karari (Soru 2 = B): geciken sayisi azalan — kritik ustte
+    result.sort(key=lambda r: -r["kpi"]["overdue"])
+    return jsonify(result)
+
+
 # ── TASKS ──
 @app.route("/api/tasks", methods=["GET"])
 @login_required
