@@ -401,7 +401,24 @@ function normalizeTask(t) {
 // ══════════════════════════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════════════════════════
+// v5.0 BUG-2 — Mobil sidebar hamburger toggle.
+// Desktop/tablet'te etkisi yok (>720px CSS sidebar her zaman görünür).
+// Mobil'de .open class'ı sidebar'ı slide-in yapar, backdrop ile kapatılabilir.
+function toggleSidebar(forceClose) {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  const btn = document.getElementById('sidebar-toggle-btn');
+  if (!sb) return;
+  const willOpen = forceClose === true ? false : !sb.classList.contains('open');
+  sb.classList.toggle('open', willOpen);
+  bd?.classList.toggle('show', willOpen);
+  btn?.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  btn?.setAttribute('aria-label', willOpen ? 'Menüyü kapat' : 'Menüyü aç');
+}
+
 function showPage(name) {
+  // v5.0 BUG-2 — mobile'da menü item'a tıklayınca sidebar otomatik kapansın
+  toggleSidebar(true);
   // Yetki guard: Junior sadece izinli sayfalara erişebilir
   const level = (currentUser.permission_level || 'junior');
   if (level === 'junior' && !JUNIOR_ALLOWED_PAGES.includes(name)) return;

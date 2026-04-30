@@ -105,6 +105,23 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   background:var(--surface);border-right:1px solid var(--border);
   display:flex;flex-direction:column;z-index:100;
 }
+
+/* v5.0 BUG-2 — Mobile sidebar hamburger sistemi (>720px görünmez).
+   Desktop/tablet'te sidebar her zaman görünür, mobile'da slide-in panel olur. */
+.sidebar-toggle{
+  display:none;position:fixed;top:14px;left:14px;z-index:200;
+  width:44px;height:44px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border2);color:var(--text);
+  font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);
+  align-items:center;justify-content:center;
+}
+.sidebar-toggle:hover{border-color:var(--accent);color:var(--accent);}
+.sidebar-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.sidebar-backdrop{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.6);z-index:90;
+}
+.sidebar-backdrop.show{display:block;animation:fadeIn .15s ease;}
 .logo{padding:22px 20px 18px;border-bottom:1px solid var(--border);}
 .logo-mark{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .logo-hex{width:28px;height:28px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;}
@@ -618,6 +635,15 @@ textarea.form-control{resize:vertical;min-height:64px;}
   .firm-strip-track { scroll-snap-type:x mandatory; }
   /* v5.0 BUG-6 fix: mobilde tüm small butonlar 40px touch target (44 hedefe yakın) */
   .btn-sm { min-height:40px; padding:10px 14px; font-size:12px; }
+  /* v5.0 BUG-2 fix: sidebar slide-in panel, main padding sol kaldır,
+     üstte hamburger için 64px boşluk bırak */
+  .sidebar { transform:translateX(-100%); transition:transform .25s ease; will-change:transform; }
+  .sidebar.open { transform:translateX(0); box-shadow:0 0 32px rgba(0,0,0,.6); }
+  .sidebar-toggle { display:flex; }
+  .main { margin-left:0; padding:64px 16px 28px; }
+  /* topbar mobilde dik dizilim — date-chip + + Yeni Görev sığsın */
+  .topbar { flex-direction:column; gap:12px; align-items:stretch; }
+  .topbar-right { flex-wrap:wrap; gap:8px; }
 }
 </style>
 </head>
@@ -658,10 +684,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </div>
 </div>
 
+<!-- v5.0 BUG-2 — mobil hamburger butonu + backdrop (>720px gizli) -->
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false" id="sidebar-toggle-btn">☰</button>
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(true)" aria-hidden="true"></div>
+
 <!-- ╔══════════════════════════════════════╗
      ║              SIDEBAR                 ║
      ╚══════════════════════════════════════╝ -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="logo">
     <div class="logo-mark">
       <div class="logo-hex"></div>
