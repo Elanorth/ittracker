@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v4.9</title>
+<title>IT//TRACKER · v4.10</title>
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#00e5c0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -610,6 +610,108 @@ textarea.form-control{resize:vertical;min-height:64px;}
 [data-theme="inventist"] .firm-card.fc-inv::after { background:var(--accent3); }
 /* /v4.9 — şerit */
 
+/* ═══════ v5.0 — YÖNETTİĞİM FİRMALAR SAYFASI ═══════
+   Tam genişlik kart yığılımı: her firma için detaylı drill-down kartı.
+   3 kolon body grid (1fr 1.2fr 1fr), tablet 2 kolon, mobil 1 kolon. */
+.mf-container { display:flex; flex-direction:column; gap:20px; }
+.mf-loading { padding:40px; text-align:center; color:var(--text-muted); font-family:'IBM Plex Mono',monospace; font-size:12px; }
+.mf-period-tabs .tab { font-size:11px; padding:6px 14px; }
+
+/* Firma detay kartı — .card pattern üzerine ek */
+.mf-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; position:relative; overflow:hidden; }
+.mf-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent3); border-radius:var(--radius) var(--radius) 0 0; }
+.mf-card.fc-inv::after { background:var(--accent); }
+.mf-card.fc-assos::after { background:var(--gold); }
+[data-theme="inventist"] .mf-card::after { background:var(--accent3); }
+[data-theme="inventist"] .mf-card.fc-inv::after { background:var(--accent3); }
+
+.mf-card-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.mf-card-name { font-size:16px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:10px; }
+.mf-card-sla { font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; padding:2px 8px; border-radius:4px; background:var(--accent2-dim); color:var(--accent2); border:1px solid rgba(255,95,61,.3); }
+
+.mf-kpis { display:flex; gap:14px; flex-wrap:wrap; }
+.mf-kpi-chip { display:flex; flex-direction:column; gap:2px; min-width:64px; }
+.mf-kpi-label { font-size:9px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; }
+.mf-kpi-val { font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:700; color:var(--text); line-height:1; }
+.mf-kpi-val.r-good { color:var(--green); }
+.mf-kpi-val.r-warn { color:var(--gold); }
+.mf-kpi-val.r-bad { color:var(--danger); }
+.mf-kpi-val.r-overdue { color:var(--danger); }
+
+.mf-card-body { display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:20px; }
+.mf-col { min-width:0; }
+.mf-col-title { font-size:10px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px; }
+
+/* Trend bar chart — 6 ay */
+.mf-trend { display:flex; gap:6px; align-items:flex-end; height:80px; }
+.mf-trend-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; }
+.mf-trend-stack { width:100%; height:64px; background:var(--surface3); border-radius:3px; position:relative; overflow:hidden; }
+.mf-trend-fill { position:absolute; left:0; right:0; bottom:0; background:var(--green); border-radius:3px; transition:height .2s; }
+.mf-trend-label { font-size:9px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); }
+.mf-trend-num { font-size:9px; font-family:'IBM Plex Mono',monospace; color:var(--text-dim); }
+
+/* Kategori dağılımı — progress bar listesi */
+.mf-cats { display:flex; flex-direction:column; gap:8px; }
+.mf-cat-row { display:flex; flex-direction:column; gap:3px; }
+.mf-cat-head { display:flex; justify-content:space-between; font-size:10px; }
+.mf-cat-label { color:var(--text-muted); }
+.mf-cat-count { font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--text); }
+.mf-cat-bar { height:4px; background:var(--surface3); border-radius:2px; overflow:hidden; }
+.mf-cat-fill { height:100%; transition:width .2s; }
+.mf-cat-fill.cat-routine { background:var(--accent); }
+.mf-cat-fill.cat-support { background:var(--accent3); }
+.mf-cat-fill.cat-infra   { background:var(--accent2); }
+.mf-cat-fill.cat-backup  { background:var(--gold); }
+.mf-cat-fill.cat-project { background:var(--green); }
+.mf-cat-fill.cat-task    { background:var(--accent); }
+.mf-cat-fill.cat-other   { background:var(--text-muted); }
+
+/* Geciken top-3 + kullanıcı tablosu (sağ kolon) */
+.mf-overdue-list { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.mf-overdue-item { display:flex; justify-content:space-between; align-items:center; padding:6px 8px; background:rgba(248,81,73,.06); border:1px solid rgba(248,81,73,.18); border-radius:6px; gap:8px; }
+.mf-overdue-title { font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+.mf-overdue-days { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; color:var(--danger); white-space:nowrap; }
+.mf-overdue-empty { font-size:11px; color:var(--text-dim); padding:8px; text-align:center; font-style:italic; }
+
+.mf-users-table { width:100%; border-collapse:collapse; font-size:11px; }
+.mf-users-table th { font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; padding:4px 0; text-align:left; border-bottom:1px solid var(--border); font-weight:600; }
+.mf-users-table th.num, .mf-users-table td.num { text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; }
+.mf-users-table td { padding:4px 0; border-bottom:1px solid var(--border); }
+.mf-users-table td:first-child { color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+.mf-users-table td.num.open { color:var(--accent2); }
+.mf-users-table td.num.done { color:var(--green); }
+.mf-users-empty { font-size:11px; color:var(--text-dim); padding:8px; text-align:center; font-style:italic; }
+
+/* Kart altı action satırı */
+.mf-card-foot { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); flex-wrap:wrap; }
+.mf-updated { font-size:10px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; }
+.mf-actions { display:flex; gap:8px; }
+
+.mf-expand-btn { background:transparent; border:1px dashed var(--border2); color:var(--text-muted); padding:14px; border-radius:var(--radius); cursor:pointer; font-size:12px; font-family:'IBM Plex Mono',monospace; width:100%; transition:.15s; }
+.mf-expand-btn:hover { border-color:var(--accent3); color:var(--accent3); }
+
+.mf-empty { padding:60px 24px; text-align:center; }
+.mf-empty-glyph { font-size:64px; color:var(--text-dim); margin-bottom:12px; }
+.mf-empty-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.mf-empty-sub { font-size:12px; color:var(--text-muted); max-width:420px; margin:0 auto; line-height:1.5; }
+
+/* v5.0 — Yönettiğim Firmalar responsive */
+@media (max-width: 1100px) {
+  .mf-card-body { grid-template-columns:1fr 1fr; }
+  .mf-card-body > .mf-col:nth-child(3) { grid-column:span 2; }
+}
+@media (max-width: 720px) {
+  .mf-card { padding:14px; }
+  .mf-card-head { flex-direction:column; align-items:flex-start; gap:10px; }
+  .mf-card-body { grid-template-columns:1fr; }
+  .mf-card-body > .mf-col:nth-child(3) { grid-column:auto; }
+  .mf-trend { height:64px; }
+  .mf-trend-stack { height:48px; }
+  .mf-period-tabs { width:100%; }
+  .mf-period-tabs .tab { flex:1; text-align:center; }
+}
+/* /v5.0 — Yönettiğim Firmalar */
+
 /* v4.7 — KPI trend göstergesi */
 .kpi-trend { display:inline-flex; align-items:center; gap:2px; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:6px; font-family:'IBM Plex Mono',monospace; }
 .kpi-trend.up   { color:#34d058; background:rgba(52,208,88,.12); }
@@ -697,7 +799,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="logo-hex"></div>
       <div class="logo-text">IT//TRACKER</div>
     </div>
-    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.9</div>
+    <div class="logo-sub" id="logo-sub-text">İnventist & Assos · v4.10</div>
   </div>
 
   <div class="user-block">
@@ -712,6 +814,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   <nav>
     <div class="nav-section">Görevler</div>
     <a class="nav-item active" data-perm="all" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
+    <a class="nav-item" data-perm="director" onclick="showPage('managed-firms')"><span class="nav-icon">⬡</span>Yönettiğim Firmalar</a>
     <a class="nav-item" data-perm="all" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
     <a class="nav-item" data-perm="manager" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
     <a class="nav-item" data-perm="manager" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
@@ -1667,6 +1770,34 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </div>
 </div>
 
+<!-- v5.0 — YÖNETTİĞİM FİRMALAR (it_director + super_admin) -->
+<div id="page-managed-firms" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Yönettiğim <span>Firmalar</span></div>
+      <div class="page-sub" id="mf-subtitle">—</div>
+    </div>
+    <div class="topbar-right">
+      <div class="tabs mf-period-tabs" role="tablist" aria-label="Zaman aralığı">
+        <div class="tab active" role="tab" aria-selected="true" data-period="1m" onclick="setMfPeriod('1m', this)">Bu Ay</div>
+        <div class="tab" role="tab" aria-selected="false" data-period="3m" onclick="setMfPeriod('3m', this)">Son 3 Ay</div>
+        <div class="tab" role="tab" aria-selected="false" data-period="1y" onclick="setMfPeriod('1y', this)">Bu Yıl</div>
+      </div>
+    </div>
+  </div>
+  <div id="mf-container" class="mf-container">
+    <div class="mf-loading" id="mf-loading">Yükleniyor…</div>
+  </div>
+  <!-- "X firma daha" expand butonu (super_admin için 6+ firma) -->
+  <button id="mf-expand-btn" class="mf-expand-btn" style="display:none" onclick="expandManagedFirms()">— firma daha göster</button>
+  <!-- Boş durum -->
+  <div id="mf-empty" class="mf-empty" style="display:none">
+    <div class="mf-empty-glyph">⬡</div>
+    <div class="mf-empty-title">Henüz yönetilen firma yok</div>
+    <div class="mf-empty-sub">Sistem yöneticinizle iletişime geçin ya da Admin panelinden firma ataması yapın.</div>
+  </div>
+</div>
+
 <!-- ═══════ ORTAK ALAN (BOARD) ═══════ -->
 <div id="page-board" class="page-section">
   <div class="board-header">
@@ -1967,6 +2098,6 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <!-- ─── TOAST CONTAINER ─── -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script defer src="/static/app.js?v=4.9.1"></script>
+<script defer src="/static/app.js?v=4.10"></script>
 </body>
 </html>

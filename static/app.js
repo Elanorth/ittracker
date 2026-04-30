@@ -1,5 +1,5 @@
-﻿// IT Tracker — main client bundle (v4.9)
-// templates/app.html içinden çıkarıldı (v4.9 madde #17). Davranış değişmedi.
+﻿// IT Tracker — main client bundle (v4.10)
+// templates/app.html içinden çıkarıldı (v4.10 madde #17). Davranış değişmedi.
 
 // ══════════════════════════════════════════════════════════
 //  KULLANICI FİRMA BAZLI TEMA (v3)
@@ -7,14 +7,14 @@
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
   let theme = null;
-  let logoText = 'İnventist & Assos · v4.9';
+  let logoText = 'İnventist & Assos · v4.10';
 
   if (f.includes('assos')) {
     theme = 'assos';
-    logoText = 'Assos Pharma · v4.9';
+    logoText = 'Assos Pharma · v4.10';
   } else if (f.includes('inventist')) {
     theme = 'inventist';
-    logoText = 'İnventist · v4.9';
+    logoText = 'İnventist · v4.10';
   }
 
   if (theme) {
@@ -207,7 +207,7 @@ async function onFirmUserChange() {
   if (activePage && activePage.id === 'page-tasks') renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
 }
 
-// v4.9 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
+// v4.10 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
 function applyAssignModeDefaults() {
   const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
   const inAssignMode = isDirectorUp && selectedUserId && selectedUserId !== currentUser.id;
@@ -442,6 +442,7 @@ function showPage(name) {
   if (name==='projects')  { loadTasks().then(() => renderProjectsPage()); }
   if (name==='add')       { applyJuniorTaskRestrictions(); applyAssignModeDefaults(); onCatChange(); refreshAssignModeUI(); }
   if (name==='audit')     { initAuditPage(); }
+  if (name==='managed-firms') { loadManagedFirmsPage(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
   if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); }
@@ -493,7 +494,7 @@ function renderDashboard() {
   const backups = tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
-  // KPI kartları — dinamik güncelle (v4.9: backend'den gelen gerçek trend)
+  // KPI kartları — dinamik güncelle (v4.10: backend'den gelen gerçek trend)
   const kpiEls = document.querySelectorAll('.kpi-value');
   const kpiSubs = document.querySelectorAll('.kpi-sub');
 
@@ -503,7 +504,7 @@ function renderDashboard() {
   if (kpiEls[3]) { kpiEls[3].textContent = late; if(kpiSubs[3]) kpiSubs[3].textContent = late ? 'Müdahale gerek' : 'Temiz'; }
   if (kpiEls[4]) { kpiEls[4].textContent = backups; }
 
-  // v4.9 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
+  // v4.10 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
   loadKpiTrends();
 
   dashPage = 0; // dashboard açılışında sayfayı sıfırla
@@ -516,11 +517,11 @@ function renderDashboard() {
   renderFirmBars();
   // v4.5 — SLA KPI kartları
   loadSlaKpi();
-  // v4.9 — IT Müdürü için yönetilen firma şeridi (super_admin/it_director only)
+  // v4.10 — IT Müdürü için yönetilen firma şeridi (super_admin/it_director only)
   loadDirectorFirmsStrip();
 }
 
-// v4.9 — Gerçek trend rozetleri (backend /api/dashboard/trends)
+// v4.10 — Gerçek trend rozetleri (backend /api/dashboard/trends)
 async function loadKpiTrends() {
   try {
     const url = '/api/dashboard/trends' + (selectedUserId ? `?user_id=${selectedUserId}` : '');
@@ -548,7 +549,7 @@ async function loadKpiTrends() {
   } catch(e) { /* sessiz başarısızlık — rozet yoksa metin kalır */ }
 }
 
-// v4.9 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
+// v4.10 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
 function kpiJump(kind) {
   if (kind === 'backup') { showPage('backups'); return; }
   if (kind === 'overdue') {
@@ -651,7 +652,7 @@ function renderFirmBars() {
   }).join('');
 }
 
-// v4.9 — Yönetilen Firmalar Şeridi (IT Müdürü dashboard'ında)
+// v4.10 — Yönetilen Firmalar Şeridi (IT Müdürü dashboard'ında)
 // Backend: /api/dashboard/firm-summary (super_admin tüm firmaları, it_director managed_firms'ı görür)
 // Tıklama (Q3-A): firm-user-filter dropdown o firmanın ilk kullanıcısına auto-set olur
 async function loadDirectorFirmsStrip() {
@@ -709,7 +710,7 @@ async function loadDirectorFirmsStrip() {
   }
 }
 
-// v4.9 Q3-A — Karta tıklayınca firm-user-filter dropdown o firmanın ilk
+// v4.10 Q3-A — Karta tıklayınca firm-user-filter dropdown o firmanın ilk
 // kullanıcısına auto-set olur, dashboard tek-kullanıcı mantığıyla yeniden yüklenir.
 function onFirmStripClick(firmSlug, cardEl) {
   // Aktif kart vurgusu (single-select)
@@ -730,6 +731,207 @@ function onFirmStripClick(firmSlug, cardEl) {
     sel.value = ''; // Kendim
   }
   onFirmUserChange();
+}
+
+// ══════════════════════════════════════════════════════════
+//  v5.0 — YÖNETTİĞİM FİRMALAR SAYFASI
+// ══════════════════════════════════════════════════════════
+let _mfPeriod = '1m';
+let _mfData = null;        // son fetch sonucu
+let _mfShowAll = false;    // 6+ firma için expand state
+
+async function loadManagedFirmsPage() {
+  const lvl = (currentUser && currentUser.permission_level) || 'junior';
+  if (lvl !== 'super_admin' && lvl !== 'it_director') {
+    // Yetki guard — bu sayfa zaten sadece director+ için. Defensif.
+    return;
+  }
+  const cont = document.getElementById('mf-container');
+  const empty = document.getElementById('mf-empty');
+  const expandBtn = document.getElementById('mf-expand-btn');
+  const sub = document.getElementById('mf-subtitle');
+  if (!cont) return;
+  cont.innerHTML = '<div class="mf-loading" id="mf-loading">Yükleniyor…</div>';
+  empty.style.display = 'none';
+  expandBtn.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/managed-firms/detail?period=' + encodeURIComponent(_mfPeriod));
+    if (!r.ok) {
+      cont.innerHTML = `<div class="mf-loading" style="color:var(--danger)">Veri yüklenemedi (${r.status})</div>`;
+      return;
+    }
+    const data = await r.json();
+    _mfData = data;
+    if (!Array.isArray(data) || data.length === 0) {
+      cont.innerHTML = '';
+      empty.style.display = 'block';
+      if (sub) sub.textContent = 'Yönetilen firma yok';
+      return;
+    }
+    // Subtitle
+    const periodLabel = _mfPeriod === '1m' ? 'Bu ay' : _mfPeriod === '3m' ? 'Son 3 ay' : 'Bu yıl';
+    if (sub) sub.textContent = `${data.length} firma · ${periodLabel}`;
+    renderManagedFirms();
+  } catch (e) {
+    console.warn('[mf] yüklenemedi', e);
+    cont.innerHTML = '<div class="mf-loading" style="color:var(--danger)">Veri yüklenirken hata oluştu</div>';
+  }
+}
+
+function renderManagedFirms() {
+  const data = _mfData || [];
+  const cont = document.getElementById('mf-container');
+  const expandBtn = document.getElementById('mf-expand-btn');
+  if (!cont) return;
+  // Levent kararı (Soru 3 = B): super_admin için ilk 6 göster, fazlası expand butonuyla
+  const SHOW_LIMIT = 6;
+  const visible = (!_mfShowAll && data.length > SHOW_LIMIT) ? data.slice(0, SHOW_LIMIT) : data;
+  cont.innerHTML = visible.map(_mfCardHtml).join('');
+  if (data.length > SHOW_LIMIT && !_mfShowAll) {
+    expandBtn.style.display = 'block';
+    expandBtn.textContent = `${data.length - SHOW_LIMIT} firma daha göster`;
+  } else {
+    expandBtn.style.display = 'none';
+  }
+}
+
+function expandManagedFirms() {
+  _mfShowAll = true;
+  renderManagedFirms();
+}
+
+function setMfPeriod(period, btnEl) {
+  if (period === _mfPeriod) return;
+  _mfPeriod = period;
+  _mfShowAll = false;
+  // Tab visual state
+  document.querySelectorAll('.mf-period-tabs .tab').forEach(t => {
+    const isActive = t === btnEl;
+    t.classList.toggle('active', isActive);
+    t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  loadManagedFirmsPage();
+}
+
+function _mfCardHtml(f) {
+  const k = f.kpi || {};
+  const rateClass = k.rate >= 70 ? 'r-good' : k.rate >= 40 ? 'r-warn' : k.rate > 0 ? 'r-bad' : '';
+  const sla = (f.sla_breach_count || 0) > 0
+    ? `<span class="mf-card-sla" title="Açık SLA ihlali">${f.sla_breach_count} SLA</span>`
+    : '';
+  const themeCls = f.theme_class || '';
+  const updated = f.last_updated ? new Date(f.last_updated).toLocaleString('tr-TR', {hour:'2-digit',minute:'2-digit'}) : '';
+  return `
+    <div class="mf-card ${themeCls}" aria-label="${escapeHtml(f.name)} firma özeti">
+      <div class="mf-card-head">
+        <div class="mf-card-name">${escapeHtml(f.name)} ${sla}</div>
+        <div class="mf-kpis">
+          <div class="mf-kpi-chip"><div class="mf-kpi-label">Toplam</div><div class="mf-kpi-val">${k.total||0}</div></div>
+          <div class="mf-kpi-chip"><div class="mf-kpi-label">Tamamlanan</div><div class="mf-kpi-val r-good">${k.done||0}</div></div>
+          <div class="mf-kpi-chip"><div class="mf-kpi-label">Geciken</div><div class="mf-kpi-val r-overdue">${k.overdue||0}</div></div>
+          <div class="mf-kpi-chip"><div class="mf-kpi-label">Oran</div><div class="mf-kpi-val ${rateClass}">${k.total ? '%' + (k.rate||0) : '—'}</div></div>
+        </div>
+      </div>
+      <div class="mf-card-body">
+        <div class="mf-col">
+          <div class="mf-col-title">Aylık Trend (6 Ay)</div>
+          ${_mfTrendHtml(f.trend || [])}
+        </div>
+        <div class="mf-col">
+          <div class="mf-col-title">Kategori Dağılımı</div>
+          ${_mfCatBarsHtml(f.category_breakdown || [])}
+        </div>
+        <div class="mf-col">
+          <div class="mf-col-title">Geciken Top-3</div>
+          ${_mfOverdueHtml(f.overdue_top3 || [])}
+          <div class="mf-col-title" style="margin-top:14px">Kullanıcı Dağılımı</div>
+          ${_mfUsersHtml(f.users || [])}
+        </div>
+      </div>
+      <div class="mf-card-foot">
+        <div class="mf-updated">${updated ? 'Son güncelleme · ' + updated : ''}</div>
+        <div class="mf-actions">
+          <button class="btn btn-outline btn-sm" onclick="_mfGotoTasks('${escapeHtml(f.slug)}')">Anlık Görevler →</button>
+          <button class="btn btn-primary btn-sm" onclick="_mfGotoAdd('${escapeHtml(f.slug)}')">＋ Görev Ekle</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function _mfTrendHtml(trend) {
+  if (!trend.length) return '<div class="mf-overdue-empty">Trend verisi yok</div>';
+  const max = Math.max(1, ...trend.map(t => t.total || 0));
+  return `<div class="mf-trend">${trend.map(t => {
+    const totalH = Math.round((t.total / max) * 100);
+    const doneH = t.total > 0 ? Math.round((t.done / t.total) * totalH) : 0;
+    return `
+      <div class="mf-trend-col" title="${t.month} ${t.year}: ${t.done}/${t.total}">
+        <div class="mf-trend-stack" aria-hidden="true">
+          <div class="mf-trend-fill" style="height:${doneH}%;background:var(--text-dim)"></div>
+          <div class="mf-trend-fill" style="height:${doneH}%;background:var(--green)"></div>
+        </div>
+        <div class="mf-trend-num">${t.total}</div>
+        <div class="mf-trend-label">${t.month}</div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+function _mfCatBarsHtml(breakdown) {
+  if (!breakdown.length) return '<div class="mf-overdue-empty">Bu periyotta kategori verisi yok</div>';
+  const max = Math.max(1, ...breakdown.map(b => b.count));
+  return `<div class="mf-cats">${breakdown.map(b => {
+    const w = Math.round((b.count / max) * 100);
+    return `
+      <div class="mf-cat-row">
+        <div class="mf-cat-head"><span class="mf-cat-label">${escapeHtml(b.label)}</span><span class="mf-cat-count">${b.count}</span></div>
+        <div class="mf-cat-bar"><div class="mf-cat-fill cat-${escapeHtml(b.cat)}" style="width:${w}%"></div></div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+function _mfOverdueHtml(items) {
+  if (!items.length) return '<div class="mf-overdue-empty">🎉 Geciken yok</div>';
+  return `<div class="mf-overdue-list">${items.map(o => `
+    <div class="mf-overdue-item" title="${escapeHtml(o.title)}${o.assigned_to ? ' · ' + escapeHtml(o.assigned_to) : ''}">
+      <span class="mf-overdue-title">${escapeHtml(o.title)}</span>
+      <span class="mf-overdue-days">${o.days_overdue}g geç</span>
+    </div>`).join('')}</div>`;
+}
+
+function _mfUsersHtml(users) {
+  if (!users.length) return '<div class="mf-users-empty">Kullanıcı verisi yok</div>';
+  return `<table class="mf-users-table">
+    <thead><tr><th>Kullanıcı</th><th class="num">Açık</th><th class="num">Bitti</th></tr></thead>
+    <tbody>
+      ${users.map(u => `
+        <tr>
+          <td title="${escapeHtml(u.full_name)}">${escapeHtml(u.full_name)}</td>
+          <td class="num open">${u.open_tasks}</td>
+          <td class="num done">${u.done_tasks}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function _mfGotoTasks(firmSlug) {
+  // Anlık Görevler sayfasına geç + firma filtresini set et
+  showPage('tasks');
+  const sel = document.getElementById('tasks-firm-filter');
+  if (sel) {
+    sel.value = firmSlug;
+    if (typeof filterFullByFirm === 'function') filterFullByFirm(firmSlug);
+  }
+}
+
+function _mfGotoAdd(firmSlug) {
+  showPage('add');
+  const fSel = document.getElementById('new-firm');
+  if (fSel) {
+    fSel.value = firmSlug;
+    if (typeof updateTeamOptions === 'function') updateTeamOptions();
+  }
 }
 
 // v4.5 — SLA KPI kartlarını yükler
@@ -930,7 +1132,7 @@ function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
 }
-// v4.9 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
+// v4.10 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
 function _slaRemainingHuman(t) {
   if (t.cat !== 'support' || !t.sla) return null;
   const rem = t.sla.remaining_hours;
@@ -948,7 +1150,7 @@ function _slaRemainingHuman(t) {
 }
 
 function taskRow(t) {
-  // v4.9 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
+  // v4.10 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
   let dl;
   const slaRem = _slaRemainingHuman(t);
   if (t.cat === 'support' && slaRem) {
@@ -1593,7 +1795,7 @@ function setDateDisplay(dayId, fullId) {
 // ══════════════════════════════════════════════════════════
 let notifications = [];
 
-// v4.9 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
+// v4.10 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
 // (rutin gecikmeleri + tüm overdue + SLA warning + SLA breach). Yerel rutin
 // scan'i fallback olarak kalır; backend cevapsızsa kullanıcı yine bilgilendirilir.
 const NOTIF_READ_KEY = 'itt_notif_read_v1';
