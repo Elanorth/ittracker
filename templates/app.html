@@ -257,6 +257,8 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 }
 .task-item:last-child{border-bottom:none;}
 .cb{width:16px;height:16px;border:1.5px solid var(--border2);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.12s;margin-top:2px;}
+/* v5.0 BUG-8 — klavye odak halkası, ekran okuyucu kullanıcıları için */
+.cb:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .cb:hover{border-color:var(--accent);}
 .cb.done{background:var(--green);border-color:var(--green);}
 .cb.done::after{content:'✓';font-size:9px;color:#080c10;font-weight:900;}

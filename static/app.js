@@ -966,7 +966,7 @@ function taskRow(t) {
     : '';
   return `
   <div class="task-item" id="ti-${t.id}">
-    <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})"></div>
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${t.title}</div>
       <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
@@ -1163,7 +1163,7 @@ function renderProjectsPage() {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:80px">
           <div style="font-size:10px;color:${dlColor};font-family:'IBM Plex Mono',monospace">${dlStr}</div>
           <div style="display:flex;gap:4px">
-            <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})" style="width:16px;height:16px;border-radius:4px"></div>
+            <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" style="width:16px;height:16px;border-radius:4px"></div>
             <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998;</button>
           </div>
         </div>
@@ -1886,7 +1886,7 @@ function _renderSchedRow(t) {
   const pBg    = {Günlük:'rgba(127,108,247,.15)',Haftalık:'rgba(0,229,192,.12)',Aylık:'rgba(244,185,66,.12)',Yıllık:'rgba(255,95,61,.12)','Tek Seferlik':'var(--surface2)'}[t.period]||'var(--surface2)';
   return `
   <div class="sched-row ${rowClass}" id="sr-${t.id}">
-    <div class="cb ${t.done?'done':''}" onclick="apiToggleTask(${t.id})" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
     <div style="min-width:0">
       <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
