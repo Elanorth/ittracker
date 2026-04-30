@@ -220,7 +220,9 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .btn-danger:hover{background:var(--accent2);color:#fff;}
 .btn-gold{background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold);}
 .btn-gold:hover{background:var(--gold);color:#080c10;}
-.btn-sm{padding:5px 11px;font-size:11px;}
+/* v5.0 BUG-6 fix: btn-sm touch target. Eskiden 18px yükseklik (44px hedefin altında).
+   Desktop'ta min-height:32px (yeterli), mobil/tablet'te 720px altında 40px. */
+.btn-sm{padding:7px 12px;font-size:11px;min-height:32px;line-height:1.3;}
 
 /* ═══════ KPI ROW ═══════ */
 .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
@@ -612,6 +614,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
   /* v4.9 — mobil şerit: kart genişliği viewport'a oranlı, swipe öncelikli */
   .firm-card { flex:0 0 78vw; width:78vw; min-width:78vw; max-width:280px; }
   .firm-strip-track { scroll-snap-type:x mandatory; }
+  /* v5.0 BUG-6 fix: mobilde tüm small butonlar 40px touch target (44 hedefe yakın) */
+  .btn-sm { min-height:40px; padding:10px 14px; font-size:12px; }
 }
 </style>
 </head>

@@ -412,9 +412,13 @@ function showPage(name) {
 
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
-  // Nav active highlight — data-page attribute yerine onclick match
+  // v5.0 BUG-3 fix: nav active highlight için onclick içinde tam showPage('name')
+  // call'unu regex ile match et. Eski `.includes("'"+name+"'")` yöntemi başka
+  // onclick'lerde aynı string parçasını içeren item'ları da yanlışlıkla aktif
+  // bırakabiliyordu (örn. settings butonu içinde 'audit' modal kapama mantığı varsa).
   document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.getAttribute('onclick')?.includes("'"+name+"'"));
+    const m = (n.getAttribute('onclick') || '').match(/showPage\(['"]([^'"]+)['"]\)/);
+    n.classList.toggle('active', !!(m && m[1] === name));
   });
   if (name==='dashboard') renderDashboard();
   if (name==='tasks')     { _ftCat = 'task'; loadTasks().then(() => { document.getElementById('tasks-cat-filter').value = 'task'; renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup')); }); }
