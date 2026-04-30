@@ -274,12 +274,21 @@ const AUDIT_ACTION_LABELS = {
   'task.delete':'Görev Silme',
   'user.invite':'Kullanıcı Daveti','user.update':'Kullanıcı Güncelleme','user.delete':'Kullanıcı Silme',
 };
+// v5.0 BUG-1 fix: sabit hex değerleri — tema-bağımsız (Inventist temasında
+// var(--accent) #ffffff olduğu için beyaz on beyaz badge görünmez oluyordu).
+// Tüm badge'ler beyaz text üstüne kontrastlı renk göstermeli, tema değiştiğinde
+// audit log'un okunabilirliği bozulmamalı.
 const AUDIT_ACTION_COLORS = {
-  'task.create':'var(--accent)','task.assign':'var(--gold, #f5b400)',
-  'task.update':'var(--accent3)','task.complete':'var(--green)',
-  'task.reopen':'var(--accent2)','task.manager_note':'#ef4444',
-  'task.delete':'var(--danger)',
-  'user.invite':'var(--accent)','user.update':'var(--accent3)','user.delete':'var(--danger)',
+  'task.create':'#34d058',           // yeşil — oluşturma
+  'task.assign':'#f4b942',           // gold — atama
+  'task.update':'#7f6cf7',           // mor — güncelleme
+  'task.complete':'#34d058',         // yeşil — tamamlanma
+  'task.reopen':'#ff5f3d',           // turuncu — yeniden açma
+  'task.manager_note':'#ef4444',     // kırmızı — vurgu
+  'task.delete':'#f85149',           // kırmızı — silme
+  'user.invite':'#34d058',           // yeşil — davet
+  'user.update':'#7f6cf7',           // mor — kullanıcı güncelleme
+  'user.delete':'#f85149',           // kırmızı — silme
 };
 
 function initAuditPage() {
