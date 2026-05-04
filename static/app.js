@@ -1,5 +1,5 @@
-﻿// IT Tracker — main client bundle (v4.10)
-// templates/app.html içinden çıkarıldı (v4.10 madde #17). Davranış değişmedi.
+﻿// IT Tracker — main client bundle (v5.0)
+// templates/app.html içinden çıkarıldı (v5.0 madde #17). Davranış değişmedi.
 
 // ══════════════════════════════════════════════════════════
 //  KULLANICI FİRMA BAZLI TEMA (v3)
@@ -7,14 +7,14 @@
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
   let theme = null;
-  let logoText = 'İnventist & Assos · v4.10';
+  let logoText = 'İnventist & Assos · v5.0';
 
   if (f.includes('assos')) {
     theme = 'assos';
-    logoText = 'Assos Pharma · v4.10';
+    logoText = 'Assos Pharma · v5.0';
   } else if (f.includes('inventist')) {
     theme = 'inventist';
-    logoText = 'İnventist · v4.10';
+    logoText = 'İnventist · v5.0';
   }
 
   if (theme) {
@@ -207,7 +207,7 @@ async function onFirmUserChange() {
   if (activePage && activePage.id === 'page-tasks') renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
 }
 
-// v4.10 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
+// v5.0 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
 function applyAssignModeDefaults() {
   const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
   const inAssignMode = isDirectorUp && selectedUserId && selectedUserId !== currentUser.id;
@@ -262,6 +262,28 @@ function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// v5.0 — Rutin görev için periyot-aware tamamlanma etiketi.
+// Backend Karar 2=B uyarınca server `date.today()` kullanır; frontend bu helper
+// ile kullanıcıya hangi periyot için tamamlandığı/açık olduğu netleşir.
+function _periodCompletionLabel(t) {
+  if (!t || t.cat !== 'routine' || t.period === 'Tek Seferlik') return '';
+  const Y = new Date().getFullYear();
+  if (t.period === 'Günlük')   return t.done ? 'Bugün ✓'   : 'Bugün için tamamlanmamış';
+  if (t.period === 'Haftalık') return t.done ? 'Bu hafta ✓' : 'Bu hafta için tamamlanmamış';
+  if (t.period === 'Aylık')    return t.done ? 'Bu ay ✓'    : 'Bu ay için tamamlanmamış';
+  if (t.period === 'Yıllık')   return t.done ? `${Y} ✓`     : `${Y} için tamamlanmamış`;
+  return '';
+}
+// Kısa rozet (UI rozet olarak gösterim için, max 12 karakter)
+function _periodCompletionBadge(t) {
+  if (!t || t.cat !== 'routine' || t.period === 'Tek Seferlik') return '';
+  if (t.period === 'Günlük')   return t.done ? '· Bugün ✓'   : '';
+  if (t.period === 'Haftalık') return t.done ? '· Bu hafta ✓' : '';
+  if (t.period === 'Aylık')    return t.done ? '· Bu ay ✓'    : '';
+  if (t.period === 'Yıllık')   return t.done ? '· ' + new Date().getFullYear() + ' ✓' : '';
+  return '';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -494,7 +516,7 @@ function renderDashboard() {
   const backups = tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
-  // KPI kartları — dinamik güncelle (v4.10: backend'den gelen gerçek trend)
+  // KPI kartları — dinamik güncelle (v5.0: backend'den gelen gerçek trend)
   const kpiEls = document.querySelectorAll('.kpi-value');
   const kpiSubs = document.querySelectorAll('.kpi-sub');
 
@@ -504,7 +526,7 @@ function renderDashboard() {
   if (kpiEls[3]) { kpiEls[3].textContent = late; if(kpiSubs[3]) kpiSubs[3].textContent = late ? 'Müdahale gerek' : 'Temiz'; }
   if (kpiEls[4]) { kpiEls[4].textContent = backups; }
 
-  // v4.10 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
+  // v5.0 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
   loadKpiTrends();
 
   dashPage = 0; // dashboard açılışında sayfayı sıfırla
@@ -517,10 +539,10 @@ function renderDashboard() {
   renderFirmBars();
   // v4.5 — SLA KPI kartları
   loadSlaKpi();
-  // v4.9 firma şeridi v4.10'da kaldırıldı — yerine /managed-firms sayfası geldi.
+  // v4.9 firma şeridi v5.0'da kaldırıldı — yerine /managed-firms sayfası geldi.
 }
 
-// v4.10 — Gerçek trend rozetleri (backend /api/dashboard/trends)
+// v5.0 — Gerçek trend rozetleri (backend /api/dashboard/trends)
 async function loadKpiTrends() {
   try {
     const url = '/api/dashboard/trends' + (selectedUserId ? `?user_id=${selectedUserId}` : '');
@@ -548,7 +570,7 @@ async function loadKpiTrends() {
   } catch(e) { /* sessiz başarısızlık — rozet yoksa metin kalır */ }
 }
 
-// v4.10 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
+// v5.0 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
 function kpiJump(kind) {
   if (kind === 'backup') { showPage('backups'); return; }
   if (kind === 'overdue') {
@@ -651,7 +673,7 @@ function renderFirmBars() {
   }).join('');
 }
 
-// v4.10 — Yönetilen Firmalar Şeridi (IT Müdürü dashboard'ında)
+// v5.0 — Yönetilen Firmalar Şeridi (IT Müdürü dashboard'ında)
 // Backend: /api/dashboard/firm-summary (super_admin tüm firmaları, it_director managed_firms'ı görür)
 // Tıklama (Q3-A): firm-user-filter dropdown o firmanın ilk kullanıcısına auto-set olur
 async function loadDirectorFirmsStrip() {
@@ -709,7 +731,7 @@ async function loadDirectorFirmsStrip() {
   }
 }
 
-// v4.10 Q3-A — Karta tıklayınca firm-user-filter dropdown o firmanın ilk
+// v5.0 Q3-A — Karta tıklayınca firm-user-filter dropdown o firmanın ilk
 // kullanıcısına auto-set olur, dashboard tek-kullanıcı mantığıyla yeniden yüklenir.
 function onFirmStripClick(firmSlug, cardEl) {
   // Aktif kart vurgusu (single-select)
@@ -1131,7 +1153,7 @@ function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
 }
-// v4.10 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
+// v5.0 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
 function _slaRemainingHuman(t) {
   if (t.cat !== 'support' || !t.sla) return null;
   const rem = t.sla.remaining_hours;
@@ -1149,7 +1171,7 @@ function _slaRemainingHuman(t) {
 }
 
 function taskRow(t) {
-  // v4.10 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
+  // v5.0 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
   let dl;
   const slaRem = _slaRemainingHuman(t);
   if (t.cat === 'support' && slaRem) {
@@ -1184,10 +1206,10 @@ function taskRow(t) {
     : '';
   return `
   <div class="task-item" id="ti-${t.id}">
-    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${t.title}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span></div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
       ${clProgress}${lcStr}${mnStr}
     </div>
     ${dl}
@@ -1381,7 +1403,7 @@ function renderProjectsPage() {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:80px">
           <div style="font-size:10px;color:${dlColor};font-family:'IBM Plex Mono',monospace">${dlStr}</div>
           <div style="display:flex;gap:4px">
-            <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" style="width:16px;height:16px;border-radius:4px"></div>
+            <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" style="width:16px;height:16px;border-radius:4px"></div>
             <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998;</button>
           </div>
         </div>
@@ -1428,11 +1450,12 @@ function filterFullList(v)   { _ftSearch = v.toLowerCase(); renderFullList(); }
 async function apiToggleTask(id) {
   const t = tasks.find(t => t.id === id); if (!t) return;
   const newDone = !t.done;
-  const _now = new Date();
+  // v5.0 — server `date.today()` kullanır (Karar 2 = B). Frontend month/year göndermez,
+  // server bugünün period_key'ini hesaplar (Günlük/Haftalık/Aylık/Yıllık).
   try {
     const res = await fetch(`/api/tasks/${id}`, {
       method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({is_done: newDone, month: _now.getMonth()+1, year: _now.getFullYear()})
+      body: JSON.stringify({is_done: newDone})
     });
     if (!res.ok) throw new Error('API hatası');
     const updated = await res.json();
@@ -1794,7 +1817,7 @@ function setDateDisplay(dayId, fullId) {
 // ══════════════════════════════════════════════════════════
 let notifications = [];
 
-// v4.10 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
+// v5.0 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
 // (rutin gecikmeleri + tüm overdue + SLA warning + SLA breach). Yerel rutin
 // scan'i fallback olarak kalır; backend cevapsızsa kullanıcı yine bilgilendirilir.
 const NOTIF_READ_KEY = 'itt_notif_read_v1';
@@ -2104,7 +2127,7 @@ function _renderSchedRow(t) {
   const pBg    = {Günlük:'rgba(127,108,247,.15)',Haftalık:'rgba(0,229,192,.12)',Aylık:'rgba(244,185,66,.12)',Yıllık:'rgba(255,95,61,.12)','Tek Seferlik':'var(--surface2)'}[t.period]||'var(--surface2)';
   return `
   <div class="sched-row ${rowClass}" id="sr-${t.id}">
-    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
     <div style="min-width:0">
       <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
