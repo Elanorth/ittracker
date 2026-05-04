@@ -295,10 +295,34 @@ class TestManagedFirmsDetailEndpoint:
         assert "inventist" in slugs and "assos" in slugs
 
     def test_response_zorunlu_alanlar(self, db, client, user_factory, login_as, task_factory):
-        """Her firma kaydı zorunlu alanları içerir."""
+        """Her firma kaydı zorunlu alanları içerir; rutin görev KPI doğru sayılır."""
+        from datetime import date
+        from freezegun import freeze_time as _ft
+        from models.database import TaskOccurrence
+
         admin = user_factory(username="mfd_fields", firm="inventist", permission_level="super_admin", is_admin=True)
         u = user_factory(username="mfd_u", firm="inventist", permission_level="junior")
         task_factory(user_id=u.id, title="Sunucu güncellemesi", category="other")
+
+        # v5.0 rutin KPI doğrulaması: Aylık rutin + bu ay completion → done sayılır
+        rutin = task_factory(
+            user_id=u.id,
+            title="Aylık rutin KPI testi",
+            category="routine",
+            period="Aylık",
+            firm="inventist",
+        )
+        # Bugün = test çalışma zamanı, period_key bugünden hesaplanır
+        today = date.today()
+        period_key = f"{today.year:04d}-{today.month:02d}"
+        db.session.add(TaskOccurrence(task_id=rutin.id, period_key=period_key))
+        db.session.commit()
+
+        # is_done_now() doğru çalışmalı
+        assert rutin.is_done_now(today=today) is True, (
+            "v5.0: Rutin görev için is_done_now() TaskOccurrence period_key'e göre çalışmalı"
+        )
+
         login_as(admin)
         resp = client.get("/api/managed-firms/detail")
         assert resp.status_code == 200
@@ -311,6 +335,12 @@ class TestManagedFirmsDetailEndpoint:
             assert "overdue_top3" in entry
             assert "users" in entry
             assert "sla_breach_count" in entry
+        # inventist firma'sı için done >= 1 (rutin tamamlandı)
+        inv_entry = next((e for e in data if e["slug"] == "inventist"), None)
+        assert inv_entry is not None
+        assert inv_entry["kpi"]["done"] >= 1, (
+            "v5.0: Aylık rutin bu ay tamamlanmışsa KPI done sayısına dahil olmalı"
+        )
 
     def test_geciken_sayisina_gore_sirali(self, db, client, user_factory, login_as, task_factory):
         """Sıralama: geciken sayısı azalan (en kritik üstte)."""

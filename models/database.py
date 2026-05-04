@@ -334,27 +334,9 @@ class TaskOccurrence(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     task_id      = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     period_key   = db.Column(db.String(20), nullable=False, index=True)
-    # v5.0 — Geriye dönük uyumluluk: eski kod (services/, app.py, tests/) hâlâ
-    # year/month ile sorgu yapıyor. Bu kolonlar deprecated; sonraki commit'te
-    # tüm endpoint'ler period_key'e geçirildiğinde kaldırılacak.
-    year         = db.Column(db.Integer, nullable=True)
-    month        = db.Column(db.Integer, nullable=True)
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     __table_args__ = (db.UniqueConstraint("task_id", "period_key", name="uq_task_period"),)
-
-    def __init__(self, **kwargs):
-        """Backward-compat: year+month verilirse period_key otomatik üretilir.
-
-        Yeni kod period_key'i doğrudan vermeli; year/month sadece eski kod
-        (TaskCompletion(task_id=, year=, month=)) için bridge.
-        """
-        if "period_key" not in kwargs and "year" in kwargs and "month" in kwargs:
-            y = kwargs["year"]
-            m = kwargs["month"]
-            if y is not None and m is not None:
-                kwargs["period_key"] = f"{int(y):04d}-{int(m):02d}"
-        super().__init__(**kwargs)
 
 
 class ConfigBackup(db.Model):
