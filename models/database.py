@@ -255,11 +255,14 @@ class Task(db.Model):
         completed_at = self.completed_at.isoformat() if self.completed_at else None
 
         if self.category == "routine" and self.period != "Tek Seferlik" and month and year:
-            comp = TaskCompletion.query.filter_by(
-                task_id=self.id, year=year, month=month
-            ).first()
-            is_done      = comp is not None
-            completed_at = comp.completed_at.isoformat() if comp else None
+            ref_dt = _date(year, month, 15)  # ay ortası — Aylık period_key 'YYYY-MM' verir
+            is_done = self.is_done_now(today=ref_dt)
+            if is_done:
+                key = _period_key(self.period, ref_dt)
+                comp = TaskOccurrence.query.filter_by(task_id=self.id, period_key=key).first() if key else None
+                completed_at = comp.completed_at.isoformat() if comp else None
+            else:
+                completed_at = None
 
         # Önceki aylardan taşınan tamamlanmamış görev kontrolü
         from_previous_month = False

@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from functools import wraps
 from datetime import datetime, date, timedelta
 import json as _json
-from models.database import db, User, Task, TaskCompletion, Firm, Team, Invitation, ConfigBackup, BoardCard, BoardComment, AuditLog, init_db, _next_due_date, SLA_HOURS, _sla_target_hours
+from models.database import db, User, Task, TaskCompletion, TaskOccurrence, Firm, Team, Invitation, ConfigBackup, BoardCard, BoardComment, AuditLog, init_db, _next_due_date, SLA_HOURS, _sla_target_hours
 from services.report import generate_monthly_pdf
 from services.mailer import send_report_email, send_invite_email
 from services.storage import save_backup_file
@@ -373,9 +373,9 @@ def dashboard_firm_summary():
     for f in firms:
         tasks = Task.query.filter(Task.firm == f.slug).all()
         total = len(tasks)
-        done = sum(1 for t in tasks if t.is_done)
-        overdue = sum(1 for t in tasks
-                      if (not t.is_done) and t.deadline and t.deadline < today)
+        # v5.0 — rutin görevler için period_key bazlı anlık tamamlanma/gecikme
+        done = sum(1 for t in tasks if t.is_done_now(today=today))
+        overdue = sum(1 for t in tasks if t.is_overdue_now(today=today))
         rate = round((done / total) * 100) if total else 0
         # SLA ihlali — açık destek talepleri için (resolved değil, deadline geçmiş)
         sla_breach = 0
@@ -447,11 +447,10 @@ def managed_firms_detail():
     for f in firms:
         all_tasks = Task.query.filter(Task.firm == f.slug).all()
 
-        # KPI — anlık durum, periyot bağımsız
+        # KPI — anlık durum, periyot bağımsız (v5.0: rutin için period_key bazlı)
         total = len(all_tasks)
-        done = sum(1 for t in all_tasks if t.is_done)
-        overdue = sum(1 for t in all_tasks
-                      if (not t.is_done) and t.deadline and t.deadline < today)
+        done = sum(1 for t in all_tasks if t.is_done_now(today=today))
+        overdue = sum(1 for t in all_tasks if t.is_overdue_now(today=today))
         rate = round((done / total) * 100) if total else 0
 
         # SLA ihlali — açık destek talepleri
@@ -474,11 +473,13 @@ def managed_firms_detail():
                 ty -= 1
             month_tasks = [t for t in all_tasks
                            if t.created_at and t.created_at.year == ty and t.created_at.month == tm]
+            # v5.0 — o ayın 15'i ile is_done_now (rutin period_key bazlı)
+            ref_dt = date(ty, tm, 15)
             trend.append({
                 "month": _TR_MONTHS_SHORT[tm - 1],
                 "year": ty,
                 "total": len(month_tasks),
-                "done": sum(1 for t in month_tasks if t.is_done),
+                "done": sum(1 for t in month_tasks if t.is_done_now(today=ref_dt)),
             })
 
         # Kategori dağılımı — periyot içindeki görevler için count
@@ -695,18 +696,25 @@ def update_task(task_id):
     data = request.get_json()
     if "is_done" in data:
         if task.category == "routine" and task.period != "Tek Seferlik":
-            # Rutin görevler: TaskCompletion kaydı oluştur/sil
-            month = data.get("month", date.today().month)
-            year  = data.get("year",  date.today().year)
-            comp  = TaskCompletion.query.filter_by(task_id=task.id, year=year, month=month).first()
-            if data["is_done"] and not comp:
-                db.session.add(TaskCompletion(
-                    task_id=task.id, year=year, month=month,
-                    completed_by=session["user_id"]
-                ))
-                task.last_completed = datetime.utcnow()
-            elif not data["is_done"] and comp:
-                db.session.delete(comp)
+            # v5.0 — Rutin görevler: TaskOccurrence (period_key) kaydı oluştur/sil
+            # Karar 2 = B: server date.today() kullanır; eski month/year param'ları silent ignore.
+            from models.database import _period_key, TaskOccurrence
+            today = date.today()
+            pk = _period_key(task.period, today)
+            if not pk:
+                # Geçersiz periyot — fallback: is_done flag güncelle
+                task.is_done = data["is_done"]
+                task.completed_at = datetime.utcnow() if data["is_done"] else None
+            else:
+                comp = TaskOccurrence.query.filter_by(task_id=task.id, period_key=pk).first()
+                if data["is_done"] and not comp:
+                    db.session.add(TaskOccurrence(
+                        task_id=task.id, period_key=pk,
+                        completed_by=session["user_id"]
+                    ))
+                    task.last_completed = datetime.utcnow()
+                elif not data["is_done"] and comp:
+                    db.session.delete(comp)
         else:
             task.is_done     = data["is_done"]
             task.completed_at = datetime.utcnow() if data["is_done"] else None
@@ -852,11 +860,16 @@ def stats():
 
     tasks = routines + projects + others
 
-    # Rutin is_done: TaskCompletion'dan
-    completed_ids = {c.task_id for c in TaskCompletion.query.filter_by(year=year, month=month).all()}
+    # v5.0 — Rutin is_done: period_key bazlı; Aylık için preload (N+1 önler).
+    from datetime import date as _date
+    ref_dt = _date(year, month, 15)
+    monthly_pk = f"{year:04d}-{month:02d}"
+    monthly_completed_ids = {c.task_id for c in TaskOccurrence.query.filter_by(period_key=monthly_pk).all()}
     def _is_done(t):
         if t.category == "routine" and t.period != "Tek Seferlik":
-            return t.id in completed_ids
+            if t.period == "Aylık":
+                return t.id in monthly_completed_ids
+            return t.is_done_now(today=ref_dt)
         return t.is_done
 
     total = len(tasks)
@@ -890,10 +903,16 @@ def _stats_for_month(uid, month, year):
                                   Task.category.notin_(["routine","project"]),
                                   db.or_(created_match, deadline_match)).all()
     tasks = routines + projects + others
-    completed_ids = {c.task_id for c in TaskCompletion.query.filter_by(year=year, month=month).all()}
+    # v5.0 — period_key bazlı _is_done; Aylık preload (N+1 önler)
+    from datetime import date as _date
+    ref_dt = _date(year, month, 15)
+    monthly_pk = f"{year:04d}-{month:02d}"
+    monthly_completed_ids = {c.task_id for c in TaskOccurrence.query.filter_by(period_key=monthly_pk).all()}
     def _is_done(t):
         if t.category == "routine" and t.period != "Tek Seferlik":
-            return t.id in completed_ids
+            if t.period == "Aylık":
+                return t.id in monthly_completed_ids
+            return t.is_done_now(today=ref_dt)
         return t.is_done
     total = len(tasks)
     done  = sum(1 for t in tasks if _is_done(t))
