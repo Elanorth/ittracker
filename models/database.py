@@ -654,6 +654,45 @@ def init_db():
         db.session.commit()
         print(f"v4.9 Migration: {backfilled} it_director için managed_firms backfill edildi")
 
+    # v5.0 Migration — task_completions -> task_occurrences (period_key formatlı).
+    # Eski TaskCompletion sadece (task_id, year, month) tutuyordu; yeni
+    # TaskOccurrence period_key="YYYY-MM" formatında saklar (Aylık varsayım).
+    # Idempotent: NOT EXISTS clause ile zaten taşınmış kayıtlar atlanır.
+    # task_completions tablosu DROP edilmez (rollback için korunur).
+    # Not: printf() SQLite-spesifik; PostgreSQL için
+    #   lpad(year::text, 4, '0') || '-' || lpad(month::text, 2, '0')
+    # kullanılmalıdır.
+    try:
+        table_names = inspector.get_table_names()
+        if "task_completions" in table_names and "task_occurrences" in table_names:
+            old_count = db.session.execute(
+                text("SELECT COUNT(*) FROM task_completions")
+            ).scalar() or 0
+            if old_count > 0:
+                result = db.session.execute(text("""
+                    INSERT INTO task_occurrences (task_id, period_key, year, month, completed_at, completed_by)
+                    SELECT
+                        tc.task_id,
+                        printf('%04d-%02d', tc.year, tc.month) AS period_key,
+                        tc.year,
+                        tc.month,
+                        tc.completed_at,
+                        tc.completed_by
+                    FROM task_completions tc
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM task_occurrences tox
+                        WHERE tox.task_id = tc.task_id
+                          AND tox.period_key = printf('%04d-%02d', tc.year, tc.month)
+                    )
+                """))
+                moved = result.rowcount or 0
+                if moved > 0:
+                    db.session.commit()
+                    print(f"v5.0 Migration: {moved} TaskCompletion → TaskOccurrence taşındı")
+    except Exception as _e:
+        # Yeni kurulumda eski tablo yok — sessiz geç.
+        db.session.rollback()
+
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")
         ass = Firm(name="Assos",     slug="assos")
