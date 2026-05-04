@@ -517,8 +517,7 @@ function renderDashboard() {
   renderFirmBars();
   // v4.5 — SLA KPI kartları
   loadSlaKpi();
-  // v4.10 — IT Müdürü için yönetilen firma şeridi (super_admin/it_director only)
-  loadDirectorFirmsStrip();
+  // v4.9 firma şeridi v4.10'da kaldırıldı — yerine /managed-firms sayfası geldi.
 }
 
 // v4.10 — Gerçek trend rozetleri (backend /api/dashboard/trends)
