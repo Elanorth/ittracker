@@ -656,3 +656,65 @@ class TestManagedFirmsDetailRoutineFix:
         assert inv_entry is not None
         assert "trend" in inv_entry
         assert len(inv_entry["trend"]) == 6, "Trend 6 aylık veri içermeli"
+
+
+class TestToDictRoutineCurrentMonthBugFix:
+    """v5.0 hotfix — Task.to_dict() Günlük/Haftalık rutinde bugünün period_key'i kullanılmalı.
+
+    Bug: to_dict ay ortası 15. gün referansı kullanıyordu. Aylık için doğru
+    çalışıyordu ama Günlük/Haftalık'ta toggle gerçek tarih ile yazıldığı için
+    eşleşme tutmuyordu — kullanıcıya "tamamlanmamış" görünüyordu.
+    Fix: Görüntülenen ay = bugünün ayıysa BUGÜN baz alınır.
+    """
+
+    def test_gunluk_rutin_bugun_tamamlandi_to_dict_done_doner(self, db, user_factory, task_factory):
+        """Günlük rutin bugün tamamlandı, to_dict bu ayı sorduğunda done=True."""
+        from models.database import TaskOccurrence, _period_key
+        u = user_factory(username="td_g1", firm="inventist")
+        task = task_factory(user_id=u.id, title="Sunucu yedek kontrolü", category="routine", period="Günlük")
+        today = date.today()
+        pk = _period_key("Günlük", today)
+        db.session.add(TaskOccurrence(task_id=task.id, period_key=pk))
+        db.session.commit()
+
+        d = task.to_dict(month=today.month, year=today.year)
+        assert d["is_done"] is True, "Günlük rutin bugün tamamlandı, to_dict done=True dönmeli"
+
+    def test_haftalik_rutin_bu_hafta_tamamlandi_to_dict_done_doner(self, db, user_factory, task_factory):
+        """Haftalık rutin bu hafta tamamlandı, to_dict bu ayı sorduğunda done=True."""
+        from models.database import TaskOccurrence, _period_key
+        u = user_factory(username="td_h1", firm="inventist")
+        task = task_factory(user_id=u.id, title="Haftalık backup denetimi", category="routine", period="Haftalık")
+        today = date.today()
+        pk = _period_key("Haftalık", today)
+        db.session.add(TaskOccurrence(task_id=task.id, period_key=pk))
+        db.session.commit()
+
+        d = task.to_dict(month=today.month, year=today.year)
+        assert d["is_done"] is True, "Haftalık rutin bu hafta tamamlandı, to_dict done=True dönmeli"
+
+    def test_aylik_rutin_bu_ay_tamamlandi_to_dict_done_doner(self, db, user_factory, task_factory):
+        """Aylık rutin bu ay tamamlandı, to_dict done=True dönmeli (regression)."""
+        from models.database import TaskOccurrence, _period_key
+        u = user_factory(username="td_a1", firm="inventist")
+        task = task_factory(user_id=u.id, title="Aylık güvenlik raporu", category="routine", period="Aylık")
+        today = date.today()
+        pk = _period_key("Aylık", today)
+        db.session.add(TaskOccurrence(task_id=task.id, period_key=pk))
+        db.session.commit()
+
+        d = task.to_dict(month=today.month, year=today.year)
+        assert d["is_done"] is True
+
+    def test_gecmis_ay_aylik_rutin_dogru_calisir(self, db, user_factory, task_factory):
+        """Geçmiş ay görüntülenirken Aylık rutin için o ayın period_key kontrol edilir."""
+        from models.database import TaskOccurrence
+        u = user_factory(username="td_p1", firm="inventist")
+        task = task_factory(user_id=u.id, title="Eski aylık", category="routine", period="Aylık")
+        db.session.add(TaskOccurrence(task_id=task.id, period_key="2026-02"))
+        db.session.commit()
+
+        d_feb = task.to_dict(month=2, year=2026)
+        assert d_feb["is_done"] is True, "Şubat görüntülenirken Şubat completion bulunmalı"
+        d_mar = task.to_dict(month=3, year=2026)
+        assert d_mar["is_done"] is False, "Mart görüntülenirken Şubat completion sayılmamalı"
