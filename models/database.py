@@ -255,7 +255,15 @@ class Task(db.Model):
         completed_at = self.completed_at.isoformat() if self.completed_at else None
 
         if self.category == "routine" and self.period != "Tek Seferlik" and month and year:
-            ref_dt = _date(year, month, 15)  # ay ortası — Aylık period_key 'YYYY-MM' verir
+            # v5.0 fix: Görüntülenen ay bugünün ayıysa BUGÜN baz alınır.
+            # Aksi halde Günlük/Haftalık period_key'leri (YYYY-MM-DD, YYYY-WNN)
+            # ay ortasına (15. gün) sabitlenir → toggle gerçek tarih ile yapıldığı
+            # için eşleşme tutmaz, "tamamlanmamış" döner. Bu bug v5.0'da görüldü.
+            today_dt = _date.today()
+            if today_dt.year == year and today_dt.month == month:
+                ref_dt = today_dt
+            else:
+                ref_dt = _date(year, month, 15)  # geçmiş/gelecek ay görüntülemesi (Aylık doğru, Günlük/Haftalık o ay'a düşer)
             is_done = self.is_done_now(today=ref_dt)
             if is_done:
                 key = _period_key(self.period, ref_dt)
