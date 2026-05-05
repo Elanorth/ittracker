@@ -117,6 +117,51 @@ SLA_HOURS = {"yüksek": 4, "orta": 24, "düşük": 72}
 def _sla_target_hours(priority):
     return SLA_HOURS.get((priority or "orta").strip().lower(), 24)
 
+def _period_key(period: str, dt) -> str | None:
+    """v5.0 — Verilen tarih için periyota karşılık gelen kanonik string key.
+
+    Kullanım: TaskOccurrence.period_key alanı. Aynı periyotta birden fazla
+    completion oluşmasın diye UNIQUE(task_id, period_key) ile birlikte çalışır.
+
+    - "Günlük"      → "YYYY-MM-DD" (ISO date)
+    - "Haftalık"    → "YYYY-Www" (ISO week, ör. "2026-W18")
+    - "Aylık"       → "YYYY-MM"
+    - "Yıllık"      → "YYYY"
+    - "Tek Seferlik" veya geçersiz periyot → None
+    """
+    if dt is None:
+        return None
+    if period == "Günlük":
+        return dt.isoformat()
+    if period == "Haftalık":
+        iso = dt.isocalendar()  # (iso_year, iso_week, iso_weekday)
+        return f"{iso[0]:04d}-W{iso[1]:02d}"
+    if period == "Aylık":
+        return f"{dt.year:04d}-{dt.month:02d}"
+    if period == "Yıllık":
+        return f"{dt.year:04d}"
+    return None
+
+
+def _previous_period_key(period: str, today) -> str | None:
+    """v5.0 — Bugünden bir önceki periyot için key. Overdue tespiti için."""
+    if today is None or period == "Tek Seferlik":
+        return None
+    if period == "Günlük":
+        return _period_key("Günlük", today - timedelta(days=1))
+    if period == "Haftalık":
+        return _period_key("Haftalık", today - timedelta(days=7))
+    if period == "Aylık":
+        if today.month == 1:
+            prev = _date(today.year - 1, 12, 1)
+        else:
+            prev = _date(today.year, today.month - 1, 1)
+        return _period_key("Aylık", prev)
+    if period == "Yıllık":
+        return _period_key("Yıllık", _date(today.year - 1, 1, 1))
+    return None
+
+
 def _next_due_date(period: str, from_date=None) -> _date:
     """Periyota göre bir sonraki deadline tarihini hesapla (gösterim amaçlı)."""
     base = from_date or _date.today()
@@ -162,8 +207,35 @@ class Task(db.Model):
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     backups        = db.relationship("ConfigBackup", backref="task", lazy=True,
                                      cascade="all, delete-orphan")
-    completions    = db.relationship("TaskCompletion", backref="task", lazy=True,
+    completions    = db.relationship("TaskOccurrence", backref="task", lazy=True,
                                      cascade="all, delete-orphan")
+
+    def is_done_now(self, today=None):
+        """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı?
+
+        Rutin görevler: aktif periyot için TaskOccurrence kaydı var mı?
+        Diğer kategoriler: Task.is_done flag.
+        """
+        if self.category == "routine" and self.period != "Tek Seferlik":
+            key = _period_key(self.period, today or _date.today())
+            if not key:
+                return False
+            return TaskOccurrence.query.filter_by(task_id=self.id, period_key=key).first() is not None
+        return bool(self.is_done)
+
+    def is_overdue_now(self, today=None):
+        """v5.0 — Bu görev şu anda gecikmiş mi?
+
+        Rutin görevler: önceki periyot için TaskOccurrence yoksa overdue.
+        Diğer kategoriler: deadline geçmiş ve tamamlanmamışsa overdue.
+        """
+        today = today or _date.today()
+        if self.category == "routine" and self.period != "Tek Seferlik":
+            prev_key = _previous_period_key(self.period, today)
+            if not prev_key:
+                return False
+            return TaskOccurrence.query.filter_by(task_id=self.id, period_key=prev_key).first() is None
+        return (not self.is_done) and (self.deadline is not None) and (self.deadline < today)
 
     def get_checklist(self):
         try: return _json.loads(self.checklist or "[]")
@@ -183,11 +255,14 @@ class Task(db.Model):
         completed_at = self.completed_at.isoformat() if self.completed_at else None
 
         if self.category == "routine" and self.period != "Tek Seferlik" and month and year:
-            comp = TaskCompletion.query.filter_by(
-                task_id=self.id, year=year, month=month
-            ).first()
-            is_done      = comp is not None
-            completed_at = comp.completed_at.isoformat() if comp else None
+            ref_dt = _date(year, month, 15)  # ay ortası — Aylık period_key 'YYYY-MM' verir
+            is_done = self.is_done_now(today=ref_dt)
+            if is_done:
+                key = _period_key(self.period, ref_dt)
+                comp = TaskOccurrence.query.filter_by(task_id=self.id, period_key=key).first() if key else None
+                completed_at = comp.completed_at.isoformat() if comp else None
+            else:
+                completed_at = None
 
         # Önceki aylardan taşınan tamamlanmamış görev kontrolü
         from_previous_month = False
@@ -244,17 +319,24 @@ class Task(db.Model):
         }
 
 
-class TaskCompletion(db.Model):
-    """Rutin görevlerin aylık tamamlanma kaydı.
-    Bir rutin görev her ay için en fazla bir tane tamamlanma kaydına sahip olabilir."""
-    __tablename__ = "task_completions"
+class TaskOccurrence(db.Model):
+    """v5.0 — Rutin görevlerin periyot bazlı tamamlanma kaydı.
+
+    Önceki TaskCompletion (yıl+ay) yerine geçer. period_key string'i
+    Günlük/Haftalık/Aylık/Yıllık periyotların hepsini tek alanda kanonik
+    olarak temsil eder (bkz. _period_key).
+
+    Geriye dönük uyumluluk: dosya sonunda `TaskCompletion = TaskOccurrence`
+    alias'ı tanımlı; eski import'lar (services/, app.py, tests/) çalışmaya
+    devam eder.
+    """
+    __tablename__ = "task_occurrences"
     id           = db.Column(db.Integer, primary_key=True)
     task_id      = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
-    year         = db.Column(db.Integer, nullable=False)
-    month        = db.Column(db.Integer, nullable=False)
+    period_key   = db.Column(db.String(20), nullable=False, index=True)
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    __table_args__ = (db.UniqueConstraint("task_id", "year", "month", name="uq_task_month"),)
+    __table_args__ = (db.UniqueConstraint("task_id", "period_key", name="uq_task_period"),)
 
 
 class ConfigBackup(db.Model):
@@ -557,6 +639,45 @@ def init_db():
         db.session.commit()
         print(f"v4.9 Migration: {backfilled} it_director için managed_firms backfill edildi")
 
+    # v5.0 Migration — task_completions -> task_occurrences (period_key formatlı).
+    # Eski TaskCompletion sadece (task_id, year, month) tutuyordu; yeni
+    # TaskOccurrence period_key="YYYY-MM" formatında saklar (Aylık varsayım).
+    # Idempotent: NOT EXISTS clause ile zaten taşınmış kayıtlar atlanır.
+    # task_completions tablosu DROP edilmez (rollback için korunur).
+    # Not: printf() SQLite-spesifik; PostgreSQL için
+    #   lpad(year::text, 4, '0') || '-' || lpad(month::text, 2, '0')
+    # kullanılmalıdır.
+    try:
+        table_names = inspector.get_table_names()
+        if "task_completions" in table_names and "task_occurrences" in table_names:
+            old_count = db.session.execute(
+                text("SELECT COUNT(*) FROM task_completions")
+            ).scalar() or 0
+            if old_count > 0:
+                result = db.session.execute(text("""
+                    INSERT INTO task_occurrences (task_id, period_key, year, month, completed_at, completed_by)
+                    SELECT
+                        tc.task_id,
+                        printf('%04d-%02d', tc.year, tc.month) AS period_key,
+                        tc.year,
+                        tc.month,
+                        tc.completed_at,
+                        tc.completed_by
+                    FROM task_completions tc
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM task_occurrences tox
+                        WHERE tox.task_id = tc.task_id
+                          AND tox.period_key = printf('%04d-%02d', tc.year, tc.month)
+                    )
+                """))
+                moved = result.rowcount or 0
+                if moved > 0:
+                    db.session.commit()
+                    print(f"v5.0 Migration: {moved} TaskCompletion → TaskOccurrence taşındı")
+    except Exception as _e:
+        # Yeni kurulumda eski tablo yok — sessiz geç.
+        db.session.rollback()
+
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")
         ass = Firm(name="Assos",     slug="assos")
@@ -586,3 +707,10 @@ def init_db():
     admin_user = User.query.filter_by(is_admin=True).first()
     uname = admin_user.username if admin_user else admin_username
     print(f"✅ DB hazır. Admin kullanıcı: {uname}")
+
+
+# v5.0 — Geriye dönük uyumluluk alias'ı.
+# services/, app.py, tests/ ve diğer modüller hâlâ `TaskCompletion` import ediyor.
+# Sonraki commit'lerde bu modüller TaskOccurrence + period_key API'sine geçirilecek;
+# bu commit kapsamı dar (sadece model katmanı), bu yüzden alias şeffaf çalışsın.
+TaskCompletion = TaskOccurrence
