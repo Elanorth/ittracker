@@ -1,0 +1,69 @@
+name: Deploy — production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://ittracker.inventist.com.tr
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.PROD_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_DIR: ${{ secrets.PROD_DIR }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$PROD_USER@$PROD_HOST" bash <<'EOF'
+          set -euo pipefail
+          cd "${PROD_DIR:-/home/leventcan/ittracker}"
+          BEFORE=$(git rev-parse HEAD)
+
+          # DB yedek
+          if sudo test -f instance/it_tracker.db; then
+            STAMP=$(date +%Y%m%d_%H%M%S)
+            sudo cp instance/it_tracker.db instance/it_tracker_backup_${STAMP}.db
+            sudo chown leventcan:leventcan instance/it_tracker_backup_${STAMP}.db
+            echo "Backup: instance/it_tracker_backup_${STAMP}.db"
+          fi
+
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+          AFTER=$(git rev-parse HEAD)
+          echo "Deploying: $BEFORE -> $AFTER"
+
+          docker compose up -d --build
+          docker compose ps
+          EOF
+
+      - name: Smoke test
+        run: |
+          sleep 8
+          for i in 1 2 3 4 5; do
+            CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://ittracker.inventist.com.tr/login || echo 000)
+            echo "attempt $i: HTTP $CODE"
+            [[ "$CODE" == "200" ]] && exit 0
+            sleep 5
+          done
+          echo "Smoke test FAILED"
+          exit 1
