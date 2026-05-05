@@ -45,9 +45,9 @@ EOF
 # 5. Smoke test
 echo "==> Smoke test..."
 sleep 5
-HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://staging.ittracker.inventist.com.tr/login || echo "000")
+HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://ittracker-staging.inventist.com.tr/login || echo "000")
 if [[ "$HTTP_CODE" == "200" ]]; then
-  echo "OK: staging.ittracker.inventist.com.tr/login = 200"
+  echo "OK: ittracker-staging.inventist.com.tr/login = 200"
 else
   echo "UYARI: smoke test http_code=$HTTP_CODE — manuel kontrol et"
   exit 1

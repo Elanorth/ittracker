@@ -4,7 +4,7 @@ Staging ortami prod ile **ayni sunucuda** ama **tam izole** calisir.
 
 | | Prod | Staging |
 |---|---|---|
-| Domain | `ittracker.inventist.com.tr` | `staging.ittracker.inventist.com.tr` |
+| Domain | `ittracker.inventist.com.tr` | `ittracker-staging.inventist.com.tr` |
 | Dizin | `/home/leventcan/ittracker` | `/home/leventcan/ittracker-staging` |
 | Branch | `main` | `develop` |
 | Compose project | `ittracker` | `ittracker-staging` |
@@ -26,8 +26,8 @@ Cloudflare Zero Trust > **Networks** > **Tunnels**:
 - Yeni tunnel: **`ittracker-staging`** olustur
 - Token'i kopyala (sonra `.env.staging`'e gidecek)
 - **Public hostname** ekle:
-  - Subdomain: `staging`
-  - Domain: `ittracker.inventist.com.tr`
+  - Subdomain: `ittracker-staging`
+  - Domain: `inventist.com.tr`
   - Service: `HTTP` `ittracker-staging-nginx:80`
 
 ### 3. Sunucuda staging klasorunu hazirla
@@ -49,7 +49,7 @@ sudo chown leventcan:leventcan /srv/it_tracker/backups-staging
 
 `38b6928b-75b5-4139-83ec-a0ec72c1644f` > Authentication > Redirect URIs:
 ```
-https://staging.ittracker.inventist.com.tr/auth/callback
+https://ittracker-staging.inventist.com.tr/auth/callback
 ```
 
 ### 5. Ilk baslatma
@@ -61,7 +61,7 @@ docker compose -p ittracker-staging -f docker-compose.staging.yml logs -f web   
 
 ### 6. Dogrulama
 ```bash
-curl -I https://staging.ittracker.inventist.com.tr/login   # 200 beklenir
+curl -I https://ittracker-staging.inventist.com.tr/login   # 200 beklenir
 ```
 
 ---

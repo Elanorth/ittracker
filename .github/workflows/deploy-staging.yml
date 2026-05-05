@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: staging
-      url: https://staging.ittracker.inventist.com.tr
+      url: https://ittracker-staging.inventist.com.tr
     steps:
       - name: Setup SSH
         run: |
@@ -49,7 +49,7 @@ jobs:
         run: |
           sleep 8
           for i in 1 2 3 4 5; do
-            CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://staging.ittracker.inventist.com.tr/login || echo 000)
+            CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://ittracker-staging.inventist.com.tr/login || echo 000)
             echo "attempt $i: HTTP $CODE"
             [[ "$CODE" == "200" ]] && exit 0
             sleep 5
