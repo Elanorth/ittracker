@@ -8,6 +8,9 @@ instance/
 .env.production
 *.db
 
+# Eski certbot container artefaklari (root-owned, runtime)
+certbot/
+
 # Test artefakları
 .coverage
 .pytest_cache/

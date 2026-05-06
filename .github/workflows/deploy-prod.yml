@@ -39,7 +39,7 @@ jobs:
 
           git fetch origin main
           git reset --hard origin/main
-          git clean -fd
+          git clean -fd -e certbot
           AFTER=$(git rev-parse HEAD)
           echo "Deploying: $BEFORE -> $AFTER"
 
