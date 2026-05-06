@@ -38,8 +38,8 @@ jobs:
           fi
 
           git fetch origin main
-          git checkout main
-          git pull --ff-only origin main
+          git reset --hard origin/main
+          git clean -fd
           AFTER=$(git rev-parse HEAD)
           echo "Deploying: $BEFORE -> $AFTER"
 

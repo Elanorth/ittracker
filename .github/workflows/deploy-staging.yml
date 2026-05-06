@@ -26,8 +26,8 @@ jobs:
         run: |
           cd "${STAGING_DIR:-/home/leventcan/ittracker-staging}"
           git fetch origin develop
-          git checkout develop || git checkout -B develop origin/develop
-          git pull --ff-only origin develop
+          git reset --hard origin/develop
+          git clean -fd
           docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging up -d --build
           docker compose -p ittracker-staging -f docker-compose.staging.yml ps
 
