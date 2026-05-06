@@ -1,0 +1,43 @@
+name: Deploy — staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: test
+    runs-on: [self-hosted, ittracker]
+    environment:
+      name: staging
+      url: https://ittracker-staging.inventist.com.tr
+    steps:
+      - name: Pull + rebuild
+        env:
+          STAGING_DIR: ${{ secrets.STAGING_DIR }}
+        run: |
+          cd "${STAGING_DIR:-/home/leventcan/ittracker-staging}"
+          git fetch origin develop
+          git reset --hard origin/develop
+          git clean -fd
+          docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging up -d --build
+          docker compose -p ittracker-staging -f docker-compose.staging.yml ps
+
+      - name: Smoke test
+        run: |
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://ittracker-staging.inventist.com.tr/login || echo 000)
+            echo "attempt $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "Smoke test FAILED"
+          exit 1

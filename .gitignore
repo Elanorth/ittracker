@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 instance/
 .env
+.env.staging
+.env.production
 *.db
 
 # Test artefakları

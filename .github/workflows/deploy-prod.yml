@@ -1,0 +1,58 @@
+name: Deploy — production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: test
+    runs-on: [self-hosted, ittracker]
+    environment:
+      name: production
+      url: https://ittracker.inventist.com.tr
+    steps:
+      - name: Pull + rebuild
+        env:
+          PROD_DIR: ${{ secrets.PROD_DIR }}
+        run: |
+          cd "${PROD_DIR:-/home/leventcan/ittracker}"
+          BEFORE=$(git rev-parse HEAD)
+
+          # DB yedek
+          if sudo -n test -f instance/it_tracker.db 2>/dev/null; then
+            STAMP=$(date +%Y%m%d_%H%M%S)
+            sudo -n cp instance/it_tracker.db instance/it_tracker_backup_${STAMP}.db
+            sudo -n chown leventcan:leventcan instance/it_tracker_backup_${STAMP}.db
+            echo "Backup: instance/it_tracker_backup_${STAMP}.db"
+          else
+            echo "DB yedek atlandi (sudo password required)"
+          fi
+
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
+          AFTER=$(git rev-parse HEAD)
+          echo "Deploying: $BEFORE -> $AFTER"
+
+          docker compose up -d --build
+          docker compose ps
+
+      - name: Smoke test
+        run: |
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -sk -o /dev/null -w "%{http_code}" https://ittracker.inventist.com.tr/login || echo 000)
+            echo "attempt $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "Smoke test FAILED"
+          exit 1
