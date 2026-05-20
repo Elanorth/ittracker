@@ -20,11 +20,14 @@ sudo apt update && sudo apt install -y smbclient
 ### 2. SMB credentials dosyasi
 ```bash
 cat > ~/.ittracker-backup-creds <<'EOF'
+SMB_DOMAIN="INVENTIST"
 SMB_USER="ittrackerbackup"
 SMB_PASS="<paroleyi-buraya-yaz>"
 EOF
 chmod 600 ~/.ittracker-backup-creds
 ```
+
+> **NAS AD-joined ortamda:** Mevcut INVENTIST.LOCAL domain'inde `ittrackerbackup` kullanicisi AD'de tanimli. NAS bu kullaniciya `INVENTIST\ittrackerbackup` syntax'iyla ulasir (SMB_DOMAIN bos kalirsa fail).
 
 ### 3. Backup script'lerini executable yap
 ```bash

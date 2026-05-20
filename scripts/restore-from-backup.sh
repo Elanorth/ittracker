@@ -29,12 +29,14 @@ case "$ACTION" in
     echo "=== LOKAL MONTHLY ==="
     ls -lh "$LOCAL_BACKUP_DIR/monthly/" 2>/dev/null || echo "yok"
     echo
-    echo "=== NAS DAILY (son 10) ==="
     . "$SMB_CREDS"
-    smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$SMB_USER" -c "cd \"${SMB_REMOTE_DIR}/daily\"; ls" 2>/dev/null | tail -15 || echo "NAS daily erisilemedi"
+    SMB_DOMAIN="${SMB_DOMAIN:-}"
+    if [ -n "$SMB_DOMAIN" ]; then U="${SMB_DOMAIN}\\${SMB_USER}"; else U="$SMB_USER"; fi
+    echo "=== NAS DAILY (son 10) ==="
+    smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$U" -c "cd \"${SMB_REMOTE_DIR}/daily\"; ls" 2>/dev/null | tail -15 || echo "NAS daily erisilemedi"
     echo
     echo "=== NAS MONTHLY ==="
-    smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$SMB_USER" -c "cd \"${SMB_REMOTE_DIR}/monthly\"; ls" 2>/dev/null | tail -20 || echo "NAS monthly erisilemedi"
+    smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$U" -c "cd \"${SMB_REMOTE_DIR}/monthly\"; ls" 2>/dev/null | tail -20 || echo "NAS monthly erisilemedi"
     ;;
 
   local)
@@ -54,8 +56,10 @@ case "$ACTION" in
     [ -z "$ARG2" ] || [ -z "$ARG3" ] && { echo "kullanim: $0 nas daily|monthly <filename>"; exit 1; }
     [ "$ARG2" != "daily" ] && [ "$ARG2" != "monthly" ] && { echo "tip: daily|monthly"; exit 1; }
     . "$SMB_CREDS"
+    SMB_DOMAIN="${SMB_DOMAIN:-}"
+    if [ -n "$SMB_DOMAIN" ]; then U="${SMB_DOMAIN}\\${SMB_USER}"; else U="$SMB_USER"; fi
     TMP="/tmp/restore_${ARG3}"
-    smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$SMB_USER" -c "cd \"${SMB_REMOTE_DIR}/${ARG2}\"; get \"$ARG3\" \"$TMP\""
+    smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$U" -c "cd \"${SMB_REMOTE_DIR}/${ARG2}\"; get \"$ARG3\" \"$TMP\""
     [ ! -f "$TMP" ] && { echo "indirme basarisiz"; exit 1; }
     echo "Indirildi: $TMP ($(stat -c %s "$TMP") byte)"
     echo "Hedef: $STAGING_DB"
