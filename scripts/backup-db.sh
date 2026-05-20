@@ -94,12 +94,19 @@ fi
 # shellcheck disable=SC1090
 . "$SMB_CREDS"
 : "${SMB_USER:?}" "${SMB_PASS:?}"
+SMB_DOMAIN="${SMB_DOMAIN:-}"  # AD ortaminda gerekli; calisma grubu icin bos birak
 
 upload_smb() {
   local local_path="$1"
   local remote_name="$2"
   local subdir="$3"  # daily veya monthly
-  smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$SMB_USER" -c \
+  local user_arg
+  if [ -n "$SMB_DOMAIN" ]; then
+    user_arg="${SMB_DOMAIN}\\${SMB_USER}"
+  else
+    user_arg="$SMB_USER"
+  fi
+  smbclient "//${SMB_HOST}/${SMB_SHARE}" "$SMB_PASS" -U "$user_arg" -c \
     "prompt OFF; cd \"${SMB_REMOTE_DIR}\"; mkdir ${subdir} 2>/dev/null; cd ${subdir}; put \"$local_path\" \"$remote_name\"" \
     2>&1 | grep -vE "^(Domain=|Anonymous|prompt|mkdir|Can't mkdir|NT_STATUS_OBJECT_NAME_COLLISION)" || true
 }
