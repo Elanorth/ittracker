@@ -22,6 +22,23 @@ try:
 except ImportError:
     MSAL_AVAILABLE = False
 
+# === Sentry / Glitchtip error tracking ===
+# GLITCHTIP_DSN env var varsa etkinleşir; yoksa sessizce atlanır.
+_SENTRY_DSN = os.environ.get("GLITCHTIP_DSN", "")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=0.1,   # %10 performans izleme
+            environment=os.environ.get("APP_ENV", "production"),
+            release=os.environ.get("APP_VERSION", "v5.0"),
+        )
+    except Exception:
+        pass  # sentry_sdk yoksa veya init başarısız olursa uygulamayı durdurma
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
 
