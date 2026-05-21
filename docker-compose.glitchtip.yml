@@ -1,0 +1,66 @@
+version: "3.9"
+# Glitchtip — Self-hosted Sentry-compatible error tracking
+# Calistirma: docker compose -f docker-compose.glitchtip.yml --env-file .env.glitchtip up -d
+# URL: https://errors.inventist.com.tr (Cloudflare Tunnel ile)
+
+x-glitchtip: &glitchtip_defaults
+  image: glitchtip/glitchtip:latest
+  restart: unless-stopped
+  env_file: .env.glitchtip
+  depends_on:
+    glitchtip-postgres:
+      condition: service_healthy
+    glitchtip-redis:
+      condition: service_started
+
+services:
+  glitchtip-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - glitchtip_postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: glitchtip
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - glitchtip
+
+  glitchtip-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - glitchtip
+
+  glitchtip-web:
+    <<: *glitchtip_defaults
+    container_name: glitchtip-web
+    ports:
+      - "127.0.0.1:8086:8000"
+    networks:
+      - glitchtip
+
+  glitchtip-worker:
+    <<: *glitchtip_defaults
+    command: ./bin/run-celery-with-beat.sh
+    networks:
+      - glitchtip
+
+  glitchtip-migrate:
+    <<: *glitchtip_defaults
+    command: ./manage.py migrate
+    restart: "no"
+    networks:
+      - glitchtip
+
+volumes:
+  glitchtip_postgres:
+
+networks:
+  glitchtip:
+    name: glitchtip
