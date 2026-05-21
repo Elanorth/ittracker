@@ -1,6 +1,5 @@
-version: "3.9"
 # Glitchtip — Self-hosted Sentry-compatible error tracking
-# Calistirma: docker compose -f docker-compose.glitchtip.yml --env-file .env.glitchtip up -d
+# Calistirma: docker compose -p glitchtip -f docker-compose.glitchtip.yml --env-file .env.glitchtip up -d
 # URL: https://errors.inventist.com.tr (Cloudflare Tunnel ile)
 
 x-glitchtip: &glitchtip_defaults
@@ -63,4 +62,4 @@ volumes:
 
 networks:
   glitchtip:
-    name: glitchtip
+    name: glitchtip_net
