@@ -3,8 +3,10 @@ Aktif kullanıcılar için uygun görevleri tespit eder ve digest mail atar.
 
 Eligibility kuralları:
 - overdue: kullanıcının tamamlanmamış, alarm_enabled=True görevleri;
-    deadline varsa deadline + 3 gün geçmiş;
-    deadline yoksa created_at üzerinden 3+ gün geçmiş (rutin ve proje dışı).
+    YALNIZCA deadline atanmış VE deadline + OVERDUE_DAYS (3) geçmiş ise gecikme sayılır.
+    Deadline yoksa görev "deadline atanmamış" durumundadır; gecikme kavramı uygulanmaz
+    (önceki sürümlerde created_at fallback'i vardı — Task #89 örneği gibi yeni
+    oluşturulmuş proje görevlerinin "3 gün gecikmeli" sanılmasına yol açıyordu).
 - sla_warning: category=="support", tamamlanmamış, alarm_enabled=True;
     remaining_hours <= target * 0.25 ve remaining_hours > 0.
 - sla_breached: category=="support", tamamlanmamış, alarm_enabled=True;
@@ -24,16 +26,22 @@ SLA_WARNING_RATIO = 0.25  # kalan süre <= target * 0.25 → uyarı
 
 
 def _days_late(task, now):
-    """Bir görevin kaç gün gecikmiş olduğunu döndürür. Uygun değilse None."""
+    """Bir görevin kaç gün gecikmiş olduğunu döndürür. Gecikme yoksa None.
+
+    Davranış:
+    - Tamamlanmış görev → None (gecikme kavramı uygulanmaz)
+    - Deadline atanmamış görev → None
+      (Önceki sürümlerde `created_at` fallback'i vardı; yeni oluşturulmuş ama
+      deadline'sız görevler "N gün gecikmeli" sanılıyordu — bu yanlıştı.)
+    - Deadline gelecekteyse → None
+    - Deadline geçmişse → pozitif int (gün sayısı)
+    """
     if task.is_done:
         return None
-    if task.deadline:
-        delta = (now.date() - task.deadline).days
-        return delta if delta > 0 else 0
-    # deadline yoksa created_at'tan geçen gün
-    if task.created_at:
-        return (now.date() - task.created_at.date()).days
-    return 0
+    if not task.deadline:
+        return None
+    delta = (now.date() - task.deadline).days
+    return delta if delta > 0 else None
 
 
 def _sla_state(task, now):
