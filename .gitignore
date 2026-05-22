@@ -26,3 +26,5 @@ ms_cer_secret.txt
 # Claude Code worktrees ve local settings
 .claude/worktrees/
 .claude/settings.local.json
+
+.DS_Store
