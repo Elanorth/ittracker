@@ -7,3 +7,4 @@ werkzeug
 reportlab
 weasyprint
 apscheduler>=3.10
+sentry-sdk[flask]>=2.0
