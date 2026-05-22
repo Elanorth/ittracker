@@ -252,6 +252,8 @@ async function loadTasks(month, year) {
     // API alanlarını frontend formatına normalize et
     tasks = data.map(normalizeTask);
   } catch(e) { console.error('Görevler yüklenemedi:', e); tasks = []; }
+  // v5.2 — destek talebi sayısını sidebar nav badge'ine yansıt
+  try { updateSupportNavBadge(); } catch(_) {}
 }
 
 // v4.2 — başka kullanıcının görevlerine yazma izni yok (yalnızca görüntüleme)
@@ -570,24 +572,60 @@ async function loadKpiTrends() {
   } catch(e) { /* sessiz başarısızlık — rozet yoksa metin kalır */ }
 }
 
-// v5.0 — KPI kartı tıklaması → ilgili filtre/sayfaya geçiş
+// v5.2 — KPI kartı tıklaması → her zaman ilgili sayfa+filtre kombinasyonuna geçiş
+// Önceki davranış (v5.0) tutarsızdı: overdue ayrı sayfaya, open/done dashboard içi
+// widget'a yönlendiriyordu. Artık tüm KPI'lar Tasks sayfasına gidip uygun filtreyi
+// uygular — kullanıcı için "5 saniyede cevap" deneyimi.
 function kpiJump(kind) {
   if (kind === 'backup') { showPage('backups'); return; }
-  if (kind === 'overdue') {
-    // Tasks sayfasına git, sadece geciken açık görevler
-    showPage('tasks');
-    setTimeout(() => {
-      const filter = document.getElementById('tasks-cat-filter');
-      if (filter) filter.value = 'task';
-      renderFullList(tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY));
-    }, 80);
-    return;
-  }
-  if (kind === 'done' || kind === 'open' || kind === 'all') {
-    // Dashboard task widget filtresi
-    const tab = document.getElementById('tab-' + (kind === 'all' ? 'all' : kind));
-    if (tab) tab.click();
-    document.getElementById('task-list-body')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  if (!['overdue','done','open','all'].includes(kind)) return;
+
+  showPage('tasks');
+  setTimeout(() => {
+    // Kategori filtresini temizle (KPI'lar kategori-bağımsız)
+    const catFilter = document.getElementById('tasks-cat-filter');
+    if (catFilter) catFilter.value = '';
+    _ftCat = '';
+
+    let list = tasks;
+    if (kind === 'overdue') list = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY);
+    else if (kind === 'open') list = tasks.filter(t => !t.done);
+    else if (kind === 'done') list = tasks.filter(t => t.done);
+    // 'all' → tüm tasks
+
+    renderFullList(list);
+  }, 80);
+}
+
+// v5.2 — Sidebar "Destek Talepleri" nav item için yardımcı
+function showTasksWithCat(cat) {
+  showPage('tasks');
+  setTimeout(() => {
+    const catFilter = document.getElementById('tasks-cat-filter');
+    if (catFilter) catFilter.value = cat;
+    _ftCat = cat;
+    renderFullList(tasks.filter(t => t.cat === cat));
+  }, 80);
+}
+
+// v5.2 — Pie chart / Firma bar drill-down için yardımcı
+function showTasksWithFirm(firm) {
+  showPage('tasks');
+  setTimeout(() => {
+    renderFullList(tasks.filter(t => (t.firm || '') === firm));
+  }, 80);
+}
+
+// v5.2 — Açık destek talebi sayısını sidebar nav badge'ine yansıt
+function updateSupportNavBadge() {
+  const badge = document.getElementById('support-nav-badge');
+  if (!badge) return;
+  const cnt = tasks.filter(t => t.cat === 'support' && !t.done).length;
+  if (cnt > 0) {
+    badge.textContent = String(cnt);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
   }
 }
 
@@ -629,7 +667,8 @@ function renderCategoryPie() {
     const pct = (n / total) * 100;
     const meta = CAT_META[cat] || CAT_META.other;
     circles.push(`<circle cx="18" cy="18" r="15.9" fill="none" stroke="${meta.color}" stroke-width="3.4" stroke-dasharray="${pct.toFixed(2)} ${(100-pct).toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 18 18)"/>`);
-    legend.push(`<div class="legend-item"><div class="legend-dot" style="background:${meta.color}"></div>${meta.label} (${Math.round(pct)}%)</div>`);
+    // v5.2 — legend item tıklanabilir: ilgili kategori sayfasına gider
+    legend.push(`<div class="legend-item" role="button" tabindex="0" style="cursor:pointer" onclick="showTasksWithCat('${cat}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTasksWithCat('${cat}')}" title="${meta.label} kategorisindeki görevleri gör"><div class="legend-dot" style="background:${meta.color}"></div>${meta.label} (${Math.round(pct)}%)</div>`);
     offset = (offset - pct + 100) % 100; // sonraki dilimin başlangıç konumu
   });
 
@@ -665,8 +704,13 @@ function renderFirmBars() {
   const colors = ['var(--accent)','var(--gold)','var(--accent3)','var(--accent2)','var(--green)','var(--surface3)'];
   el.innerHTML = sorted.map(([name, n], i) => {
     const pct = Math.round((n / total) * 100);
+    // v5.2 — firm bar tıklanabilir: ilgili firmanın görevleri Tasks sayfasında listelenir
+    const safe = String(name).replace(/'/g, "\\'");
     return `
-      <div class="progress-wrap">
+      <div class="progress-wrap" role="button" tabindex="0" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background .15s"
+           onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''"
+           onclick="showTasksWithFirm('${safe}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTasksWithFirm('${safe}')}"
+           title="${name} firmasının görevlerini gör">
         <div class="progress-label"><span>${name}</span><span style="color:${colors[i]}">${n} görev · %${pct}</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
       </div>`;
@@ -1232,8 +1276,19 @@ const DASH_PAGE_SIZE = 5;
 function filterTasks(f) {
   currentFilter = f;
   dashPage = 0; // filtre değiştiğinde ilk sayfaya dön
-  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  // Yalnızca durum tabs'ını güncelle (kategori tabs'ı dokunulmasın)
+  document.querySelectorAll('#tab-all, #tab-open, #tab-done').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-'+f)?.classList.add('active');
+  renderDashboardTaskList();
+}
+
+// v5.2 — Dashboard "Bugünün Görevleri" kategori filtresi (durum filtresiyle birlikte çalışır)
+let currentCategoryFilter = '';
+function filterTasksByCat(cat) {
+  currentCategoryFilter = cat;
+  dashPage = 0;
+  document.querySelectorAll('#today-cat-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`#today-cat-tabs .tab[data-cat="${cat}"]`)?.classList.add('active');
   renderDashboardTaskList();
 }
 
@@ -1291,10 +1346,16 @@ function renderDashboardTaskList() {
   const body = document.getElementById('task-list-body');
   if (!body) return;
   let list = tasks;
-  if (currentFilter === 'open') list = tasks.filter(t => !t.done);
-  if (currentFilter === 'done') list = tasks.filter(t => t.done);
+  // Durum filtresi
+  if (currentFilter === 'open') list = list.filter(t => !t.done);
+  if (currentFilter === 'done') list = list.filter(t => t.done);
+  // v5.2 — Kategori filtresi (durum filtresiyle çakışmayacak şekilde sonra uygulanır)
+  if (currentCategoryFilter) list = list.filter(t => t.cat === currentCategoryFilter);
   if (!list.length) {
-    body.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">Görev yok</div>';
+    const emptyMsg = currentCategoryFilter
+      ? `Bu kategoride görev yok`
+      : 'Görev yok';
+    body.innerHTML = `<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">${emptyMsg}</div>`;
     return;
   }
 
