@@ -123,7 +123,7 @@ async function loadFirmsFromDB() {
 }
 const BACKUP_TYPES = ['.cfg','.conf','.txt','.bin','.xml','.json','.tar','.zip'];
 const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
-const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Anlık',infra:'Anlık',other:'Anlık'};
+const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Destek',infra:'Altyapı',other:'Diğer'};
 
 // ── Uygulama durumu ──
 let tasks = [];       // API'den yüklenir
@@ -3396,7 +3396,7 @@ async function addBCardComment() {
 async function saveBoardCard() {
   const mode = document.getElementById('bcard-mode').value;
   const title = document.getElementById('bcard-title').value.trim();
-  if (!title) { showToast('err', 'Baslik zorunlu'); return; }
+  if (!title) { showToast('err', 'Başlık zorunlu'); return; }
   const assigned = document.getElementById('bcard-assigned').value;
   const body = {
     title, description: document.getElementById('bcard-desc').value,
