@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v5.0</title>
+<title>IT//TRACKER · v5.1</title>
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#00e5c0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -828,7 +828,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <a class="nav-item admin-item" data-perm="director" onclick="showPage('audit')"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
     <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
-    <a class="nav-item" data-perm="manager" onclick="showPage('notifications')"><span class="nav-icon">🔔</span>Bildirimler</a>
+    <a class="nav-item" data-perm="manager" onclick="showPage('notifications')"><span class="nav-icon">🔔</span>Bildirim Ayarları</a>
   </nav>
 
   <div class="sidebar-footer">
@@ -1631,9 +1631,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="card" id="settings-card-user">
       <div class="card-header"><div class="card-title">KULLANICI BİLGİLERİ</div></div>
       <div class="card-body">
-        <div class="form-row"><div class="form-group"><label>Ad Soyad</label><input class="form-control" id="set-fullname" value="Levent Mahir Can"></div><div class="form-group"><label>Kullanici Adi</label><input class="form-control" id="set-username" value="lmc"></div></div>
+        <div class="form-row"><div class="form-group"><label>Ad Soyad</label><input class="form-control" id="set-fullname" value="Levent Mahir Can"></div><div class="form-group"><label>Kullanıcı Adı</label><input class="form-control" id="set-username" value="lmc"></div></div>
         <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="set-email" value="levent.can@inventist.com"></div>
-        <div class="form-group" style="margin-bottom:12px"><label>Yeni Sifre (bos birakırsanız degismez)</label><input class="form-control" id="set-password" type="password" placeholder="••••••••"></div>
+        <div class="form-group" style="margin-bottom:12px"><label>Yeni Şifre (boş bırakırsanız değişmez)</label><input class="form-control" id="set-password" type="password" placeholder="••••••••"></div>
         <div class="form-group" style="margin-bottom:16px"><label>Ünvan</label><input class="form-control" id="set-role" placeholder="ör: IT Müdürü, Sistem Uzmanı, Stajyer"></div>
         <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px">
           <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent3);margin-bottom:4px">⬡ Office 365 Entegrasyonu</div>
@@ -1716,7 +1716,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div id="page-notifications" class="page-section">
   <div class="topbar">
     <div>
-      <div class="page-title"><span>Bildirimler</span></div>
+      <div class="page-title"><span>Bildirim Ayarları</span></div>
       <div class="page-sub">Her gün 09:00 (UTC) özet maili gönderilir · Uyarı tercihlerinizi ve test mailini buradan yönetin</div>
     </div>
   </div>
@@ -1894,10 +1894,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <!-- ─── EDIT TASK MODAL ─── -->
 <div id="edit-task-modal" class="modal-overlay hidden">
   <div class="modal" style="width:560px">
-    <div class="modal-title">&#9998; Gorevi Duzenle</div>
+    <div class="modal-title">&#9998; Görevi Düzenle</div>
     <input type="hidden" id="edit-task-id">
     <div class="form-group" style="margin-bottom:12px">
-      <label>Gorev Basligi</label>
+      <label>Görev Başlığı</label>
       <input class="form-control" id="edit-task-title">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
@@ -1940,7 +1940,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <label>Durum</label>
         <select class="form-control" id="edit-task-done">
           <option value="false">Devam Ediyor</option>
-          <option value="true">Tamamlandi</option>
+          <option value="true">Tamamlandı</option>
         </select>
       </div>
     </div>
@@ -2014,7 +2014,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <input class="form-control" id="edit-user-name">
       </div>
       <div class="form-group">
-        <label>Kullanici Adi</label>
+        <label>Kullanıcı Adı</label>
         <input class="form-control" id="edit-user-username">
       </div>
     </div>
@@ -2062,7 +2062,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </label>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="closeEditUserModal()">Iptal</button>
+      <button class="btn btn-outline btn-sm" onclick="closeEditUserModal()">İptal</button>
       <button class="btn btn-primary btn-sm" onclick="saveEditUser()">Kaydet</button>
     </div>
   </div>
@@ -2091,6 +2091,6 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <!-- ─── TOAST CONTAINER ─── -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script defer src="/static/app.js?v=5.0"></script>
+<script defer src="/static/app.js?v=5.1"></script>
 </body>
 </html>
