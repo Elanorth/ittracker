@@ -15,18 +15,22 @@ Güvenlik:
 - İdempotent: re-run her seferinde demo veriyi sıfırlayıp yeniden kurar.
 - PRODUCTION'da çalıştırılmamalı — script `APP_ENV` kontrolü yapar.
 """
+
 import os
 import sys
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 
 # Script app context dışında çalıştırılırsa Flask app'i yükle
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 from models.database import (
-    db, User, Task, TaskOccurrence, Firm, Team,
+    Firm,
+    Task,
+    TaskOccurrence,
+    User,
     _period_key,
+    db,
 )
-
 
 DEMO_USER_PREFIX = "demo_"
 DEMO_TASK_PREFIX = "[DEMO]"
@@ -36,18 +40,40 @@ DEMO_TASK_PREFIX = "[DEMO]"
 
 DEMO_USERS = [
     # (username, full_name, email, firm, permission_level, password)
-    ("demo_director_inv", "DEMO Direktör İnventist", "demo_director_inv@demo.local",
-     "inventist", "it_director", "Demo2026!"),
-    ("demo_director_assos", "DEMO Direktör Assos", "demo_director_assos@demo.local",
-     "assos", "it_director", "Demo2026!"),
-    ("demo_specialist_inv", "DEMO Uzman İnventist", "demo_specialist_inv@demo.local",
-     "inventist", "it_specialist", "Demo2026!"),
-    ("demo_specialist_assos", "DEMO Uzman Assos", "demo_specialist_assos@demo.local",
-     "assos", "it_specialist", "Demo2026!"),
-    ("demo_junior_inv", "DEMO Junior İnventist", "demo_junior_inv@demo.local",
-     "inventist", "junior", "Demo2026!"),
-    ("demo_junior_assos", "DEMO Junior Assos", "demo_junior_assos@demo.local",
-     "assos", "junior", "Demo2026!"),
+    (
+        "demo_director_inv",
+        "DEMO Direktör İnventist",
+        "demo_director_inv@demo.local",
+        "inventist",
+        "it_director",
+        "Demo2026!",
+    ),
+    (
+        "demo_director_assos",
+        "DEMO Direktör Assos",
+        "demo_director_assos@demo.local",
+        "assos",
+        "it_director",
+        "Demo2026!",
+    ),
+    (
+        "demo_specialist_inv",
+        "DEMO Uzman İnventist",
+        "demo_specialist_inv@demo.local",
+        "inventist",
+        "it_specialist",
+        "Demo2026!",
+    ),
+    (
+        "demo_specialist_assos",
+        "DEMO Uzman Assos",
+        "demo_specialist_assos@demo.local",
+        "assos",
+        "it_specialist",
+        "Demo2026!",
+    ),
+    ("demo_junior_inv", "DEMO Junior İnventist", "demo_junior_inv@demo.local", "inventist", "junior", "Demo2026!"),
+    ("demo_junior_assos", "DEMO Junior Assos", "demo_junior_assos@demo.local", "assos", "junior", "Demo2026!"),
 ]
 
 
@@ -66,59 +92,163 @@ def _build_task_scenarios(today):
     """
     return [
         # === Anlık görevler ===
-        {"title": "Yeni laptop kurulumu", "category": "task", "priority": "orta",
-         "period": "Tek Seferlik", "deadline_offset_days": 7, "created_offset_days": -2,
-         "is_done": False, "alarm_enabled": True},
-        {"title": "Office365 lisans atama", "category": "task", "priority": "düşük",
-         "period": "Tek Seferlik", "deadline_offset_days": -5, "created_offset_days": -15,
-         "is_done": False, "alarm_enabled": True},  # GECİKEN 5 gün
-        {"title": "Yazıcı sürücü güncellemesi", "category": "task", "priority": "düşük",
-         "period": "Tek Seferlik", "deadline_offset_days": None, "created_offset_days": -3,
-         "is_done": True, "alarm_enabled": True},  # TAMAMLANDI
-
+        {
+            "title": "Yeni laptop kurulumu",
+            "category": "task",
+            "priority": "orta",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": 7,
+            "created_offset_days": -2,
+            "is_done": False,
+            "alarm_enabled": True,
+        },
+        {
+            "title": "Office365 lisans atama",
+            "category": "task",
+            "priority": "düşük",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": -5,
+            "created_offset_days": -15,
+            "is_done": False,
+            "alarm_enabled": True,
+        },  # GECİKEN 5 gün
+        {
+            "title": "Yazıcı sürücü güncellemesi",
+            "category": "task",
+            "priority": "düşük",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": None,
+            "created_offset_days": -3,
+            "is_done": True,
+            "alarm_enabled": True,
+        },  # TAMAMLANDI
         # === Proje görevleri ===
-        {"title": "VPN altyapı modernizasyonu", "category": "project", "priority": "yüksek",
-         "period": "Tek Seferlik", "deadline_offset_days": 30, "created_offset_days": -10,
-         "is_done": False, "alarm_enabled": True},
-        {"title": "Active Directory göç planı", "category": "project", "priority": "yüksek",
-         "period": "Tek Seferlik", "deadline_offset_days": -2, "created_offset_days": -45,
-         "is_done": False, "alarm_enabled": True},  # GECİKEN proje
-        {"title": "Backup sistem refactor", "category": "project", "priority": "orta",
-         "period": "Tek Seferlik", "deadline_offset_days": None, "created_offset_days": -7,
-         "is_done": False, "alarm_enabled": True},  # deadline yok — overdue OLMAMALI (bug fix testi)
-
+        {
+            "title": "VPN altyapı modernizasyonu",
+            "category": "project",
+            "priority": "yüksek",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": 30,
+            "created_offset_days": -10,
+            "is_done": False,
+            "alarm_enabled": True,
+        },
+        {
+            "title": "Active Directory göç planı",
+            "category": "project",
+            "priority": "yüksek",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": -2,
+            "created_offset_days": -45,
+            "is_done": False,
+            "alarm_enabled": True,
+        },  # GECİKEN proje
+        {
+            "title": "Backup sistem refactor",
+            "category": "project",
+            "priority": "orta",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": None,
+            "created_offset_days": -7,
+            "is_done": False,
+            "alarm_enabled": True,
+        },  # deadline yok — overdue OLMAMALI (bug fix testi)
         # === Rutin görevler ===
-        {"title": "Sunucu sağlık kontrolü", "category": "routine", "priority": "orta",
-         "period": "Haftalık", "deadline_offset_days": None, "created_offset_days": -60,
-         "is_done": False, "alarm_enabled": True, "completed_periods": ["last_week"]},
-        {"title": "Aylık güvenlik taraması", "category": "routine", "priority": "yüksek",
-         "period": "Aylık", "deadline_offset_days": None, "created_offset_days": -120,
-         "is_done": False, "alarm_enabled": True, "completed_periods": ["last_month"]},
-        {"title": "Günlük log incelemesi", "category": "routine", "priority": "düşük",
-         "period": "Günlük", "deadline_offset_days": None, "created_offset_days": -30,
-         "is_done": False, "alarm_enabled": True, "completed_periods": ["yesterday"]},
-
+        {
+            "title": "Sunucu sağlık kontrolü",
+            "category": "routine",
+            "priority": "orta",
+            "period": "Haftalık",
+            "deadline_offset_days": None,
+            "created_offset_days": -60,
+            "is_done": False,
+            "alarm_enabled": True,
+            "completed_periods": ["last_week"],
+        },
+        {
+            "title": "Aylık güvenlik taraması",
+            "category": "routine",
+            "priority": "yüksek",
+            "period": "Aylık",
+            "deadline_offset_days": None,
+            "created_offset_days": -120,
+            "is_done": False,
+            "alarm_enabled": True,
+            "completed_periods": ["last_month"],
+        },
+        {
+            "title": "Günlük log incelemesi",
+            "category": "routine",
+            "priority": "düşük",
+            "period": "Günlük",
+            "deadline_offset_days": None,
+            "created_offset_days": -30,
+            "is_done": False,
+            "alarm_enabled": True,
+            "completed_periods": ["yesterday"],
+        },
         # === Destek talepleri (SLA) ===
-        {"title": "Mail erişim sorunu", "category": "support", "priority": "yüksek",
-         "period": "Tek Seferlik", "deadline_offset_days": None, "created_offset_days_h": -3.5,
-         "is_done": False, "alarm_enabled": True},  # SLA 4s, kalan 0.5s → BREACH yakın
-        {"title": "Yazıcıdan çıktı alamıyorum", "category": "support", "priority": "orta",
-         "period": "Tek Seferlik", "deadline_offset_days": None, "created_offset_days_h": -2,
-         "is_done": False, "alarm_enabled": True},  # SLA 24s, kalan 22s — sağlıklı
-        {"title": "Slack bildirimleri gelmiyor", "category": "support", "priority": "düşük",
-         "period": "Tek Seferlik", "deadline_offset_days": None, "created_offset_days_h": -100,
-         "is_done": False, "alarm_enabled": True},  # SLA 72s, BREACHED 28s
-
+        {
+            "title": "Mail erişim sorunu",
+            "category": "support",
+            "priority": "yüksek",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": None,
+            "created_offset_days_h": -3.5,
+            "is_done": False,
+            "alarm_enabled": True,
+        },  # SLA 4s, kalan 0.5s → BREACH yakın
+        {
+            "title": "Yazıcıdan çıktı alamıyorum",
+            "category": "support",
+            "priority": "orta",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": None,
+            "created_offset_days_h": -2,
+            "is_done": False,
+            "alarm_enabled": True,
+        },  # SLA 24s, kalan 22s — sağlıklı
+        {
+            "title": "Slack bildirimleri gelmiyor",
+            "category": "support",
+            "priority": "düşük",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": None,
+            "created_offset_days_h": -100,
+            "is_done": False,
+            "alarm_enabled": True,
+        },  # SLA 72s, BREACHED 28s
         # === Diğer kategoriler ===
-        {"title": "Switch firmware yedeği", "category": "backup", "priority": "düşük",
-         "period": "Aylık", "deadline_offset_days": None, "created_offset_days": -20,
-         "is_done": False, "alarm_enabled": True},
-        {"title": "Network kabin yenileme", "category": "infra", "priority": "orta",
-         "period": "Tek Seferlik", "deadline_offset_days": 15, "created_offset_days": -5,
-         "is_done": False, "alarm_enabled": True},
-        {"title": "Test ortamı hazırlığı", "category": "other", "priority": "düşük",
-         "period": "Tek Seferlik", "deadline_offset_days": None, "created_offset_days": -4,
-         "is_done": True, "alarm_enabled": True},
+        {
+            "title": "Switch firmware yedeği",
+            "category": "backup",
+            "priority": "düşük",
+            "period": "Aylık",
+            "deadline_offset_days": None,
+            "created_offset_days": -20,
+            "is_done": False,
+            "alarm_enabled": True,
+        },
+        {
+            "title": "Network kabin yenileme",
+            "category": "infra",
+            "priority": "orta",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": 15,
+            "created_offset_days": -5,
+            "is_done": False,
+            "alarm_enabled": True,
+        },
+        {
+            "title": "Test ortamı hazırlığı",
+            "category": "other",
+            "priority": "düşük",
+            "period": "Tek Seferlik",
+            "deadline_offset_days": None,
+            "created_offset_days": -4,
+            "is_done": True,
+            "alarm_enabled": True,
+        },
     ]
 
 
@@ -132,6 +262,7 @@ def _is_demo_task(t):
 
 # ---------- Wipe ----------
 
+
 def wipe_demo_data():
     """Demo prefix'li tüm User ve Task'ları (ve TaskOccurrence cascade) sil."""
     print("→ Demo veri siliniyor...")
@@ -141,14 +272,10 @@ def wipe_demo_data():
     # Önce demo kullanıcıların tüm görevlerini sil (TaskOccurrence cascade ile gider)
     deleted_tasks = 0
     if user_ids:
-        deleted_tasks = Task.query.filter(Task.user_id.in_(user_ids)).delete(
-            synchronize_session=False
-        )
+        deleted_tasks = Task.query.filter(Task.user_id.in_(user_ids)).delete(synchronize_session=False)
 
     # Sonra demo title'lı orphan tasks (varsa)
-    orphan = Task.query.filter(Task.title.like(f"{DEMO_TASK_PREFIX}%")).delete(
-        synchronize_session=False
-    )
+    orphan = Task.query.filter(Task.title.like(f"{DEMO_TASK_PREFIX}%")).delete(synchronize_session=False)
     deleted_tasks += orphan
 
     # Demo kullanıcıları sil
@@ -163,6 +290,7 @@ def wipe_demo_data():
 
 
 # ---------- Seed ----------
+
 
 def _create_user(username, full_name, email, firm, permission_level, password):
     u = User(
@@ -287,16 +415,17 @@ def seed_demo_data():
 
     db.session.commit()
 
-    print(f"\n=== TAMAMLANDI ===")
+    print("\n=== TAMAMLANDI ===")
     print(f"  Kullanıcılar: {len(users)}")
     print(f"  Görevler:     {total_tasks}")
     print(f"  Tamamlamalar: {total_occurrences}")
-    print(f"\nDemo şifreleri: Demo2026! (tüm demo kullanıcılar)")
-    print(f"Tekrar yüklemek için: python scripts/seed-staging-demo.py")
-    print(f"Temizlemek için:      python scripts/seed-staging-demo.py --wipe")
+    print("\nDemo şifreleri: Demo2026! (tüm demo kullanıcılar)")
+    print("Tekrar yüklemek için: python scripts/seed-staging-demo.py")
+    print("Temizlemek için:      python scripts/seed-staging-demo.py --wipe")
 
 
 # ---------- CLI ----------
+
 
 def main():
     # Güvenlik: prod'da çalıştırılmasın

@@ -36,6 +36,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+          pip install pre-commit
+
+      - name: Pre-commit hooks (ruff lint+format + secrets + temel kontroller)
+        run: pre-commit run --all-files --show-diff-on-failure
 
       - name: Pytest
         env:
