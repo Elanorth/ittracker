@@ -114,7 +114,7 @@ def send_alarm_digest(user, groups):
             )
         if kind == "sla_warning":
             rh = t.get("sla_remaining_hours")
-            rem = f"{rh:.1f} saat kaldı" if isinstance(rh, (int, float)) else "süresi azaldı"
+            rem = f"{rh:.1f} saat kaldı" if isinstance(rh, int | float) else "süresi azaldı"
             return f"  - #{t['id']} {prefix} {t['title']} — SLA: {rem}" + (f" ({firm_team})" if firm_team else "")
         if kind == "sla_breached":
             return f"  - #{t['id']} {prefix} {t['title']} — SLA AŞILDI" + (f" ({firm_team})" if firm_team else "")

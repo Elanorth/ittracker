@@ -115,9 +115,9 @@ class TestManagedFirmsMigrationBackcompat:
 
         refreshed = User.query.get(director.id)
         firm_names = [f.name for f in refreshed.managed_firms]
-        assert any("inventist" in n.lower() or "İnventist" in n for n in firm_names), (
-            "Migration sonrası it_director managed_firms kendi firmasını içermeli"
-        )
+        assert any(
+            "inventist" in n.lower() or "İnventist" in n for n in firm_names
+        ), "Migration sonrası it_director managed_firms kendi firmasını içermeli"
 
     def test_resolve_scope_uid_managed_firms_destekliyor(self, db, client, user_factory, login_as, task_factory):
         """
@@ -329,9 +329,9 @@ class TestManagedFirmsDetailEndpoint:
         db.session.commit()
 
         # is_done_now() doğru çalışmalı
-        assert rutin.is_done_now(today=today) is True, (
-            "v5.0: Rutin görev için is_done_now() TaskOccurrence period_key'e göre çalışmalı"
-        )
+        assert (
+            rutin.is_done_now(today=today) is True
+        ), "v5.0: Rutin görev için is_done_now() TaskOccurrence period_key'e göre çalışmalı"
 
         login_as(admin)
         resp = client.get("/api/managed-firms/detail")

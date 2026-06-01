@@ -568,9 +568,9 @@ class TestFirmSummaryRoutineFix:
         # Not: sadece bu görevi test ettiğimizden toplam done 0 olmalı
         # Diğer fixture görevleri varsa bu assertion yanlışlanabilir;
         # bu nedenle is_done_now(today) False döndüğünü model seviyesinde doğrulayalım
-        assert task.is_done_now(today=date(2026, 4, 29)) is False, (
-            "Geçen ay tamamlanan rutin görev bu ay için is_done_now() False vermeli"
-        )
+        assert (
+            task.is_done_now(today=date(2026, 4, 29)) is False
+        ), "Geçen ay tamamlanan rutin görev bu ay için is_done_now() False vermeli"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
