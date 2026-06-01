@@ -71,11 +71,12 @@ def run_migrations_online():
 
     connectable = get_engine()
     with connectable.connect() as connection:
+        # render_as_batch app.py'de Migrate(..., render_as_batch=True) ile set edildi
+        # ve `conf_args` içinden gelir. Burada doğrudan parametre olarak geçilmez —
+        # aksi halde TypeError: multiple values for keyword argument 'render_as_batch'.
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
-            # SQLite ALTER TABLE limitations için batch mode
-            render_as_batch=connection.dialect.name == "sqlite",
             **conf_args,
         )
         with context.begin_transaction():
