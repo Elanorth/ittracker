@@ -1,8 +1,9 @@
 services:
 
   web:
+    # GHCR'dan pull edilen image. CI build-image job'u her develop push'unda `:develop` etiketini günceller.
+    image: ${IMAGE:-ghcr.io/elanorth/ittracker:develop}
     build: .
-    image: ittracker-staging-web:latest
     container_name: ittracker-staging-web
     restart: unless-stopped
     expose:

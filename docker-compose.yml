@@ -1,6 +1,9 @@
 services:
 
   web:
+    # GHCR'dan pull edilen image. Dev'de yereldeysek build: . fallback olur.
+    # CI build-image job'u her main push'unda `:main` etiketini günceller.
+    image: ${IMAGE:-ghcr.io/elanorth/ittracker:main}
     build: .
     restart: unless-stopped
     expose:
