@@ -86,7 +86,7 @@ db.init_app(app)
 # Bkz: docs/alembic-migrations.md
 from flask_migrate import Migrate
 
-migrate = Migrate(app, db, directory="migrations")
+migrate = Migrate(app, db, directory="migrations", render_as_batch=True)
 
 ALLOWED_PRIORITIES = {"düşük", "orta", "yüksek"}
 
