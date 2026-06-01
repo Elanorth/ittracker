@@ -82,6 +82,22 @@ jobs:
           docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging up -d
           docker compose -p ittracker-staging -f docker-compose.staging.yml ps
 
+      - name: DB migration (Alembic)
+        env:
+          STAGING_DIR: ${{ secrets.STAGING_DIR }}
+        run: |
+          cd "${STAGING_DIR:-/home/leventcan/ittracker-staging}"
+          # Container'ın healthcheck'i geçene kadar bekle (max 30s)
+          for i in 1 2 3 4 5 6; do
+            if docker compose -p ittracker-staging -f docker-compose.staging.yml exec -T web python -c "import sys; sys.exit(0)" 2>/dev/null; then
+              break
+            fi
+            sleep 5
+          done
+          # Alembic upgrade (ilk seferde baseline'ı stamp'ler — boş upgrade)
+          docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging \
+            exec -T web flask db upgrade
+
       - name: Smoke test
         run: |
           for i in 1 2 3 4 5 6; do

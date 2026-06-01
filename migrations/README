@@ -1,0 +1,3 @@
+Flask-Migrate ile yönetilen Alembic migration'ları.
+
+Detaylı kullanım: docs/alembic-migrations.md

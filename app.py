@@ -80,6 +80,14 @@ O365_SCOPES = ["User.Read", "Mail.Send"]
 
 db.init_app(app)
 
+# Alembic / Flask-Migrate — `flask db <komut>` CLI'sini etkinleştirir.
+# Schema değişiklikleri artık migrations/versions/ altında revision olarak yönetilir.
+# init_db() mevcut idempotent ALTER mantığı korunur (CI test ve fresh install için).
+# Bkz: docs/alembic-migrations.md
+from flask_migrate import Migrate
+
+migrate = Migrate(app, db, directory="migrations")
+
 ALLOWED_PRIORITIES = {"düşük", "orta", "yüksek"}
 
 
