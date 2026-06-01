@@ -8,3 +8,5 @@ reportlab
 weasyprint
 apscheduler>=3.10
 sentry-sdk[flask]>=2.0
+flask-migrate>=4.0
+alembic>=1.13
