@@ -11,9 +11,11 @@ Kapsam:
 - O365 callback: msal mock ile state mismatch test edilir.
 """
 
-import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from models.database import User
 
 
@@ -262,7 +264,9 @@ class TestManualLogin:
     def test_admin_dogru_sifre_ile_giris_basarili(self, db, client, app):
         """ADMIN_USERNAME doğru şifreyle giriş yapabilir."""
         import os
+
         from models.database import User as UserModel
+
         admin_uname = os.environ.get("ADMIN_USERNAME", "test_admin")
         user = UserModel.query.filter_by(username=admin_uname).first()
         if user is None:
@@ -280,6 +284,7 @@ class TestManualLogin:
     def test_admin_yanlis_sifre_401(self, db, client, app):
         """ADMIN_USERNAME yanlış şifreyle 401 alır."""
         import os
+
         admin_uname = os.environ.get("ADMIN_USERNAME", "test_admin")
         resp = client.post(
             "/login",
@@ -334,6 +339,7 @@ class TestO365OAuthMock:
     def test_auth_o365_msal_yok_503(self, db, client):
         """msal import başarısız olursa /auth/o365 503 döner."""
         import app as flask_app_module
+
         original = flask_app_module.MSAL_AVAILABLE
         try:
             flask_app_module.MSAL_AVAILABLE = False
@@ -346,6 +352,7 @@ class TestO365OAuthMock:
 def _msal_available():
     try:
         import msal
+
         return True
     except ImportError:
         return False

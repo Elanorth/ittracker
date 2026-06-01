@@ -1,8 +1,29 @@
 services:
 
+  db:
+    # Level 2 — C: PostgreSQL (staging). Cutover'a kadar app SQLite kullanır,
+    # DATABASE_URL postgresql:// olunca app bu container'a bağlanır.
+    image: postgres:16-alpine
+    container_name: ittracker-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ittracker_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-ittracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - staging_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ittracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "5432"
+
   web:
+    # GHCR'dan pull edilen image. CI build-image job'u her develop push'unda `:develop` etiketini günceller.
+    image: ${IMAGE:-ghcr.io/elanorth/ittracker:develop}
     build: .
-    image: ittracker-staging-web:latest
     container_name: ittracker-staging-web
     restart: unless-stopped
     expose:
@@ -13,6 +34,9 @@ services:
       - ./instance:/app/instance
       - staging_backups:/srv/it_tracker/backups
       - ./.env.staging:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')"]
       interval: 30s
@@ -42,3 +66,4 @@ services:
 
 volumes:
   staging_backups:
+  staging_pgdata:

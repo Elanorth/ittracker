@@ -13,6 +13,7 @@ Kapsam:
 """
 
 import pytest
+
 from models.database import User
 
 

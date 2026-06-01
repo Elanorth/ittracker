@@ -16,10 +16,11 @@ Anti-spam:
 - Bir görev aynı gün içinde iki kere bildirilmez (last_notified tarihi bugün ise atlanır).
 - Digest gönderildikten sonra last_notified = utcnow().
 """
-from datetime import datetime, timedelta, date
-from models.database import db, User, Task, SLA_HOURS, _sla_target_hours
-from services.mailer import send_alarm_digest
 
+from datetime import datetime, timedelta
+
+from models.database import Task, User, _sla_target_hours, db
+from services.mailer import send_alarm_digest
 
 OVERDUE_DAYS = 3
 SLA_WARNING_RATIO = 0.25  # kalan süre <= target * 0.25 → uyarı
@@ -99,16 +100,26 @@ def collect_user_alerts(user, now=None):
         if sla_info is not None:
             remaining_h, breached, target_h = sla_info
             if breached and user.notify_sla_warning:
-                groups["sla_breached"].append(_task_summary(t, {
-                    "sla_remaining_hours": round(remaining_h, 2),
-                    "sla_target_hours": target_h,
-                }))
+                groups["sla_breached"].append(
+                    _task_summary(
+                        t,
+                        {
+                            "sla_remaining_hours": round(remaining_h, 2),
+                            "sla_target_hours": target_h,
+                        },
+                    )
+                )
                 continue
             if (not breached) and remaining_h <= target_h * SLA_WARNING_RATIO and user.notify_sla_warning:
-                groups["sla_warning"].append(_task_summary(t, {
-                    "sla_remaining_hours": round(remaining_h, 2),
-                    "sla_target_hours": target_h,
-                }))
+                groups["sla_warning"].append(
+                    _task_summary(
+                        t,
+                        {
+                            "sla_remaining_hours": round(remaining_h, 2),
+                            "sla_target_hours": target_h,
+                        },
+                    )
+                )
                 continue
             # Destek talebi ama SLA uyarı eşiğinde değil → overdue kontrolüne devam
 
@@ -117,9 +128,14 @@ def collect_user_alerts(user, now=None):
             days_late = _days_late(t, now)
             if days_late is not None and days_late >= OVERDUE_DAYS:
                 # Proje görevleri için deadline varsa kullan; yoksa created_at'tan
-                groups["overdue"].append(_task_summary(t, {
-                    "days_late": days_late,
-                }))
+                groups["overdue"].append(
+                    _task_summary(
+                        t,
+                        {
+                            "days_late": days_late,
+                        },
+                    )
+                )
 
     return groups
 
@@ -159,13 +175,17 @@ def run_digest_job(dry_run=False, only_user_id=None):
             continue
 
         if dry_run:
-            results.append({
-                "user_id": user.id, "email": user.email, "count": total,
-                "overdue": len(groups["overdue"]),
-                "sla_warning": len(groups["sla_warning"]),
-                "sla_breached": len(groups["sla_breached"]),
-                "dry_run": True,
-            })
+            results.append(
+                {
+                    "user_id": user.id,
+                    "email": user.email,
+                    "count": total,
+                    "overdue": len(groups["overdue"]),
+                    "sla_warning": len(groups["sla_warning"]),
+                    "sla_breached": len(groups["sla_breached"]),
+                    "dry_run": True,
+                }
+            )
             continue
 
         resp = send_alarm_digest(user, groups)
@@ -179,7 +199,8 @@ def run_digest_job(dry_run=False, only_user_id=None):
                 db.session.commit()
             results.append({"user_id": user.id, "email": user.email, "count": total, "sent": True})
         else:
-            results.append({"user_id": user.id, "email": user.email, "count": total,
-                            "sent": False, "error": resp.get("error")})
+            results.append(
+                {"user_id": user.id, "email": user.email, "count": total, "sent": False, "error": resp.get("error")}
+            )
 
     return {"run_at": now.isoformat(), "users_processed": len(users), "results": results}

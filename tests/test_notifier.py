@@ -7,12 +7,13 @@ Kök sebep: `_days_late()` deadline yoksa `created_at`'tan geçen gün sayısın
 gecikme olarak rapor ediyordu — bu yanlıştı, deadline atanmamış görev "gecikme"
 değil "deadline bekliyor" durumundadır.
 """
-from datetime import datetime, timedelta, date
+
+from datetime import date, datetime, timedelta
 
 from services.notifier import _days_late, collect_user_alerts
 
-
 # ---------- _days_late() birim testleri ----------
+
 
 def test_days_late_deadline_yoksa_none(task_factory, user_factory):
     """REGRESYON: Deadline atanmamış görev — kaç gün önce oluşturulsa da gecikme yok."""
@@ -66,6 +67,7 @@ def test_days_late_tamamlanan_gorev_none(task_factory, user_factory, db):
 
 
 # ---------- collect_user_alerts() entegrasyon testleri ----------
+
 
 def test_collect_alerts_deadline_yok_overdue_listesinde_yok(task_factory, user_factory, db):
     """

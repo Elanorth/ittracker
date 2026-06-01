@@ -13,23 +13,90 @@ jobs:
   test:
     uses: ./.github/workflows/ci.yml
 
-  deploy:
+  build:
     needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Image metadata + tag
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/elanorth/ittracker
+          tags: |
+            type=raw,value=develop
+            type=raw,value=develop-${{ github.sha }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy:
+    needs: build
     runs-on: [self-hosted, ittracker]
+    permissions:
+      contents: read
+      packages: read
     environment:
       name: staging
       url: https://ittracker-staging.inventist.com.tr
     steps:
-      - name: Pull + rebuild
+      - name: Login to GHCR (self-hosted runner)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull image + deploy
         env:
           STAGING_DIR: ${{ secrets.STAGING_DIR }}
         run: |
           cd "${STAGING_DIR:-/home/leventcan/ittracker-staging}"
+          # docker-compose.staging.yml ve diğer yönetim dosyalarını güncel tut
           git fetch origin develop
           git reset --hard origin/develop
           git clean -fd
-          docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging up -d --build
+          # GHCR'dan yeni image'i çek + container'ı yeniden başlat (build yok)
+          docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging pull
+          docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging up -d
           docker compose -p ittracker-staging -f docker-compose.staging.yml ps
+
+      - name: DB migration (Alembic)
+        env:
+          STAGING_DIR: ${{ secrets.STAGING_DIR }}
+        run: |
+          cd "${STAGING_DIR:-/home/leventcan/ittracker-staging}"
+          # Container'ın healthcheck'i geçene kadar bekle (max 30s)
+          for i in 1 2 3 4 5 6; do
+            if docker compose -p ittracker-staging -f docker-compose.staging.yml exec -T web python -c "import sys; sys.exit(0)" 2>/dev/null; then
+              break
+            fi
+            sleep 5
+          done
+          # Alembic upgrade (ilk seferde baseline'ı stamp'ler — boş upgrade)
+          docker compose -p ittracker-staging -f docker-compose.staging.yml --env-file .env.staging \
+            exec -T web flask db upgrade
 
       - name: Smoke test
         run: |

@@ -16,10 +16,12 @@ Kapsam:
 - freezegun ile zaman sabitleyerek breach/remaining_hours testi
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from freezegun import freeze_time
-from models.database import _sla_target_hours, SLA_HOURS, Task, TaskCompletion
+
+from models.database import SLA_HOURS, Task, TaskCompletion, _sla_target_hours
 
 
 class TestSlaTargetHours:
@@ -58,7 +60,7 @@ class TestSlaTargetHours:
         Python Unicode lower(): 'YÜKSEK'.lower() → 'yüksek' doğru çalışır.
         Bu nedenle 'YÜKSEK' → 4 saat döner (beklenmedik olsa da doğru davranış).
         """
-        assert _sla_target_hours("YÜKSEK") == 4   # Python Unicode lower() çalışır
+        assert _sla_target_hours("YÜKSEK") == 4  # Python Unicode lower() çalışır
         assert _sla_target_hours("ORTA") == 24
         assert _sla_target_hours("DÜŞÜK") == 72
 
@@ -199,7 +201,7 @@ class TestSlaInTaskToDict:
         geçmediğine göre hesaplanır (mevcut 'now'a değil).
         """
         user = user_factory(username="sla_u11", firm="inventist")
-        created = datetime(2026, 4, 10, 9, 0, 0)    # 09:00
+        created = datetime(2026, 4, 10, 9, 0, 0)  # 09:00
         completed = datetime(2026, 4, 10, 10, 0, 0)  # 10:00 — 1 saat sonra
         # Yüksek → 4 saat SLA, 1 saatte çözüldü → breach YOK
         task = Task(
@@ -223,7 +225,7 @@ class TestSlaInTaskToDict:
     def test_tamamlanan_gorev_geç_cozumde_breach_var(self, db, user_factory):
         """Yüksek öncelikli görev 5 saatte çözüldüyse (>4h SLA) breached=True."""
         user = user_factory(username="sla_u12", firm="assos")
-        created = datetime(2026, 4, 10, 9, 0, 0)    # 09:00
+        created = datetime(2026, 4, 10, 9, 0, 0)  # 09:00
         completed = datetime(2026, 4, 10, 14, 0, 0)  # 14:00 — 5 saat sonra
         task = Task(
             user_id=user.id,

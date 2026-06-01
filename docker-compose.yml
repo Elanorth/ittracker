@@ -1,6 +1,28 @@
 services:
 
+  db:
+    # Level 2 — C: PostgreSQL. Cutover'a kadar app SQLite kullanabilir; DATABASE_URL
+    # postgresql:// formatına geçince app bu container'a bağlanır.
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ittracker}
+      POSTGRES_USER: ${POSTGRES_USER:-ittracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ittracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "5432"
+
   web:
+    # GHCR'dan pull edilen image. Dev'de yereldeysek build: . fallback olur.
+    # CI build-image job'u her main push'unda `:main` etiketini günceller.
+    image: ${IMAGE:-ghcr.io/elanorth/ittracker:main}
     build: .
     restart: unless-stopped
     expose:
@@ -11,6 +33,9 @@ services:
       - ./instance:/app/instance
       - backups:/srv/it_tracker/backups
       - ./.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')"]
       interval: 30s
@@ -38,3 +63,4 @@ services:
 
 volumes:
   backups:
+  pgdata:

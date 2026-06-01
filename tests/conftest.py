@@ -6,6 +6,7 @@ Pytest fixtures — IT Tracker test altyapısı.
 - ADMIN_PASSWORD=... → init_db() RuntimeError fırlatmasın
 - DATABASE_URL=sqlite:///:memory: → izole, hızlı test DB
 """
+
 import os
 
 os.environ.setdefault("ENABLE_SCHEDULER", "0")
@@ -16,8 +17,10 @@ os.environ.setdefault("SECRET_KEY", "test-secret-not-for-prod")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 import pytest
+
 from app import app as flask_app
-from models.database import db as _db, init_db, User, Task, TaskCompletion, Firm, Team, AuditLog
+from models.database import AuditLog, Firm, Task, TaskCompletion, Team, User, init_db
+from models.database import db as _db
 
 
 @pytest.fixture(scope="session")
@@ -65,10 +68,12 @@ def db(app):
 @pytest.fixture
 def login_as(client):
     """Kullanıcıyı session'a yerleştir. Kullanım: login_as(user)"""
+
     def _login(user):
         with client.session_transaction() as s:
             s["user_id"] = user.id
         return user
+
     return _login
 
 
@@ -124,6 +129,7 @@ def task_factory(db):
     Kullanım:
         task = task_factory(user_id=user.id, title="Sunucu yedeği", category="routine")
     """
+
     def _make(
         user_id,
         title="Test Görevi",
@@ -134,6 +140,7 @@ def task_factory(db):
         is_done=False,
     ):
         from datetime import datetime
+
         t = Task(
             user_id=user_id,
             title=title,

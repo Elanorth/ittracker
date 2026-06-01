@@ -10,9 +10,11 @@ Kapsam:
 - i/I ile ı/İ ayrımı: Python lower()/upper() davranışı belgelenir.
 """
 
-import pytest
 import json
-from models.database import User, Task
+
+import pytest
+
+from models.database import Task, User
 
 
 class TestTurkishCharStorage:
@@ -325,7 +327,7 @@ class TestPythonTurkishLocale:
         """
         assert "çağla".upper() == "ÇAĞLA"
         # 'şahin'.upper() → 'ŞAHIN' (i → I, Türkçe İ değil — Python davranışı)
-        assert "şahin".upper() == "ŞAHIN"   # ŞAHIN döner, ŞAHİN değil
+        assert "şahin".upper() == "ŞAHIN"  # ŞAHIN döner, ŞAHİN değil
 
     def test_i_ile_i_noktalı_farki(self):
         """
@@ -333,8 +335,8 @@ class TestPythonTurkishLocale:
         Bu Python davranışı SQL sorguları ve filter işlemlerini etkileyebilir.
         """
         # Python Türkçe locale farkındalığı: i → I (İngilizce), ı → I yok
-        assert "i".upper() == "I"   # Python 'i'.upper() = 'I'
-        assert "I".lower() == "i"   # Python 'I'.lower() = 'i'
+        assert "i".upper() == "I"  # Python 'i'.upper() = 'I'
+        assert "I".lower() == "i"  # Python 'I'.lower() = 'i'
         # Türkçe'de: 'i'.upper() = 'İ', 'I'.lower() = 'ı' — Python locale'ye uymaz
         # Bu POTANSIYEL BUG: Türkçe karakter içeren username/email lower() ile
         # beklenmedik sonuç verebilir. Mevcut davranışı belgelemek için:
@@ -355,6 +357,7 @@ class TestSlugifyTr:
     def test_buyuk_i_dogru_slugify(self):
         """'İnventist' → 'inventist' (combining dot bırakmaz)."""
         from app import _slugify_tr
+
         assert _slugify_tr("İnventist") == "inventist"
         # Saf .lower() bug'ını da dolaylı doğrula
         assert "̇" not in _slugify_tr("İnventist")  # combining dot above
@@ -362,25 +365,30 @@ class TestSlugifyTr:
     def test_turkce_firma_adi_slug(self):
         """'Şirket Çağ' → 'sirket_cag'."""
         from app import _slugify_tr
+
         assert _slugify_tr("Şirket Çağ") == "sirket_cag"
 
     def test_karma_turkce_slug(self):
         """'Güneş Öztürk Çelik' → 'gunes_ozturk_celik'."""
         from app import _slugify_tr
+
         assert _slugify_tr("Güneş Öztürk Çelik") == "gunes_ozturk_celik"
 
     def test_dotless_i_slug(self):
         """'Kıvılcım' → 'kivilcim' (ı → i)."""
         from app import _slugify_tr
+
         assert _slugify_tr("Kıvılcım") == "kivilcim"
 
     def test_bos_string(self):
         """Boş string güvenli — '' döner."""
         from app import _slugify_tr
+
         assert _slugify_tr("") == ""
         assert _slugify_tr(None) == ""
 
     def test_bastaki_sondaki_bosluk_strip(self):
         """'  Assos  ' → 'assos' (kenar boşlukları temizlenir)."""
         from app import _slugify_tr
+
         assert _slugify_tr("  Assos  ") == "assos"
