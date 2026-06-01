@@ -1,0 +1,35 @@
+# Ruff config — IT Tracker
+# Başlangıçta hafif kurallar: pyflakes (F) + critical pycodestyle (E9).
+# Codebase ilerlerken kademeli olarak sıkıştırılabilir.
+
+target-version = "py312"
+line-length = 120
+extend-exclude = [
+    "migrations",
+    "instance",
+    ".claude",
+    "venv",
+    "build",
+    "dist",
+]
+
+[lint]
+# E9: syntax + indentation hataları
+# F: pyflakes (kullanılmayan import, undefined name vb.)
+# I: import sıralama
+# UP: pyupgrade — eski Python syntax modernize
+# B: bugbear — yaygın buglar
+select = ["E9", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # satır uzunluğu — line-length=120 yeterli
+    "F841",  # bilinçli yazılmış kullanılmayan değişkenler için (`_ = expr`)
+    "B008",  # Flask default arg pattern (Depends() benzeri)
+]
+unfixable = ["B"]  # bugbear otomatik düzeltme yok — insan inceleme
+
+[lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]  # test fixture re-import normal
+
+[format]
+quote-style = "double"
+indent-style = "space"

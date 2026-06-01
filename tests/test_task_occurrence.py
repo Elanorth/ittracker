@@ -13,11 +13,13 @@ ignore edilir (Karar 2 = B).
 - Task silindiğinde tüm TaskOccurrence kayıtları cascade ile silinir.
 """
 
+from datetime import date, datetime
+
 import pytest
-from datetime import datetime, date
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
-from models.database import Task, TaskOccurrence, TaskCompletion
+
+from models.database import Task, TaskCompletion, TaskOccurrence
 
 
 class TestTaskOccurrenceModel:
@@ -158,8 +160,7 @@ class TestTaskOccurrenceToDict:
 
         sonuc = task.to_dict(month=4, year=2026)
         assert sonuc["is_done"] is False, (
-            "Rutin görev için is_done Task.is_done flag'inden değil "
-            "TaskOccurrence kaydından okunmalı"
+            "Rutin görev için is_done Task.is_done flag'inden değil TaskOccurrence kaydından okunmalı"
         )
 
     def test_completion_olmadan_ay_bazli_is_done_false(self, db, user_factory, task_factory):
@@ -394,8 +395,8 @@ class TestTaskOccurrenceAPIEndpoint:
         )
 
         from models.database import Task as TaskModel
+
         refreshed = db.session.get(TaskModel, task.id)
         assert refreshed.is_done is False, (
-            "Rutin görevde Task.is_done flag'i güncellenmemeli; "
-            "tamamlanma durumu yalnızca TaskOccurrence'dan okunur"
+            "Rutin görevde Task.is_done flag'i güncellenmemeli; tamamlanma durumu yalnızca TaskOccurrence'dan okunur"
         )

@@ -10,9 +10,11 @@ test_firm_scope.py — Mevcut firma-kapsam kurallarının baseline testleri.
 v4.9 many-to-many migration'ından ÖNCE bu davranışlar doğrulanıp belgelenir.
 """
 
-import pytest
 import json
-from models.database import User, Task
+
+import pytest
+
+from models.database import Task, User
 
 
 class TestFirmUsersEndpoint:
@@ -141,7 +143,9 @@ class TestResolveScopeUID:
         resp = client.get(f"/api/tasks?user_id={inactive.id}")
         assert resp.status_code == 404
 
-    def test_junior_baska_kullanici_id_verirse_kendi_verisi_gelir(self, db, client, user_factory, login_as, task_factory):
+    def test_junior_baska_kullanici_id_verirse_kendi_verisi_gelir(
+        self, db, client, user_factory, login_as, task_factory
+    ):
         """junior rol başkasının user_id'sini verirse kendi verilerini görür (scope kısıtlı)."""
         junior = user_factory(username="jnr3", firm="assos", permission_level="junior")
         other = user_factory(username="assos_other", firm="assos", permission_level="junior")

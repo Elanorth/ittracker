@@ -1,9 +1,11 @@
 """Veritabanı Modelleri v3 — TaskCompletion + project_status"""
+
+from datetime import datetime
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.orm import validates
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
@@ -19,34 +21,33 @@ user_managed_firms = db.Table(
 
 class User(db.Model):
     __tablename__ = "users"
-    id               = db.Column(db.Integer, primary_key=True)
-    username         = db.Column(db.String(50), unique=True, nullable=False)
-    full_name        = db.Column(db.String(100), nullable=False)
-    email            = db.Column(db.String(150), unique=True, nullable=False)
-    role             = db.Column(db.String(50), default="IT Yardımcısı")
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    full_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    role = db.Column(db.String(50), default="IT Yardımcısı")
     # firm: tek string. "Boş firma" semantiği = "" (boş string).
     # @validates ile None → "" coerce edilir, böylece kod her yerde tutarlı
     # olarak `if not user.firm` veya `user.firm == ""` kontrolü kullanabilir.
-    firm             = db.Column(db.String(50), nullable=False, default="")
-    is_admin         = db.Column(db.Boolean, default=False)
-    permission_level  = db.Column(db.String(20), default="junior")  # super_admin | it_director | it_manager | it_specialist | junior
-    can_access_board  = db.Column(db.Boolean, default=False)
-    active            = db.Column(db.Boolean, default=True)
-    o365_id          = db.Column(db.String(100), unique=True, nullable=True)
-    password_hash    = db.Column(db.String(256), nullable=False)
-    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+    firm = db.Column(db.String(50), nullable=False, default="")
+    is_admin = db.Column(db.Boolean, default=False)
+    permission_level = db.Column(
+        db.String(20), default="junior"
+    )  # super_admin | it_director | it_manager | it_specialist | junior
+    can_access_board = db.Column(db.Boolean, default=False)
+    active = db.Column(db.Boolean, default=True)
+    o365_id = db.Column(db.String(100), unique=True, nullable=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # v4.6 — Bildirim tercihleri
-    notify_overdue      = db.Column(db.Boolean, default=True)   # 3+ gün geciken görevler
-    notify_sla_warning  = db.Column(db.Boolean, default=True)   # SLA %75 eşiğine yaklaşan destek talepleri
-    notify_daily_digest = db.Column(db.Boolean, default=True)   # günlük özet maili
+    notify_overdue = db.Column(db.Boolean, default=True)  # 3+ gün geciken görevler
+    notify_sla_warning = db.Column(db.Boolean, default=True)  # SLA %75 eşiğine yaklaşan destek talepleri
+    notify_daily_digest = db.Column(db.Boolean, default=True)  # günlük özet maili
     # v4.3 — Task'ta iki FK var (user_id sahip, assigned_by atayan). Sahip ilişkisini belirt.
-    tasks            = db.relationship("Task", backref="user", lazy=True,
-                                        foreign_keys="Task.user_id")
-    assigned_tasks   = db.relationship("Task", lazy=True,
-                                        foreign_keys="Task.assigned_by")
+    tasks = db.relationship("Task", backref="user", lazy=True, foreign_keys="Task.user_id")
+    assigned_tasks = db.relationship("Task", lazy=True, foreign_keys="Task.assigned_by")
     # v4.9 — IT Müdürü'nün yönettiği firmalar (many-to-many)
-    managed_firms    = db.relationship("Firm", secondary=user_managed_firms,
-                                        lazy="select", backref="managers")
+    managed_firms = db.relationship("Firm", secondary=user_managed_firms, lazy="select", backref="managers")
 
     @validates("firm")
     def _validate_firm(self, key, value):
@@ -59,8 +60,11 @@ class User(db.Model):
         """
         return value if value is not None else ""
 
-    def set_password(self, pw): self.password_hash = generate_password_hash(pw)
-    def check_password(self, pw): return check_password_hash(self.password_hash, pw)
+    def set_password(self, pw):
+        self.password_hash = generate_password_hash(pw)
+
+    def check_password(self, pw):
+        return check_password_hash(self.password_hash, pw)
 
     @property
     def is_super_admin(self):
@@ -98,24 +102,38 @@ class User(db.Model):
         return firm_value == self.firm
 
     def to_dict(self):
-        return {"id":self.id,"username":self.username,"full_name":self.full_name,"email":self.email,
-                "role":self.role,"firm":self.firm,"is_admin":self.is_admin,"active":self.active,
-                "permission_level":self.permission_level or "junior",
-                "can_access_board":bool(self.can_access_board),
-                "managed_firm_slugs": self.managed_firm_slugs,  # v4.9 — IT Müdürü dashboard şeridi için
-                "notify_overdue":bool(self.notify_overdue) if self.notify_overdue is not None else True,
-                "notify_sla_warning":bool(self.notify_sla_warning) if self.notify_sla_warning is not None else True,
-                "notify_daily_digest":bool(self.notify_daily_digest) if self.notify_daily_digest is not None else True,
-                "o365_linked":bool(self.o365_id),"created_at":self.created_at.isoformat()}
+        return {
+            "id": self.id,
+            "username": self.username,
+            "full_name": self.full_name,
+            "email": self.email,
+            "role": self.role,
+            "firm": self.firm,
+            "is_admin": self.is_admin,
+            "active": self.active,
+            "permission_level": self.permission_level or "junior",
+            "can_access_board": bool(self.can_access_board),
+            "managed_firm_slugs": self.managed_firm_slugs,  # v4.9 — IT Müdürü dashboard şeridi için
+            "notify_overdue": bool(self.notify_overdue) if self.notify_overdue is not None else True,
+            "notify_sla_warning": bool(self.notify_sla_warning) if self.notify_sla_warning is not None else True,
+            "notify_daily_digest": bool(self.notify_daily_digest) if self.notify_daily_digest is not None else True,
+            "o365_linked": bool(self.o365_id),
+            "created_at": self.created_at.isoformat(),
+        }
+
 
 import json as _json
-from datetime import timedelta, date as _date
+from datetime import date as _date
+from datetime import timedelta
 
 # v4.5 — SLA hedef süreleri (Jira service-desk varsayılanlarına paralel).
 # Destek talepleri (category=="support") için uygulanır.
 SLA_HOURS = {"yüksek": 4, "orta": 24, "düşük": 72}
+
+
 def _sla_target_hours(priority):
     return SLA_HOURS.get((priority or "orta").strip().lower(), 24)
+
 
 def _period_key(period: str, dt) -> str | None:
     """v5.0 — Verilen tarih için periyota karşılık gelen kanonik string key.
@@ -169,7 +187,8 @@ def _next_due_date(period: str, from_date=None) -> _date:
         return base + timedelta(days=1)
     if period == "Haftalık":
         days_ahead = 7 - base.weekday()
-        if days_ahead == 0: days_ahead = 7
+        if days_ahead == 0:
+            days_ahead = 7
         return base + timedelta(days=days_ahead)
     if period == "Aylık":
         if base.month == 12:
@@ -182,33 +201,31 @@ def _next_due_date(period: str, from_date=None) -> _date:
 
 class Task(db.Model):
     __tablename__ = "tasks"
-    id             = db.Column(db.Integer, primary_key=True)
-    user_id        = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    title          = db.Column(db.String(300), nullable=False)
-    category       = db.Column(db.String(50), default="other")
-    priority       = db.Column(db.String(10), default="orta")  # support talepleri için: düşük/orta/yüksek
-    period         = db.Column(db.String(50), default="Tek Seferlik")
-    firm           = db.Column(db.String(50), default="")
-    team           = db.Column(db.String(100), default="")
-    notes          = db.Column(db.Text, default="")
-    deadline       = db.Column(db.Date, nullable=True)
-    is_done        = db.Column(db.Boolean, default=False)
-    completed_at   = db.Column(db.DateTime, nullable=True)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    title = db.Column(db.String(300), nullable=False)
+    category = db.Column(db.String(50), default="other")
+    priority = db.Column(db.String(10), default="orta")  # support talepleri için: düşük/orta/yüksek
+    period = db.Column(db.String(50), default="Tek Seferlik")
+    firm = db.Column(db.String(50), default="")
+    team = db.Column(db.String(100), default="")
+    notes = db.Column(db.Text, default="")
+    deadline = db.Column(db.Date, nullable=True)
+    is_done = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
     last_completed = db.Column(db.DateTime, nullable=True)
-    next_due       = db.Column(db.Date, nullable=True)
-    checklist      = db.Column(db.Text, default="[]")
+    next_due = db.Column(db.Date, nullable=True)
+    checklist = db.Column(db.Text, default="[]")
     checklist_done = db.Column(db.Text, default="[]")
-    project_status = db.Column(db.Text, default="")   # Proje durum notu
-    manager_note   = db.Column(db.Text, default="")   # v4.3 — IT Müdürü notu (kırmızı font)
-    assigned_by    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # v4.3 — görevi atayan yönetici
+    project_status = db.Column(db.Text, default="")  # Proje durum notu
+    manager_note = db.Column(db.Text, default="")  # v4.3 — IT Müdürü notu (kırmızı font)
+    assigned_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # v4.3 — görevi atayan yönetici
     # v4.6 — Bildirim/alarm
-    alarm_enabled  = db.Column(db.Boolean, default=True)   # bu görev için bildirim/alarm aktif mi
-    last_notified  = db.Column(db.DateTime, nullable=True) # son bildirim maili atılan zaman (anti-spam)
-    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
-    backups        = db.relationship("ConfigBackup", backref="task", lazy=True,
-                                     cascade="all, delete-orphan")
-    completions    = db.relationship("TaskOccurrence", backref="task", lazy=True,
-                                     cascade="all, delete-orphan")
+    alarm_enabled = db.Column(db.Boolean, default=True)  # bu görev için bildirim/alarm aktif mi
+    last_notified = db.Column(db.DateTime, nullable=True)  # son bildirim maili atılan zaman (anti-spam)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
+    completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
 
     def is_done_now(self, today=None):
         """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı?
@@ -238,20 +255,25 @@ class Task(db.Model):
         return (not self.is_done) and (self.deadline is not None) and (self.deadline < today)
 
     def get_checklist(self):
-        try: return _json.loads(self.checklist or "[]")
-        except: return []
+        try:
+            return _json.loads(self.checklist or "[]")
+        except:
+            return []
 
     def get_checklist_done(self):
-        try: return _json.loads(self.checklist_done or "[]")
-        except: return []
+        try:
+            return _json.loads(self.checklist_done or "[]")
+        except:
+            return []
 
     def to_dict(self, month=None, year=None):
-        cl  = self.get_checklist()
+        cl = self.get_checklist()
         cld = self.get_checklist_done()
-        while len(cld) < len(cl): cld.append(False)
+        while len(cld) < len(cl):
+            cld.append(False)
 
         # Rutin görevlerde is_done, o aya ait TaskCompletion kaydından gelir
-        is_done      = self.is_done
+        is_done = self.is_done
         completed_at = self.completed_at.isoformat() if self.completed_at else None
 
         if self.category == "routine" and self.period != "Tek Seferlik" and month and year:
@@ -263,7 +285,9 @@ class Task(db.Model):
             if today_dt.year == year and today_dt.month == month:
                 ref_dt = today_dt
             else:
-                ref_dt = _date(year, month, 15)  # geçmiş/gelecek ay görüntülemesi (Aylık doğru, Günlük/Haftalık o ay'a düşer)
+                ref_dt = _date(
+                    year, month, 15
+                )  # geçmiş/gelecek ay görüntülemesi (Aylık doğru, Günlük/Haftalık o ay'a düşer)
             is_done = self.is_done_now(today=ref_dt)
             if is_done:
                 key = _period_key(self.period, ref_dt)
@@ -275,9 +299,8 @@ class Task(db.Model):
         # Önceki aylardan taşınan tamamlanmamış görev kontrolü
         from_previous_month = False
         if month and year and self.category not in ("routine", "project") and not self.is_done:
-            from_previous_month = (
-                self.created_at.year < year or
-                (self.created_at.year == year and self.created_at.month < month)
+            from_previous_month = self.created_at.year < year or (
+                self.created_at.year == year and self.created_at.month < month
             )
 
         # v4.5 — SLA hesaplamaları (destek talepleri için)
@@ -304,10 +327,15 @@ class Task(db.Model):
             }
 
         return {
-            "id": self.id, "user_id": self.user_id, "title": self.title,
-            "category": self.category, "period": self.period,
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "category": self.category,
+            "period": self.period,
             "priority": (self.priority or "orta"),
-            "firm": self.firm, "team": self.team, "notes": self.notes,
+            "firm": self.firm,
+            "team": self.team,
+            "notes": self.notes,
             "deadline": self.deadline.isoformat() if self.deadline else None,
             "next_due": self.next_due.isoformat() if self.next_due else None,
             "last_completed": self.last_completed.isoformat() if self.last_completed else None,
@@ -338,10 +366,11 @@ class TaskOccurrence(db.Model):
     alias'ı tanımlı; eski import'lar (services/, app.py, tests/) çalışmaya
     devam eder.
     """
+
     __tablename__ = "task_occurrences"
-    id           = db.Column(db.Integer, primary_key=True)
-    task_id      = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
-    period_key   = db.Column(db.String(20), nullable=False, index=True)
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    period_key = db.Column(db.String(20), nullable=False, index=True)
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     __table_args__ = (db.UniqueConstraint("task_id", "period_key", name="uq_task_period"),)
@@ -349,96 +378,126 @@ class TaskOccurrence(db.Model):
 
 class ConfigBackup(db.Model):
     """Firmware/güncelleme öncesi yüklenen config dosyaları"""
+
     __tablename__ = "config_backups"
-    id          = db.Column(db.Integer, primary_key=True)
-    task_id     = db.Column(db.Integer, db.ForeignKey("tasks.id"), nullable=False)
-    user_id     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    filename    = db.Column(db.String(255), nullable=False)
-    file_path   = db.Column(db.String(512), nullable=False)
-    device      = db.Column(db.String(200), default="")
-    file_size   = db.Column(db.Integer, default=0)
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(512), nullable=False)
+    device = db.Column(db.String(200), default="")
+    file_size = db.Column(db.Integer, default=0)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     def to_dict(self):
         task = db.session.get(Task, self.task_id)
         return {
-            "id":          self.id,
-            "task_id":     self.task_id,
-            "task_title":  task.title if task else "—",
-            "firm":        task.firm  if task else "",
-            "team":        task.team  if task else "",
-            "filename":    self.filename,
-            "device":      self.device,
-            "file_size":   self.file_size,
-            "file_size_kb": round(self.file_size/1024, 1),
+            "id": self.id,
+            "task_id": self.task_id,
+            "task_title": task.title if task else "—",
+            "firm": task.firm if task else "",
+            "team": task.team if task else "",
+            "filename": self.filename,
+            "device": self.device,
+            "file_size": self.file_size,
+            "file_size_kb": round(self.file_size / 1024, 1),
             "uploaded_at": self.uploaded_at.isoformat(),
         }
 
+
 class Firm(db.Model):
     __tablename__ = "firms"
-    id    = db.Column(db.Integer, primary_key=True)
-    name  = db.Column(db.String(100), unique=True, nullable=False)
-    slug  = db.Column(db.String(100), unique=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=False)
     teams = db.relationship("Team", backref="firm", lazy=True, cascade="all, delete-orphan")
-    def to_dict(self): return {"id":self.id,"name":self.name,"slug":self.slug,"teams":[t.to_dict() for t in self.teams]}
+
+    def to_dict(self):
+        return {"id": self.id, "name": self.name, "slug": self.slug, "teams": [t.to_dict() for t in self.teams]}
+
 
 class Team(db.Model):
     __tablename__ = "teams"
-    id      = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     firm_id = db.Column(db.Integer, db.ForeignKey("firms.id"), nullable=False)
-    name    = db.Column(db.String(100), nullable=False)
-    def to_dict(self): return {"id":self.id,"firm_id":self.firm_id,"name":self.name}
+    name = db.Column(db.String(100), nullable=False)
+
+    def to_dict(self):
+        return {"id": self.id, "firm_id": self.firm_id, "name": self.name}
+
 
 class Invitation(db.Model):
     __tablename__ = "invitations"
-    id         = db.Column(db.Integer, primary_key=True)
-    email      = db.Column(db.String(150), nullable=False)
-    full_name  = db.Column(db.String(100), default="")
-    role       = db.Column(db.String(50), default="IT Yardımcısı")
-    firm       = db.Column(db.String(50), default="")
-    token      = db.Column(db.String(64), unique=True, nullable=False)
-    used       = db.Column(db.Boolean, default=False)
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), nullable=False)
+    full_name = db.Column(db.String(100), default="")
+    role = db.Column(db.String(50), default="IT Yardımcısı")
+    firm = db.Column(db.String(50), default="")
+    token = db.Column(db.String(64), unique=True, nullable=False)
+    used = db.Column(db.Boolean, default=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     invited_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    def to_dict(self): return {"id":self.id,"email":self.email,"full_name":self.full_name,
-                               "role":self.role,"firm":self.firm,"used":self.used,"expires_at":self.expires_at.isoformat()}
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "full_name": self.full_name,
+            "role": self.role,
+            "firm": self.firm,
+            "used": self.used,
+            "expires_at": self.expires_at.isoformat(),
+        }
+
 
 class BoardCard(db.Model):
     """Ortak Alan — Trello tarzı kanban kartı"""
+
     __tablename__ = "board_cards"
-    id             = db.Column(db.Integer, primary_key=True)
-    title          = db.Column(db.String(300), nullable=False)
-    description    = db.Column(db.Text, default="")
-    column         = db.Column(db.String(20), default="todo")  # todo/in_progress/review/done
-    position       = db.Column(db.Integer, default=0)
-    color          = db.Column(db.String(20), default="yellow")  # yellow/green/blue/pink/orange
-    checklist      = db.Column(db.Text, default="[]")
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.Text, default="")
+    column = db.Column(db.String(20), default="todo")  # todo/in_progress/review/done
+    position = db.Column(db.Integer, default=0)
+    color = db.Column(db.String(20), default="yellow")  # yellow/green/blue/pink/orange
+    checklist = db.Column(db.Text, default="[]")
     checklist_done = db.Column(db.Text, default="[]")
-    created_by     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    assigned_to    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    firm           = db.Column(db.String(50), default="")
-    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    comments       = db.relationship("BoardComment", backref="card", lazy=True, cascade="all, delete-orphan")
-    creator        = db.relationship("User", foreign_keys=[created_by])
-    assignee       = db.relationship("User", foreign_keys=[assigned_to])
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    firm = db.Column(db.String(50), default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    comments = db.relationship("BoardComment", backref="card", lazy=True, cascade="all, delete-orphan")
+    creator = db.relationship("User", foreign_keys=[created_by])
+    assignee = db.relationship("User", foreign_keys=[assigned_to])
 
     def get_checklist(self):
-        try: return _json.loads(self.checklist or "[]")
-        except: return []
+        try:
+            return _json.loads(self.checklist or "[]")
+        except:
+            return []
 
     def get_checklist_done(self):
-        try: return _json.loads(self.checklist_done or "[]")
-        except: return []
+        try:
+            return _json.loads(self.checklist_done or "[]")
+        except:
+            return []
 
     def to_dict(self):
-        cl  = self.get_checklist()
+        cl = self.get_checklist()
         cld = self.get_checklist_done()
-        while len(cld) < len(cl): cld.append(False)
+        while len(cld) < len(cl):
+            cld.append(False)
         return {
-            "id": self.id, "title": self.title, "description": self.description,
-            "column": self.column, "position": self.position, "color": self.color,
-            "checklist": cl, "checklist_done": cld,
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "column": self.column,
+            "position": self.position,
+            "color": self.color,
+            "checklist": cl,
+            "checklist_done": cld,
             "created_by": self.created_by,
             "creator_name": self.creator.full_name if self.creator else "",
             "assigned_to": self.assigned_to,
@@ -452,17 +511,19 @@ class BoardCard(db.Model):
 
 class BoardComment(db.Model):
     """Ortak Alan kart yorumu"""
+
     __tablename__ = "board_comments"
-    id         = db.Column(db.Integer, primary_key=True)
-    card_id    = db.Column(db.Integer, db.ForeignKey("board_cards.id", ondelete="CASCADE"), nullable=False)
-    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    content    = db.Column(db.Text, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    card_id = db.Column(db.Integer, db.ForeignKey("board_cards.id", ondelete="CASCADE"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    author     = db.relationship("User", foreign_keys=[user_id])
+    author = db.relationship("User", foreign_keys=[user_id])
 
     def to_dict(self):
         return {
-            "id": self.id, "card_id": self.card_id,
+            "id": self.id,
+            "card_id": self.card_id,
             "user_id": self.user_id,
             "author_name": self.author.full_name if self.author else "",
             "content": self.content,
@@ -472,19 +533,22 @@ class BoardComment(db.Model):
 
 class AuditLog(db.Model):
     """v4.4 — Denetim kaydı. Kim, ne zaman, ne yaptı."""
+
     __tablename__ = "audit_logs"
-    id             = db.Column(db.Integer, primary_key=True)
-    actor_id       = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    actor_name     = db.Column(db.String(150), default="")  # snapshot (kullanıcı silinirse korunur)
-    action         = db.Column(db.String(60), nullable=False)   # task.create, task.update, task.delete, task.assign, task.manager_note, user.invite, user.update, user.delete, user.permission
-    entity_type    = db.Column(db.String(40), default="")        # task / user / invitation / firm / team
-    entity_id      = db.Column(db.Integer, nullable=True)
+    id = db.Column(db.Integer, primary_key=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    actor_name = db.Column(db.String(150), default="")  # snapshot (kullanıcı silinirse korunur)
+    action = db.Column(
+        db.String(60), nullable=False
+    )  # task.create, task.update, task.delete, task.assign, task.manager_note, user.invite, user.update, user.delete, user.permission
+    entity_type = db.Column(db.String(40), default="")  # task / user / invitation / firm / team
+    entity_id = db.Column(db.Integer, nullable=True)
     target_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    target_name    = db.Column(db.String(150), default="")
-    firm           = db.Column(db.String(50), default="")
-    summary        = db.Column(db.String(500), default="")        # kısa insan-okunabilir özet
-    details        = db.Column(db.Text, default="")               # JSON string — ek detaylar
-    created_at     = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    target_name = db.Column(db.String(150), default="")
+    firm = db.Column(db.String(50), default="")
+    summary = db.Column(db.String(500), default="")  # kısa insan-okunabilir özet
+    details = db.Column(db.Text, default="")  # JSON string — ek detaylar
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     def to_dict(self):
         return {
@@ -518,27 +582,24 @@ def _auto_link_director_to_own_firm(mapper, connection, target):
     if target.permission_level != "it_director" or not target.firm:
         return
     from sqlalchemy import text as _text
-    firm_row = connection.execute(
-        _text("SELECT id FROM firms WHERE slug = :s"),
-        {"s": target.firm}
-    ).first()
+
+    firm_row = connection.execute(_text("SELECT id FROM firms WHERE slug = :s"), {"s": target.firm}).first()
     if not firm_row:
         return
     # Çift eklemeyi önle
     existing = connection.execute(
-        _text("SELECT 1 FROM user_managed_firms WHERE user_id=:u AND firm_id=:f"),
-        {"u": target.id, "f": firm_row[0]}
+        _text("SELECT 1 FROM user_managed_firms WHERE user_id=:u AND firm_id=:f"), {"u": target.id, "f": firm_row[0]}
     ).first()
     if existing:
         return
-    connection.execute(
-        user_managed_firms.insert().values(user_id=target.id, firm_id=firm_row[0])
-    )
+    connection.execute(user_managed_firms.insert().values(user_id=target.id, firm_id=firm_row[0]))
 
 
 def init_db():
     import os
+
     from sqlalchemy import inspect, text
+
     db.create_all()
 
     # Migration: mevcut tasks tablosuna project_status sütunu ekle
@@ -592,13 +653,15 @@ def init_db():
     if "permission_level" not in user_cols:
         db.session.execute(text("ALTER TABLE users ADD COLUMN permission_level TEXT DEFAULT 'junior'"))
         # Mevcut kullanıcıları dönüştür
-        db.session.execute(text("""
+        db.session.execute(
+            text("""
             UPDATE users SET permission_level = CASE
                 WHEN is_admin = 1 AND (o365_id IS NULL OR o365_id = '') THEN 'super_admin'
                 WHEN is_admin = 1 THEN 'it_manager'
                 ELSE 'junior'
             END
-        """))
+        """)
+        )
         db.session.commit()
         print("Migration: permission_level sutunu eklendi")
 
@@ -658,11 +721,10 @@ def init_db():
     try:
         table_names = inspector.get_table_names()
         if "task_completions" in table_names and "task_occurrences" in table_names:
-            old_count = db.session.execute(
-                text("SELECT COUNT(*) FROM task_completions")
-            ).scalar() or 0
+            old_count = db.session.execute(text("SELECT COUNT(*) FROM task_completions")).scalar() or 0
             if old_count > 0:
-                result = db.session.execute(text("""
+                result = db.session.execute(
+                    text("""
                     INSERT INTO task_occurrences (task_id, period_key, year, month, completed_at, completed_by)
                     SELECT
                         tc.task_id,
@@ -677,7 +739,8 @@ def init_db():
                         WHERE tox.task_id = tc.task_id
                           AND tox.period_key = printf('%04d-%02d', tc.year, tc.month)
                     )
-                """))
+                """)
+                )
                 moved = result.rowcount or 0
                 if moved > 0:
                     db.session.commit()
@@ -688,27 +751,42 @@ def init_db():
 
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")
-        ass = Firm(name="Assos",     slug="assos")
-        db.session.add_all([inv, ass]); db.session.flush()
-        for n in ["Teknik Ekip","Misafir İlişkileri","F&B","Akademi Yönetimi","Otel ve Ön Büro","Housekeeping","İnsan Kaynakları","Genel"]:
+        ass = Firm(name="Assos", slug="assos")
+        db.session.add_all([inv, ass])
+        db.session.flush()
+        for n in [
+            "Teknik Ekip",
+            "Misafir İlişkileri",
+            "F&B",
+            "Akademi Yönetimi",
+            "Otel ve Ön Büro",
+            "Housekeeping",
+            "İnsan Kaynakları",
+            "Genel",
+        ]:
             db.session.add(Team(firm_id=inv.id, name=n))
-        for n in ["Resepsiyon","Teknik Servis","Yiyecek-İçecek","İdare","Animasyon","Genel"]:
+        for n in ["Resepsiyon", "Teknik Servis", "Yiyecek-İçecek", "İdare", "Animasyon", "Genel"]:
             db.session.add(Team(firm_id=ass.id, name=n))
     admin_username = os.environ.get("ADMIN_USERNAME", "levent.can")
-    admin_email    = os.environ.get("ADMIN_EMAIL",    "levent.can@inventist.com")
+    admin_email = os.environ.get("ADMIN_EMAIL", "levent.can@inventist.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
     admin_exists = (
-        User.query.filter_by(username=admin_username).first() or
-        User.query.filter_by(email=admin_email).first() or
-        User.query.filter_by(is_admin=True).first()
+        User.query.filter_by(username=admin_username).first()
+        or User.query.filter_by(email=admin_email).first()
+        or User.query.filter_by(is_admin=True).first()
     )
     if not admin_exists:
         if not admin_password:
             raise RuntimeError("ADMIN_PASSWORD ortam değişkeni ayarlanmamış! .env dosyasını kontrol edin.")
-        admin = User(username=admin_username, full_name="Levent Mahir Can",
-                     email=admin_email,
-                     role="IT Sorumlusu", firm="inventist", is_admin=True,
-                     permission_level="super_admin")
+        admin = User(
+            username=admin_username,
+            full_name="Levent Mahir Can",
+            email=admin_email,
+            role="IT Sorumlusu",
+            firm="inventist",
+            is_admin=True,
+            permission_level="super_admin",
+        )
         admin.set_password(admin_password)
         db.session.add(admin)
     db.session.commit()

@@ -34,6 +34,7 @@ class TestManagedFirmsModel:
         Beklenen: managed_firms listesi kendi firma'sı + manuel eklenen firmaları içerir.
         """
         from models.database import Firm
+
         director = user_factory(username="mfm_u2", firm="inventist", permission_level="it_director")
         # Auto-link: director.managed_firms zaten 'inventist' içerir.
         firm_a = Firm(name="Test Firma A", slug="test-firma-a")
@@ -46,6 +47,7 @@ class TestManagedFirmsModel:
         db.session.commit()
 
         from models.database import User
+
         refreshed = User.query.get(director.id)
         slugs = {f.slug for f in refreshed.managed_firms}
         # Kendi firma'sı (auto-link) + iki ek = 3 firma yönetiyor
@@ -60,6 +62,7 @@ class TestManagedFirmsModel:
         Beklenen: SQLAlchemy metadata'da tablo tanımlı.
         """
         from models.database import db as _db
+
         assert "user_managed_firms" in _db.metadata.tables
 
     def test_yeni_director_kendi_firmasini_otomatik_yonetir(self, db, user_factory):
@@ -73,6 +76,7 @@ class TestManagedFirmsModel:
         """
         director = user_factory(username="mfm_u3", firm="assos", permission_level="it_director")
         from models.database import User
+
         refreshed = User.query.get(director.id)
         slugs = [f.slug for f in refreshed.managed_firms]
         assert "assos" in slugs
@@ -85,6 +89,7 @@ class TestManagedFirmsModel:
         """
         junior = user_factory(username="mfm_u3b", firm="inventist", permission_level="junior")
         from models.database import User
+
         refreshed = User.query.get(junior.id)
         assert len(refreshed.managed_firms) == 0
 
@@ -100,12 +105,14 @@ class TestManagedFirmsMigrationBackcompat:
         Firm nesnesi ile dolu.
         """
         from models.database import Firm
+
         inv_firm = Firm.query.filter_by(slug="inventist").first()
         director = user_factory(username="mfm_bc1", firm="inventist", permission_level="it_director")
 
         # Migration sonrası durumu simüle et
         # Bu test migration fonksiyonunu çağırmalı ve doğrulamalı
         from models.database import User
+
         refreshed = User.query.get(director.id)
         firm_names = [f.name for f in refreshed.managed_firms]
         assert any("inventist" in n.lower() or "İnventist" in n for n in firm_names), (
@@ -119,6 +126,7 @@ class TestManagedFirmsMigrationBackcompat:
         Beklenen: director.managed_firms içinde firma olan kullanıcıya erişim izinli.
         """
         from models.database import Firm
+
         director = user_factory(username="mfm_bc2", firm="inventist", permission_level="it_director")
         target_user = user_factory(username="mfm_bc2_t", firm="assos", permission_level="junior")
 
@@ -133,9 +141,7 @@ class TestManagedFirmsMigrationBackcompat:
 
         # Artık assos kullanıcısına erişebilmeli
         resp = client.get(f"/api/tasks?user_id={target_user.id}")
-        assert resp.status_code == 200, (
-            "Director managed_firms içindeki firmaya erişebilmeli"
-        )
+        assert resp.status_code == 200, "Director managed_firms içindeki firmaya erişebilmeli"
 
 
 class TestFirmSummaryEndpoint:
@@ -218,6 +224,7 @@ class TestFirmSummaryEndpoint:
         Bu basit bir benchmark testi.
         """
         import time
+
         from models.database import Firm, Team
 
         admin = user_factory(username="fs_perf", firm="inventist", permission_level="super_admin", is_admin=True)
@@ -247,6 +254,7 @@ class TestFirmUsersV49:
         TÜM firmaların kullanıcılarını listeler (sadece User.firm değil).
         """
         from models.database import Firm
+
         director = user_factory(username="fuv49_dir", firm="inventist", permission_level="it_director", is_admin=True)
         assos_user = user_factory(username="fuv49_assos", firm="assos", permission_level="junior")
 
@@ -297,7 +305,9 @@ class TestManagedFirmsDetailEndpoint:
     def test_response_zorunlu_alanlar(self, db, client, user_factory, login_as, task_factory):
         """Her firma kaydı zorunlu alanları içerir; rutin görev KPI doğru sayılır."""
         from datetime import date
+
         from freezegun import freeze_time as _ft
+
         from models.database import TaskOccurrence
 
         admin = user_factory(username="mfd_fields", firm="inventist", permission_level="super_admin", is_admin=True)
@@ -338,13 +348,12 @@ class TestManagedFirmsDetailEndpoint:
         # inventist firma'sı için done >= 1 (rutin tamamlandı)
         inv_entry = next((e for e in data if e["slug"] == "inventist"), None)
         assert inv_entry is not None
-        assert inv_entry["kpi"]["done"] >= 1, (
-            "v5.0: Aylık rutin bu ay tamamlanmışsa KPI done sayısına dahil olmalı"
-        )
+        assert inv_entry["kpi"]["done"] >= 1, "v5.0: Aylık rutin bu ay tamamlanmışsa KPI done sayısına dahil olmalı"
 
     def test_geciken_sayisina_gore_sirali(self, db, client, user_factory, login_as, task_factory):
         """Sıralama: geciken sayısı azalan (en kritik üstte)."""
         from datetime import date, timedelta
+
         admin = user_factory(username="mfd_sort", firm="inventist", permission_level="super_admin", is_admin=True)
         u_inv = user_factory(username="mfd_sort_inv", firm="inventist", permission_level="junior")
         u_assos = user_factory(username="mfd_sort_assos", firm="assos", permission_level="junior")
@@ -357,6 +366,7 @@ class TestManagedFirmsDetailEndpoint:
         t3 = task_factory(user_id=u_inv.id, title="Geciken 3", category="support", firm="inventist")
         t3.deadline = old_deadline
         from models.database import db as _db
+
         _db.session.commit()
 
         login_as(admin)

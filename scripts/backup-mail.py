@@ -6,10 +6,11 @@ Kullanim: backup-mail.py "<konu>" "<govde>"
 Prod .env'den SMTP_HOST/PORT/USER/PASS okur, admin@inventist.com.tr'ye yollar.
 Sessiz hata (mail gonderemese bile script bozulmaz).
 """
-import sys
+
 import os
 import smtplib
 import ssl
+import sys
 from email.message import EmailMessage
 from pathlib import Path
 

@@ -17,18 +17,23 @@ Bu dosya v5.0 recurring tasks refactor'ın tüm iş kurallarını doğrular:
 - Karar 2=B: server date.today() kullanır; frontend month/year param'ları ignore.
 """
 
-import pytest
 from datetime import date, datetime
-from freezegun import freeze_time
-from models.database import (
-    Task, TaskOccurrence, TaskCompletion,
-    _period_key, _previous_period_key,
-)
 
+import pytest
+from freezegun import freeze_time
+
+from models.database import (
+    Task,
+    TaskCompletion,
+    TaskOccurrence,
+    _period_key,
+    _previous_period_key,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TestPeriodKey — _period_key() helper
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPeriodKey:
     """_period_key() helper'ın her periyot tipi için doğru kanonik string üretmesi."""
@@ -89,6 +94,7 @@ class TestPeriodKey:
 # TestPreviousPeriodKey — _previous_period_key() helper
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPreviousPeriodKey:
     """_previous_period_key() helper'ın önceki periyot key'ini doğru hesaplaması."""
 
@@ -129,6 +135,7 @@ class TestPreviousPeriodKey:
 # ─────────────────────────────────────────────────────────────────────────────
 # TestIsDoneNow — Task.is_done_now()
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestIsDoneNow:
     """Task.is_done_now() method'u — her periyot tipi için doğru davranış."""
@@ -259,6 +266,7 @@ class TestIsDoneNow:
 # TestIsOverdueNow — Task.is_overdue_now()
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestIsOverdueNow:
     """Task.is_overdue_now() method'u — gecikme tespiti her periyot tipi için."""
 
@@ -308,6 +316,7 @@ class TestIsOverdueNow:
     def test_proje_deadline_gecmis_acik_overdue(self, db, user_factory, task_factory):
         """Proje görevi + deadline geçmiş + açık → is_overdue_now() True."""
         from datetime import timedelta
+
         user = user_factory(username="ion_u4", firm="inventist")
         task = task_factory(
             user_id=user.id,
@@ -323,6 +332,7 @@ class TestIsOverdueNow:
     def test_proje_deadline_gecmis_tamamlanmis_not_overdue(self, db, user_factory, task_factory):
         """Proje görevi + deadline geçmiş + tamamlanmış → is_overdue_now() False."""
         from datetime import timedelta
+
         user = user_factory(username="ion_u5", firm="assos")
         task = task_factory(
             user_id=user.id,
@@ -353,6 +363,7 @@ class TestIsOverdueNow:
 # TestToggleEndpoint — PATCH /api/tasks/<id> rutin toggle
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestToggleEndpoint:
     """PATCH /api/tasks/<id> — periyot tipine göre doğru period_key oluşturulur."""
 
@@ -361,8 +372,10 @@ class TestToggleEndpoint:
         """Aylık rutin is_done=true → period_key='2026-04' (bu ay)."""
         user = user_factory(username="te_u1", firm="inventist")
         task = task_factory(
-            user_id=user.id, title="Aylık yedekleme denetimi",
-            category="routine", period="Aylık",
+            user_id=user.id,
+            title="Aylık yedekleme denetimi",
+            category="routine",
+            period="Aylık",
         )
         login_as(user)
         resp = client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
@@ -375,8 +388,10 @@ class TestToggleEndpoint:
         """Aylık rutin is_done=false → bu ayın period_key kaydı silinir."""
         user = user_factory(username="te_u2", firm="inventist")
         task = task_factory(
-            user_id=user.id, title="Aylık kontrol silme testi",
-            category="routine", period="Aylık",
+            user_id=user.id,
+            title="Aylık kontrol silme testi",
+            category="routine",
+            period="Aylık",
         )
         db.session.add(TaskOccurrence(task_id=task.id, period_key="2026-04"))
         db.session.commit()
@@ -390,8 +405,10 @@ class TestToggleEndpoint:
         """Günlük rutin is_done=true → period_key='2026-05-04' (ISO date bugün)."""
         user = user_factory(username="te_u3", firm="inventist")
         task = task_factory(
-            user_id=user.id, title="Günlük log denetimi",
-            category="routine", period="Günlük",
+            user_id=user.id,
+            title="Günlük log denetimi",
+            category="routine",
+            period="Günlük",
         )
         login_as(user)
         resp = client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
@@ -404,8 +421,10 @@ class TestToggleEndpoint:
         """Haftalık rutin is_done=true → period_key='2026-W19' (2026-05-04 = W19)."""
         user = user_factory(username="te_u4", firm="inventist")
         task = task_factory(
-            user_id=user.id, title="Haftalık güvenlik taraması",
-            category="routine", period="Haftalık",
+            user_id=user.id,
+            title="Haftalık güvenlik taraması",
+            category="routine",
+            period="Haftalık",
         )
         login_as(user)
         resp = client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
@@ -418,8 +437,10 @@ class TestToggleEndpoint:
         """Yıllık rutin is_done=true → period_key='2026'."""
         user = user_factory(username="te_u5", firm="inventist")
         task = task_factory(
-            user_id=user.id, title="Yıllık lisans denetimi",
-            category="routine", period="Yıllık",
+            user_id=user.id,
+            title="Yıllık lisans denetimi",
+            category="routine",
+            period="Yıllık",
         )
         login_as(user)
         resp = client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
@@ -437,8 +458,10 @@ class TestToggleEndpoint:
         """
         user = user_factory(username="te_u6", firm="assos")
         task = task_factory(
-            user_id=user.id, title="Tek seferlik kurulum",
-            category="routine", period="Tek Seferlik",
+            user_id=user.id,
+            title="Tek seferlik kurulum",
+            category="routine",
+            period="Tek Seferlik",
         )
         login_as(user)
         resp = client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
@@ -448,6 +471,7 @@ class TestToggleEndpoint:
         assert occ_count == 0, "Tek Seferlik görev için TaskOccurrence kaydı oluşturulmamalı"
         # Task.is_done flag True olmalı
         from models.database import Task as T
+
         refreshed = db.session.get(T, task.id)
         assert refreshed.is_done is True
 
@@ -459,8 +483,10 @@ class TestToggleEndpoint:
         """
         user = user_factory(username="te_u7", firm="inventist")
         task = task_factory(
-            user_id=user.id, title="Karar 2=B doğrulama testi",
-            category="routine", period="Aylık",
+            user_id=user.id,
+            title="Karar 2=B doğrulama testi",
+            category="routine",
+            period="Aylık",
         )
         login_as(user)
         resp = client.patch(
@@ -479,6 +505,7 @@ class TestToggleEndpoint:
 # TestFirmSummaryRoutineFix — /api/dashboard/firm-summary rutin sayımı
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestFirmSummaryRoutineFix:
     """
     /api/dashboard/firm-summary rutin görev sayımının is_done_now() bazlı çalışması.
@@ -486,9 +513,7 @@ class TestFirmSummaryRoutineFix:
     """
 
     @freeze_time("2026-04-29")
-    def test_aylik_rutin_bu_ay_tamamlanan_done_olarak_sayilir(
-        self, db, client, user_factory, task_factory, login_as
-    ):
+    def test_aylik_rutin_bu_ay_tamamlanan_done_olarak_sayilir(self, db, client, user_factory, task_factory, login_as):
         """Aylık rutin + bu ay TaskOccurrence var → firm-summary done count'a dahil."""
         admin = user_factory(username="fsr_admin", firm="inventist", permission_level="super_admin", is_admin=True)
         worker = user_factory(username="fsr_worker", firm="inventist", permission_level="junior")
@@ -552,6 +577,7 @@ class TestFirmSummaryRoutineFix:
 # TestManagedFirmsDetailRoutineFix — /api/managed-firms/detail rutin sayımı
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestManagedFirmsDetailRoutineFix:
     """
     /api/managed-firms/detail KPI + trend hesabında rutin görevlerin
@@ -559,9 +585,7 @@ class TestManagedFirmsDetailRoutineFix:
     """
 
     @freeze_time("2026-04-29")
-    def test_aylik_rutin_bu_ay_completion_var_kpi_done_dahil(
-        self, db, client, user_factory, task_factory, login_as
-    ):
+    def test_aylik_rutin_bu_ay_completion_var_kpi_done_dahil(self, db, client, user_factory, task_factory, login_as):
         """Aylık rutin + bu ay TaskOccurrence var → KPI done sayısına dahil."""
         admin = user_factory(username="mfd_r1", firm="inventist", permission_level="super_admin", is_admin=True)
         worker = user_factory(username="mfd_r1_w", firm="inventist", permission_level="junior")
@@ -622,9 +646,7 @@ class TestManagedFirmsDetailRoutineFix:
         assert inv_entry["kpi"]["done"] == 0
 
     @freeze_time("2026-04-29")
-    def test_trend_alti_ay_rutin_done_sayimi(
-        self, db, client, user_factory, task_factory, login_as
-    ):
+    def test_trend_alti_ay_rutin_done_sayimi(self, db, client, user_factory, task_factory, login_as):
         """
         /api/managed-firms/detail trend[6 ay]: o ayın period_key completion'ı varsa
         o ayın done sayısına +1 eklenmeli.
@@ -644,8 +666,8 @@ class TestManagedFirmsDetailRoutineFix:
         db.session.commit()
 
         # Aylık period_key doğrulaması
-        assert task.is_done_now(today=date(2026, 2, 15)) is True   # Şubat → "2026-02" var
-        assert task.is_done_now(today=date(2026, 3, 15)) is True   # Mart → "2026-03" var
+        assert task.is_done_now(today=date(2026, 2, 15)) is True  # Şubat → "2026-02" var
+        assert task.is_done_now(today=date(2026, 3, 15)) is True  # Mart → "2026-03" var
         assert task.is_done_now(today=date(2026, 4, 15)) is False  # Nisan → "2026-04" yok
 
         login_as(admin)
@@ -670,6 +692,7 @@ class TestToDictRoutineCurrentMonthBugFix:
     def test_gunluk_rutin_bugun_tamamlandi_to_dict_done_doner(self, db, user_factory, task_factory):
         """Günlük rutin bugün tamamlandı, to_dict bu ayı sorduğunda done=True."""
         from models.database import TaskOccurrence, _period_key
+
         u = user_factory(username="td_g1", firm="inventist")
         task = task_factory(user_id=u.id, title="Sunucu yedek kontrolü", category="routine", period="Günlük")
         today = date.today()
@@ -683,6 +706,7 @@ class TestToDictRoutineCurrentMonthBugFix:
     def test_haftalik_rutin_bu_hafta_tamamlandi_to_dict_done_doner(self, db, user_factory, task_factory):
         """Haftalık rutin bu hafta tamamlandı, to_dict bu ayı sorduğunda done=True."""
         from models.database import TaskOccurrence, _period_key
+
         u = user_factory(username="td_h1", firm="inventist")
         task = task_factory(user_id=u.id, title="Haftalık backup denetimi", category="routine", period="Haftalık")
         today = date.today()
@@ -696,6 +720,7 @@ class TestToDictRoutineCurrentMonthBugFix:
     def test_aylik_rutin_bu_ay_tamamlandi_to_dict_done_doner(self, db, user_factory, task_factory):
         """Aylık rutin bu ay tamamlandı, to_dict done=True dönmeli (regression)."""
         from models.database import TaskOccurrence, _period_key
+
         u = user_factory(username="td_a1", firm="inventist")
         task = task_factory(user_id=u.id, title="Aylık güvenlik raporu", category="routine", period="Aylık")
         today = date.today()
@@ -709,6 +734,7 @@ class TestToDictRoutineCurrentMonthBugFix:
     def test_gecmis_ay_aylik_rutin_dogru_calisir(self, db, user_factory, task_factory):
         """Geçmiş ay görüntülenirken Aylık rutin için o ayın period_key kontrol edilir."""
         from models.database import TaskOccurrence
+
         u = user_factory(username="td_p1", firm="inventist")
         task = task_factory(user_id=u.id, title="Eski aylık", category="routine", period="Aylık")
         db.session.add(TaskOccurrence(task_id=task.id, period_key="2026-02"))
