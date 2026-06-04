@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# IT Tracker — Otomatik DB + Config Yedek
+# IT Tracker — Otomatik DB + Config Yedek (PostgreSQL)
 # Calistirma: cron (gece 03:00) tarafindan
-# Lokal: 30 gun gunluk + 12 ay aylik snapshot
+# Lokal: 30 gun gunluk + 12 ay aylik snapshot (.sql.gz)
 # NAS: aynisi SMB uzerinden
 # Hata: admin@inventist.com.tr'ye mail (Python smtplib + .env)
+#
+# Not (Level 2 - C sonrasi): Prod artik PostgreSQL kullaniyor.
+# Eski .db.gz (SQLite) yedekler /srv/it_tracker/backups/auto/ altinda kalir
+# (rotation suresi boyunca silinene kadar). Yeni yedekler .sql.gz (pg_dump).
 set -euo pipefail
 
 # === Konfig ===
@@ -19,7 +23,7 @@ SMB_SHARE="Inventist_IT"
 SMB_REMOTE_DIR="Ittracker DB"
 SMB_CREDS="/home/leventcan/.ittracker-backup-creds"
 
-WEB_CONTAINER="ittracker-web-1"
+DB_CONTAINER="ittracker-db-1"
 CONFIG_BACKUP_VOLUME="ittracker_backups"
 
 # === Hazirlik ===
@@ -46,23 +50,27 @@ notify_failure() {
 }
 trap 'notify_failure "Script beklenmedik hatayla durdu (line $LINENO)"' ERR
 
-# === 1. SQLite atomik yedek (Python .backup() — WAL-safe) ===
-TMP_SNAP="/tmp/ittracker_snap_${DATE_TS}.db"
-docker exec "$WEB_CONTAINER" python -c "
-import sqlite3, sys
-try:
-    src = sqlite3.connect('/app/instance/it_tracker.db')
-    dst = sqlite3.connect('/tmp/snap.db')
-    src.backup(dst)
-    dst.close(); src.close()
-except Exception as e:
-    print('SQLITE_BACKUP_ERROR:', e, file=sys.stderr); sys.exit(2)
-" || notify_failure "sqlite backup container'da basarisiz"
+# === 1. PostgreSQL pg_dump (custom format compatible with pg_restore) ===
+# Postgres credentials'i .env'den oku (SADECE bu satirlari grep et — full source
+# riskli, SMTP_PASS gibi alanlar bash'in ozel kabul ettigi karakterler icerebilir).
+POSTGRES_USER=$(grep -E '^POSTGRES_USER=' "$PROD_DIR/.env" | head -1 | cut -d= -f2-)
+POSTGRES_DB=$(grep -E '^POSTGRES_DB=' "$PROD_DIR/.env" | head -1 | cut -d= -f2-)
+[ -z "$POSTGRES_USER" ] && notify_failure "POSTGRES_USER .env'de tanimli degil"
+[ -z "$POSTGRES_DB" ] && notify_failure "POSTGRES_DB .env'de tanimli degil"
 
-docker cp "$WEB_CONTAINER:/tmp/snap.db" "$TMP_SNAP"
-docker exec "$WEB_CONTAINER" rm -f /tmp/snap.db
+# pg_dump options:
+#   --clean      restore sirasinda once DROP yapsin
+#   --if-exists  DROP IF EXISTS (tablo yoksa hata vermesin)
+#   --no-owner   ownership SQL'i ekleme (farkli kullanici ile restore icin)
+TMP_SNAP="/tmp/ittracker_snap_${DATE_TS}.sql"
+docker exec "$DB_CONTAINER" pg_dump \
+    -U "$POSTGRES_USER" \
+    -d "$POSTGRES_DB" \
+    --clean --if-exists --no-owner \
+    > "$TMP_SNAP" \
+  || notify_failure "pg_dump basarisiz"
 
-LOCAL_GZ="$LOCAL_DAILY/db_${DATE_TS}.db.gz"
+LOCAL_GZ="$LOCAL_DAILY/db_${DATE_TS}.sql.gz"
 gzip -9 -c "$TMP_SNAP" > "$LOCAL_GZ"
 rm -f "$TMP_SNAP"
 DB_SIZE=$(stat -c %s "$LOCAL_GZ")
@@ -70,7 +78,7 @@ echo "Lokal yedek: $LOCAL_GZ ($DB_SIZE byte)"
 
 # === 2. Aylik snapshot (her ayin 1'inde) ===
 if [ "$IS_MONTHLY" = "yes" ]; then
-  MONTHLY_GZ="$LOCAL_MONTHLY/db_${MONTH_TAG}.db.gz"
+  MONTHLY_GZ="$LOCAL_MONTHLY/db_${MONTH_TAG}.sql.gz"
   cp "$LOCAL_GZ" "$MONTHLY_GZ"
   echo "Aylik snapshot: $MONTHLY_GZ"
 
@@ -111,12 +119,12 @@ upload_smb() {
     2>&1 | grep -vE "^(Domain=|Anonymous|prompt|mkdir|Can't mkdir|NT_STATUS_OBJECT_NAME_COLLISION)" || true
 }
 
-upload_smb "$LOCAL_GZ" "db_${DATE_TS}.db.gz" "daily"
-echo "NAS daily yukleme: db_${DATE_TS}.db.gz"
+upload_smb "$LOCAL_GZ" "db_${DATE_TS}.sql.gz" "daily"
+echo "NAS daily yukleme: db_${DATE_TS}.sql.gz"
 
 if [ "$IS_MONTHLY" = "yes" ]; then
-  upload_smb "$LOCAL_MONTHLY/db_${MONTH_TAG}.db.gz" "db_${MONTH_TAG}.db.gz" "monthly"
-  echo "NAS monthly DB yukleme: db_${MONTH_TAG}.db.gz"
+  upload_smb "$LOCAL_MONTHLY/db_${MONTH_TAG}.sql.gz" "db_${MONTH_TAG}.sql.gz" "monthly"
+  echo "NAS monthly DB yukleme: db_${MONTH_TAG}.sql.gz"
   if [ -f "$LOCAL_MONTHLY/configs_${MONTH_TAG}.tar.gz" ]; then
     upload_smb "$LOCAL_MONTHLY/configs_${MONTH_TAG}.tar.gz" "configs_${MONTH_TAG}.tar.gz" "monthly"
     echo "NAS monthly config yukleme: configs_${MONTH_TAG}.tar.gz"
@@ -124,8 +132,12 @@ if [ "$IS_MONTHLY" = "yes" ]; then
 fi
 
 # === 4. Lokal rotation (30 gun gunluk, 12 ay aylik) ===
-find "$LOCAL_DAILY" -name "db_*.db.gz" -mtime +30 -delete && echo "Lokal daily rotation: 30+ gun silindi"
-find "$LOCAL_MONTHLY" -name "db_*.db.gz" -mtime +365 -delete && echo "Lokal monthly DB rotation: 365+ gun silindi"
-find "$LOCAL_MONTHLY" -name "configs_*.tar.gz" -mtime +365 -delete && echo "Lokal monthly config rotation: 365+ gun silindi"
+# Hem yeni .sql.gz hem eski .db.gz (SQLite donemi) yedekleri rotate et
+find "$LOCAL_DAILY" \( -name "db_*.sql.gz" -o -name "db_*.db.gz" \) -mtime +30 -delete \
+  && echo "Lokal daily rotation: 30+ gun silindi"
+find "$LOCAL_MONTHLY" \( -name "db_*.sql.gz" -o -name "db_*.db.gz" \) -mtime +365 -delete \
+  && echo "Lokal monthly DB rotation: 365+ gun silindi"
+find "$LOCAL_MONTHLY" -name "configs_*.tar.gz" -mtime +365 -delete \
+  && echo "Lokal monthly config rotation: 365+ gun silindi"
 
 echo "===== $(date -Iseconds) backup OK ====="
