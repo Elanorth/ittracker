@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT//TRACKER · v5.2</title>
+<title>IT//TRACKER · v5.3</title>
 <link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#00e5c0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -833,18 +833,13 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </nav>
 
   <div class="sidebar-footer">
-    <a href="/logout" class="o365-login-btn" style="margin-bottom:8px;color:var(--danger);border-color:rgba(248,81,73,.3);" onmouseover="this.style.borderColor='var(--danger)'" onmouseout="this.style.borderColor='rgba(248,81,73,.3)'">
+    <a href="/logout" class="o365-login-btn" style="color:var(--danger);border-color:rgba(248,81,73,.3);" onmouseover="this.style.borderColor='var(--danger)'" onmouseout="this.style.borderColor='rgba(248,81,73,.3)'">
       <span style="font-size:14px">⎋</span> Çıkış Yap
     </a>
-    <button class="o365-login-btn" onclick="showLoginScreen()">
-      <svg width="14" height="14" viewBox="0 0 21 21" fill="none">
-        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-      </svg>
-      O365 Hesabı Bağla
-    </button>
+    <!-- v5.3 — "O365 Hesabı Bağla" butonu kaldırıldı. Mevcut kullanıcı için
+         anlamsızdı (sadece showLoginScreen() çağırıyordu). Gerçek O365 bağlama
+         akışı Ayarlar > Kullanıcı Bilgileri'ndeki "Microsoft ile Bağlan"
+         butonundadır. -->
   </div>
 </aside>
 
@@ -2100,6 +2095,6 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <!-- ─── TOAST CONTAINER ─── -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script defer src="/static/app.js?v=5.2"></script>
+<script defer src="/static/app.js?v=5.3"></script>
 </body>
 </html>

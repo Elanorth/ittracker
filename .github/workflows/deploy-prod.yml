@@ -95,6 +95,9 @@ jobs:
           # GHCR'dan yeni image'i çek + container'ı yeniden başlat (build yok)
           docker compose pull
           docker compose up -d
+          # Web container recreate olunca yeni IP alır; nginx upstream resolve cache
+          # eski IP'yi tutar ve 502 döner. Nginx restart bunu temizler.
+          docker compose restart nginx
           docker compose ps
 
       - name: DB migration (Alembic)
