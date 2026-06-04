@@ -60,9 +60,9 @@ cd "$DIR"
 # .env'den postgres credentials oku
 # shellcheck disable=SC1090
 . "$ENV_FILE"
-: "${POSTGRES_USER:?$ENV_FILE'de POSTGRES_USER tanımlı değil}"
-: "${POSTGRES_PASSWORD:?$ENV_FILE'de POSTGRES_PASSWORD tanımlı değil}"
-: "${POSTGRES_DB:?$ENV_FILE'de POSTGRES_DB tanımlı değil}"
+[ -z "${POSTGRES_USER:-}" ] && { echo "HATA: $ENV_FILE icinde POSTGRES_USER tanimli degil"; exit 1; }
+[ -z "${POSTGRES_PASSWORD:-}" ] && { echo "HATA: $ENV_FILE icinde POSTGRES_PASSWORD tanimli degil"; exit 1; }
+[ -z "${POSTGRES_DB:-}" ] && { echo "HATA: $ENV_FILE icinde POSTGRES_DB tanimli degil"; exit 1; }
 
 SQLITE_PATH="$DIR/instance/$SQLITE_NAME"
 [ ! -f "$SQLITE_PATH" ] && { echo "HATA: SQLite dosyası yok: $SQLITE_PATH"; exit 2; }

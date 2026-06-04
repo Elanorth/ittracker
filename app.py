@@ -286,9 +286,14 @@ def login():
             data = request.form
         username = (data.get("username") or "").strip().lower()
         password = data.get("password") or ""
-        # Sadece admin kullanıcı local girişe izin verilir
+        # Sadece admin kullanıcı local girişe izin verilir.
+        # ALLOW_DEMO_LOGIN=1 ortam değişkeni varsa `demo_` prefix'li kullanıcılar da
+        # password ile girebilir — sadece staging için (prod .env'de açılmamalı).
+        # Önceden bu, her deploy sonrası container'a manuel hot-patch ile yapılıyordu.
         admin_username = os.environ.get("ADMIN_USERNAME", "levent.can")
-        if username != admin_username:
+        allow_demo = os.environ.get("ALLOW_DEMO_LOGIN", "").lower() in ("1", "true", "yes")
+        is_demo_user = allow_demo and username.startswith("demo_")
+        if username != admin_username and not is_demo_user:
             if request.is_json:
                 return jsonify({"ok": False, "error": "Lütfen Microsoft 365 ile giriş yapın"}), 403
             return render_template(
