@@ -114,7 +114,42 @@ docker run --rm \
         sqlite:///tmp/source.db \
         "$PG_URL"
 
-# 5) Postgres'te tablo sayısı doğrulaması
+# 5) Sequence düzeltmesi — KRİTİK
+# pgloader `--with "reset sequences"` flag'i her zaman tüm tablolarda çalışmıyor.
+# id kolonu DEFAULT'sı NULL kalıyor → SQLAlchemy INSERT'te id=NULL gönderiyor
+# → NotNullViolation → tüm transaction rollback (edit/delete dahil).
+# Çözüm: her tablo için id_seq oluştur, DEFAULT ata, max(id)+1'den başlat.
+echo ""
+echo "→ Sequence'ler düzeltiliyor (pgloader bug fix)..."
+docker exec -i "$DB_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'PSQL'
+BEGIN;
+DO $$
+DECLARE
+    t TEXT;
+    max_id BIGINT;
+    seq_start BIGINT;
+BEGIN
+    FOR t IN
+        SELECT table_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND column_name = 'id'
+          AND column_default IS NULL
+        ORDER BY table_name
+    LOOP
+        EXECUTE format('SELECT COALESCE(MAX(id), 0) FROM %I', t) INTO max_id;
+        seq_start := max_id + 1;
+        EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I OWNED BY %I.id',
+                       t || '_id_seq', t);
+        EXECUTE format('ALTER SEQUENCE %I RESTART WITH %s',
+                       t || '_id_seq', seq_start);
+        EXECUTE format('ALTER TABLE %I ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
+                       t, t || '_id_seq');
+        RAISE NOTICE '% : sequence created (next id = %)', t, seq_start;
+    END LOOP;
+END $$;
+COMMIT;
+PSQL
+
+# 6) Postgres'te tablo sayısı doğrulaması
 echo ""
 echo "=== Postgres tablo sayıları ==="
 docker exec "$DB_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
