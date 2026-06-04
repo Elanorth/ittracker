@@ -4,7 +4,9 @@
 
 | | |
 |---|---|
+| **DB tipi** | PostgreSQL (Level 2 — C sonrası). Eski `.db.gz` SQLite yedekler rotation süresi boyunca kalır. |
 | **Sıklık** | Her gece 03:00 (cron) |
+| **Format** | `db_YYYYMMDD_HHMMSS.sql.gz` — `pg_dump --clean --if-exists --no-owner` |
 | **Lokal** | `/srv/it_tracker/backups/auto/` — 30 gün günlük + 12 ay aylık |
 | **NAS** | `smb://10.34.0.61/Inventist_IT/Ittracker DB/{daily,monthly}/` |
 | **Config dosyaları** | Her ayın 1'inde dahil (`configs_YYYYMM.tar.gz`) |
@@ -61,20 +63,31 @@ crontab -e
 
 **Hedef daima staging'tir** (script prod'a yazmaz):
 ```bash
-./scripts/restore-from-backup.sh list                          # mevcut yedekleri gor
-./scripts/restore-from-backup.sh local /srv/.../daily/db_x.gz  # lokal yedek
-./scripts/restore-from-backup.sh nas daily db_20260605_030001.db.gz
-./scripts/restore-from-backup.sh nas monthly db_202605.db.gz
+./scripts/restore-from-backup.sh list                              # mevcut yedekleri gor
+./scripts/restore-from-backup.sh local /srv/.../daily/db_x.sql.gz  # lokal yedek
+./scripts/restore-from-backup.sh nas daily db_20260605_030001.sql.gz
+./scripts/restore-from-backup.sh nas monthly db_202605.sql.gz
 ```
 
-Prod restore icin manuel:
+Restore süreci (`.sql.gz` için):
+1. Mevcut staging Postgres'in dump'ı `/tmp/staging_rollback_*.sql`'e alınır (rollback noktası)
+2. `gunzip -c` ile dosya `psql`'e pipe edilir (`--clean --if-exists` ile mevcut tablolar DROP edilir)
+3. Web container restart
+
+Eski `.db.gz` (SQLite dönemi) yedekler doğrudan restore edilemez — script `pgloader` ile manuel taşıma adımlarını yazdırır.
+
+Prod restore icin manuel (sessiz saatlerde, downtime kabul):
 ```bash
-sudo systemctl stop docker-ittracker-web 2>/dev/null || \
-  docker compose -f /home/leventcan/ittracker/docker-compose.yml stop web
-sudo cp /srv/it_tracker/backups/auto/daily/db_X.db.gz /tmp/
-sudo gunzip /tmp/db_X.db.gz
-sudo mv /tmp/db_X.db /home/leventcan/ittracker/instance/it_tracker.db
-sudo chown root:root /home/leventcan/ittracker/instance/it_tracker.db
+docker compose -f /home/leventcan/ittracker/docker-compose.yml stop web
+
+# Rollback noktası al
+docker exec ittracker-db-1 pg_dump -U ittracker -d ittracker \
+  --clean --if-exists --no-owner > /tmp/prod_rollback_$(date +%s).sql
+
+# Yedekten restore
+gunzip -c /srv/it_tracker/backups/auto/daily/db_X.sql.gz | \
+  docker exec -i ittracker-db-1 psql -U ittracker -d ittracker
+
 docker compose -f /home/leventcan/ittracker/docker-compose.yml start web
 ```
 
@@ -94,6 +107,7 @@ Aksaklik olursa `admin@inventist.com.tr`'ye otomatik mail gelir.
 |---|---|
 | Cron calismadi | `systemctl status cron`, `journalctl -u cron \| tail` |
 | smbclient hatasi | `~/.ittracker-backup-creds` dogru mu, NAS erisilebilir mi (`ping 10.34.0.61`), kullanici izinleri |
-| Docker exec hatasi | `docker ps \| grep ittracker-web-1` (container ayakta mi) |
+| pg_dump hatasi | `docker ps \| grep ittracker-db-1` (container ayakta + healthy mi), `.env`'de POSTGRES_USER/DB doğru mu |
 | Mail gitmiyor | `python3 /home/leventcan/ittracker/scripts/backup-mail.py "test" "test"` ile elle test |
 | Disk dolu | `du -sh /srv/it_tracker/backups/auto/` — rotation calisiyor mu (30+/365+ gun otomatik silinmeli) |
+| Restore sonrası app baglanamiyor | DATABASE_URL'in postgres'e işaret ettiğinden emin ol, web container restart, alembic_version kontrol |
