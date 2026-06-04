@@ -57,9 +57,12 @@ esac
 
 cd "$DIR"
 
-# .env'den postgres credentials oku
-# shellcheck disable=SC1090
-. "$ENV_FILE"
+# .env'den SADECE Postgres credentials'ı extract et.
+# Tüm .env'i source etmek riskli — SMTP_PASS gibi alanlar bash'in özel kabul ettiği
+# karakterler (örn. ')', '(') içerebilir ve "syntax error" verir.
+POSTGRES_USER=$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+POSTGRES_DB=$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | head -1 | cut -d= -f2-)
 [ -z "${POSTGRES_USER:-}" ] && { echo "HATA: $ENV_FILE icinde POSTGRES_USER tanimli degil"; exit 1; }
 [ -z "${POSTGRES_PASSWORD:-}" ] && { echo "HATA: $ENV_FILE icinde POSTGRES_PASSWORD tanimli degil"; exit 1; }
 [ -z "${POSTGRES_DB:-}" ] && { echo "HATA: $ENV_FILE icinde POSTGRES_DB tanimli degil"; exit 1; }
@@ -71,10 +74,13 @@ echo "=== $(date) Migration başlıyor: $ENV_NAME ==="
 echo "  Kaynak SQLite : $SQLITE_PATH"
 echo "  Hedef Postgres: $POSTGRES_USER@$DB_CONTAINER/$POSTGRES_DB"
 
-# 1) Yedek snapshot
+# 1) Yedek snapshot — /tmp/'ye al (instance/ klasörü prod'da root:root sahipliğinde
+#    olabilir ve leventcan oraya yazamaz). /tmp her zaman yazılabilir, rollback için
+#    yeterli; ayrıca otomatik nightly backup nasıl olsa zaten var.
 STAMP=$(date +%Y%m%d_%H%M%S)
-SNAPSHOT="$DIR/instance/${SQLITE_NAME%.db}_pre_pg_migration_${STAMP}.db"
-cp "$SQLITE_PATH" "$SNAPSHOT"
+SNAPSHOT="/tmp/${SQLITE_NAME%.db}_pre_pg_migration_${STAMP}.db"
+cp "$SQLITE_PATH" "$SNAPSHOT" 2>/dev/null || sudo -n cp "$SQLITE_PATH" "$SNAPSHOT"
+sudo -n chown "$(id -u):$(id -g)" "$SNAPSHOT" 2>/dev/null || true
 echo "✓ Snapshot: $SNAPSHOT"
 
 # 2) Web container'ı durdur (DB lock serbestlesin)
