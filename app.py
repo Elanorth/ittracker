@@ -43,6 +43,22 @@ try:
 except ImportError:
     MSAL_AVAILABLE = False
 
+
+# === Uygulama versiyonu — TEK KAYNAK: VERSION dosyası ===
+# Versiyon string'i artık templates/app.html ve static/sw.js içinde hardcoded
+# DEĞİL — VERSION dosyasından okunur ve Flask tarafından inject edilir. Böylece
+# her sürümde tek dosya değişir; develop→main merge'lerinde tekrarlayan versiyon
+# satırı çakışması (sw.js + app.html) ortadan kalkar.
+def _read_version():
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")) as _vf:
+            return _vf.read().strip() or "0.0"
+    except OSError:
+        return os.environ.get("APP_VERSION", "0.0")
+
+
+APP_VERSION = _read_version()
+
 # === Sentry / Glitchtip error tracking ===
 # GLITCHTIP_DSN env var varsa etkinleşir; yoksa sessizce atlanır.
 _SENTRY_DSN = os.environ.get("GLITCHTIP_DSN", "")
@@ -56,7 +72,7 @@ if _SENTRY_DSN:
             integrations=[FlaskIntegration()],
             traces_sample_rate=0.1,  # %10 performans izleme
             environment=os.environ.get("APP_ENV", "production"),
-            release=os.environ.get("APP_VERSION", "v5.0"),
+            release=f"v{APP_VERSION}",
         )
     except Exception:
         pass  # sentry_sdk yoksa veya init başarısız olursa uygulamayı durdurma
@@ -266,12 +282,18 @@ def _resolve_scope_uid(me, requested_uid):
 @app.route("/")
 @login_required
 def dashboard():
-    return render_template("app.html")
+    # version → app.html içinde {{ version }} (title + app.js cache-busting)
+    return render_template("app.html", version=APP_VERSION)
 
 
 @app.route("/sw.js")
 def service_worker():
-    resp = send_file(os.path.join(app.root_path, "static", "sw.js"), mimetype="application/javascript")
+    # sw.js içindeki __VERSION__ placeholder'ı APP_VERSION ile değiştir.
+    # Böylece cache anahtarı her sürümde otomatik değişir (eski cache temizlenir).
+    sw_path = os.path.join(app.root_path, "static", "sw.js")
+    with open(sw_path, encoding="utf-8") as f:
+        content = f.read().replace("__VERSION__", APP_VERSION)
+    resp = app.response_class(content, mimetype="application/javascript")
     resp.headers["Service-Worker-Allowed"] = "/"
     resp.headers["Cache-Control"] = "no-cache"
     return resp
