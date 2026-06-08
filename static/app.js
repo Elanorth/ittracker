@@ -454,7 +454,13 @@ function toggleSidebar(forceClose) {
   btn?.setAttribute('aria-label', willOpen ? 'Menüyü kapat' : 'Menüyü aç');
 }
 
-function showPage(name) {
+function showPage(name, opts = {}) {
+  // v5.4 — opts: { cat, firm, statusKind, activeNav }
+  //   cat        → tasks sayfasında kategori filtresi ('support' vb.)
+  //   firm       → tasks sayfasında firma filtresi (drill-down)
+  //   statusKind → KPI jump (overdue/open/done/all)
+  //   activeNav  → hangi sidebar item'ı aktif görünsün (default: name)
+  // Tüm filtreler loadTasks().then içinde uygulanır → eski setTimeout race'i kalktı.
   // v5.0 BUG-2 — mobile'da menü item'a tıklayınca sidebar otomatik kapansın
   toggleSidebar(true);
   // Yetki guard: Junior sadece izinli sayfalara erişebilir
@@ -471,12 +477,60 @@ function showPage(name) {
   // call'unu regex ile match et. Eski `.includes("'"+name+"'")` yöntemi başka
   // onclick'lerde aynı string parçasını içeren item'ları da yanlışlıkla aktif
   // bırakabiliyordu (örn. settings butonu içinde 'audit' modal kapama mantığı varsa).
+  // v5.4 — Nav active: data-nav attribute öncelikli (Destek Talepleri gibi aynı
+  // sayfaya giden ama ayrı item'lar için). Yoksa eski onclick-regex geri uyumlu.
+  const activeNav = opts.activeNav || name;
   document.querySelectorAll('.nav-item').forEach(n => {
-    const m = (n.getAttribute('onclick') || '').match(/showPage\(['"]([^'"]+)['"]\)/);
-    n.classList.toggle('active', !!(m && m[1] === name));
+    if (n.dataset.nav) {
+      n.classList.toggle('active', n.dataset.nav === activeNav);
+    } else {
+      const m = (n.getAttribute('onclick') || '').match(/showPage\(['"]([^'"]+)['"]/);
+      n.classList.toggle('active', !!(m && m[1] === activeNav));
+    }
   });
   if (name==='dashboard') renderDashboard();
-  if (name==='tasks')     { _ftCat = 'task'; loadTasks().then(() => { document.getElementById('tasks-cat-filter').value = 'task'; renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup')); }); }
+  if (name==='tasks') {
+    // v5.4 — Başlık moda göre (Destek Talepleri vs Anlık Görevler)
+    const titleEl = document.getElementById('tasks-page-title');
+    const subEl = document.getElementById('tasks-page-sub');
+    if (titleEl && subEl) {
+      if (opts.cat === 'support') {
+        titleEl.innerHTML = 'Destek <span>Talepleri</span>';
+        subEl.textContent = 'SLA takipli destek talepleri — öncelik ve süre yönetimi';
+      } else {
+        titleEl.innerHTML = 'Anlık <span>Görevler</span>';
+        subEl.textContent = 'Tek seferlik işler — destek, kurulum, ayar, bakım';
+      }
+    }
+    loadTasks().then(() => {
+      const filterEl = document.getElementById('tasks-cat-filter');
+      if (opts.cat === 'support') {
+        _ftCat = 'support';
+        if (filterEl) filterEl.value = 'support';
+        renderFullList(tasks.filter(t => t.cat === 'support'));
+      } else if (opts.firm !== undefined) {
+        // Firma drill-down — kategori bağımsız
+        _ftCat = '';
+        if (filterEl) filterEl.value = '';
+        renderFullList(tasks.filter(t => (t.firm || '') === opts.firm));
+      } else if (opts.statusKind) {
+        // KPI jump — durum filtresi, kategori bağımsız
+        _ftCat = '';
+        if (filterEl) filterEl.value = '';
+        const k = opts.statusKind;
+        let list = tasks;
+        if (k === 'overdue') list = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY);
+        else if (k === 'open') list = tasks.filter(t => !t.done);
+        else if (k === 'done') list = tasks.filter(t => t.done);
+        renderFullList(list);
+      } else {
+        // Varsayılan: Anlık Görevler (task + backup)
+        _ftCat = 'task';
+        if (filterEl) filterEl.value = 'task';
+        renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
+      }
+    });
+  }
   if (name==='projects')  { loadTasks().then(() => renderProjectsPage()); }
   if (name==='add')       { applyJuniorTaskRestrictions(); applyAssignModeDefaults(); onCatChange(); refreshAssignModeUI(); }
   if (name==='audit')     { initAuditPage(); }
@@ -593,41 +647,18 @@ async function loadKpiTrends() {
 function kpiJump(kind) {
   if (kind === 'backup') { showPage('backups'); return; }
   if (!['overdue','done','open','all'].includes(kind)) return;
-
-  showPage('tasks');
-  setTimeout(() => {
-    // Kategori filtresini temizle (KPI'lar kategori-bağımsız)
-    const catFilter = document.getElementById('tasks-cat-filter');
-    if (catFilter) catFilter.value = '';
-    _ftCat = '';
-
-    let list = tasks;
-    if (kind === 'overdue') list = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY);
-    else if (kind === 'open') list = tasks.filter(t => !t.done);
-    else if (kind === 'done') list = tasks.filter(t => t.done);
-    // 'all' → tüm tasks
-
-    renderFullList(list);
-  }, 80);
+  // v5.4 — race yok: showPage loadTasks().then içinde uygular
+  showPage('tasks', { statusKind: kind });
 }
 
-// v5.2 — Sidebar "Destek Talepleri" nav item için yardımcı
+// v5.2 — Sidebar "Destek Talepleri" + pie legend için (v5.4: showPage delege)
 function showTasksWithCat(cat) {
-  showPage('tasks');
-  setTimeout(() => {
-    const catFilter = document.getElementById('tasks-cat-filter');
-    if (catFilter) catFilter.value = cat;
-    _ftCat = cat;
-    renderFullList(tasks.filter(t => t.cat === cat));
-  }, 80);
+  showPage('tasks', { cat: cat, activeNav: cat === 'support' ? 'support' : 'tasks' });
 }
 
-// v5.2 — Pie chart / Firma bar drill-down için yardımcı
+// v5.2 — Pie chart / Firma bar drill-down (v5.4: showPage delege)
 function showTasksWithFirm(firm) {
-  showPage('tasks');
-  setTimeout(() => {
-    renderFullList(tasks.filter(t => (t.firm || '') === firm));
-  }, 80);
+  showPage('tasks', { firm: firm });
 }
 
 // v5.2 — Açık destek talebi sayısını sidebar nav badge'ine yansıt
