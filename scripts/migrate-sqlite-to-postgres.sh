@@ -149,6 +149,37 @@ END $$;
 COMMIT;
 PSQL
 
+# 5b) Timestamp tipi düzeltmesi — KRİTİK
+# pgloader timestamp kolonlarını "TIMESTAMP WITH TIME ZONE" (timestamptz) olarak
+# oluşturuyor. Ama uygulama her yerde naive datetime.utcnow() kullanıyor ve
+# SQLAlchemy modeli db.DateTime (naive). Karşılaştırmalar (now > deadline_dt vb.)
+# "can't compare offset-naive and offset-aware datetimes" TypeError → 500 verir.
+# Çözüm: timestamptz → timestamp, değer UTC olarak korunur (AT TIME ZONE 'UTC').
+echo ""
+echo "→ Timestamp tipleri düzeltiliyor (timestamptz → timestamp, pgloader bug fix)..."
+docker exec -i "$DB_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'PSQL'
+BEGIN;
+DO $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND data_type = 'timestamp with time zone'
+        ORDER BY table_name, column_name
+    LOOP
+        EXECUTE format(
+            'ALTER TABLE %I ALTER COLUMN %I TYPE timestamp without time zone USING %I AT TIME ZONE ''UTC''',
+            rec.table_name, rec.column_name, rec.column_name
+        );
+        RAISE NOTICE 'timestamptz fix: %.%', rec.table_name, rec.column_name;
+    END LOOP;
+END $$;
+COMMIT;
+PSQL
+
 # 6) Postgres'te tablo sayısı doğrulaması
 echo ""
 echo "=== Postgres tablo sayıları ==="
