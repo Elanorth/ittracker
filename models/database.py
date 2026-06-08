@@ -180,6 +180,31 @@ def _previous_period_key(period: str, today) -> str | None:
     return None
 
 
+def _shift_period_back(period: str, dt):
+    """v5.1 — Verilen tarihi bir önceki periyodun bir gününe taşır.
+
+    overdue_period_count() için geriye doğru iterasyonda kullanılır.
+    - Günlük:   bir gün geri
+    - Haftalık: yedi gün geri
+    - Aylık:    içinde bulunduğu ayın 1'inden bir gün geri (önceki ayın son günü)
+    - Yıllık:   bir yıl geri (29 Şubat → 28 Şubat güvenliği)
+    """
+    if dt is None or period == "Tek Seferlik":
+        return None
+    if period == "Günlük":
+        return dt - timedelta(days=1)
+    if period == "Haftalık":
+        return dt - timedelta(days=7)
+    if period == "Aylık":
+        return dt.replace(day=1) - timedelta(days=1)
+    if period == "Yıllık":
+        try:
+            return dt.replace(year=dt.year - 1)
+        except ValueError:  # 29 Şubat
+            return dt.replace(year=dt.year - 1, day=28)
+    return None
+
+
 def _next_due_date(period: str, from_date=None) -> _date:
     """Periyota göre bir sonraki deadline tarihini hesapla (gösterim amaçlı)."""
     base = from_date or _date.today()
@@ -254,6 +279,39 @@ class Task(db.Model):
             return TaskOccurrence.query.filter_by(task_id=self.id, period_key=prev_key).first() is None
         return (not self.is_done) and (self.deadline is not None) and (self.deadline < today)
 
+    def overdue_period_count(self, today=None) -> int:
+        """v5.1 — Rutin görev için ardışık kaçırılan periyot sayısı.
+
+        Aktif (içinde bulunulan) periyot HARİÇ tutulur — o henüz "bekliyor",
+        gecikmiş sayılmaz. Önceki periyottan geriye doğru, TaskOccurrence kaydı
+        OLMAYAN ardışık periyotları sayar. Tamamlanmış bir periyoda ulaşınca
+        durur. Görev oluşturulma tarihinden öncesine bakmaz.
+
+        Örnek (Haftalık, bugün W24):
+          occurrences = {W20, W21, W22, W23}  → önceki W23 tamamlanmış → 0
+          occurrences = {W20, W21}            → W23, W22 eksik → 2
+        Sadece rutin + periyodik görevler için anlamlı; diğerleri 0 döner.
+        """
+        if self.category != "routine" or self.period == "Tek Seferlik":
+            return 0
+        today = today or _date.today()
+        done_keys = {o.period_key for o in self.completions}
+        created = self.created_at.date() if self.created_at else None
+        count = 0
+        cursor = today
+        # Güvenlik tavanı: 520 periyot (haftalık için ~10 yıl)
+        for _ in range(520):
+            cursor = _shift_period_back(self.period, cursor)
+            if cursor is None:
+                break
+            if created and cursor < created:
+                break  # görev o periyotta henüz yoktu
+            key = _period_key(self.period, cursor)
+            if key in done_keys:
+                break  # tamamlanmış periyoda ulaştık — ardışık seri bitti
+            count += 1
+        return count
+
     def get_checklist(self):
         try:
             return _json.loads(self.checklist or "[]")
@@ -326,6 +384,28 @@ class Task(db.Model):
                 "breached": bool(breached),
             }
 
+        # v5.1 — Rutin görevler için kanonik gecikme/periyot sinyalleri.
+        # Frontend bunları kullanır; deadline/next_due (donmuş alanlar) yerine.
+        is_overdue = False
+        overdue_periods = 0
+        current_period_label = None
+        next_period_date = None
+        if self.category == "routine" and self.period != "Tek Seferlik":
+            # Referans tarih: görüntülenen ay bugünün ayıysa bugün, değilse ay ortası
+            ref_dt = _date.today()
+            if month and year and not (_date.today().year == year and _date.today().month == month):
+                ref_dt = _date(year, month, 15)
+            is_overdue = self.is_overdue_now(today=ref_dt)
+            overdue_periods = self.overdue_period_count(today=ref_dt)
+            current_period_label = {
+                "Günlük": "Bugün",
+                "Haftalık": "Bu hafta",
+                "Aylık": "Bu ay",
+                "Yıllık": str(ref_dt.year),
+            }.get(self.period)
+            nd = _next_due_date(self.period, ref_dt)
+            next_period_date = nd.isoformat() if nd else None
+
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -352,6 +432,11 @@ class Task(db.Model):
             "sla": sla,
             "alarm_enabled": bool(self.alarm_enabled) if self.alarm_enabled is not None else True,
             "last_notified": self.last_notified.isoformat() if self.last_notified else None,
+            # v5.1 — Rutin kanonik sinyaller (rutin değilse default değerler)
+            "is_overdue": is_overdue,
+            "overdue_periods": overdue_periods,
+            "current_period_label": current_period_label,
+            "next_period_date": next_period_date,
         }
 
 
