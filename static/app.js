@@ -419,7 +419,21 @@ function normalizeTask(t) {
     completed_at:        t.completed_at || null,
     from_previous_month: t.from_previous_month || false,
     sla:                 t.sla || null,
+    // v5.1 — Rutin kanonik sinyaller (deadline/next_due donmuş alanları yerine)
+    is_overdue:          t.is_overdue || false,
+    overdue_periods:     t.overdue_periods || 0,
+    current_period_label: t.current_period_label || null,
+    next_period_date:    t.next_period_date || null,
   };
+}
+
+// v5.1 — Rutin görev gecikme rozeti metni (periyot sayısı bazlı).
+// Diğer kategoriler deadline kullanmaya devam eder; bu yalnızca rutin içindir.
+function _routineOverdueLabel(t) {
+  const unit = { 'Günlük':'gün', 'Haftalık':'hafta', 'Aylık':'ay', 'Yıllık':'yıl' }[t.period] || 'dönem';
+  const n = t.overdue_periods || 0;
+  if (n > 0) return `${n} ${unit} atlandı`;
+  return t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1932,23 +1946,15 @@ async function buildNotifications() {
 
   if (!backendOk) {
     // Fallback: önceki yerel rutin tarama
-    const routines = tasks.filter(t => t.cat === 'routine' && !t.done);
+    // v5.1 — Kanonik is_overdue/overdue_periods kullan (donmuş deadline yerine)
+    const routines = tasks.filter(t => t.cat === 'routine' && t.period !== 'Tek Seferlik' && !t.done);
     routines.forEach(t => {
-      if (!t.deadline) return;
-      const diff = Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000);
       const id = 'n'+t.id;
-      if (diff < -3) {
+      if (t.is_overdue) {
+        const lbl = _routineOverdueLabel(t);
         notifications.push({ id, type:'danger', title:t.title,
-          meta:`${Math.abs(diff)} gün gecikti · ${t.team} · ${(FIRMS[t.firm]||{}).label||t.firm}`,
-          tag:'late', tagLabel:`${Math.abs(diff)}g gecikti`, taskId:t.id, read:readIds.has(id), mailSent:t.mailSent||false, diff });
-      } else if (diff <= 0 && diff >= -3) {
-        notifications.push({ id, type:'warn', title:t.title,
-          meta: diff===0 ? 'Bugün tamamlanması gereken görev' : `${Math.abs(diff)} gün gecikti`,
-          tag:'due', tagLabel: diff===0?'BUGÜN':'Yakın Gecikme', taskId:t.id, read:readIds.has(id), mailSent:t.mailSent||false, diff });
-      } else if (diff === 1) {
-        notifications.push({ id, type:'info', title:t.title,
-          meta:`Yarın tamamlanması gerekiyor · ${t.team}`,
-          tag:'upcoming', tagLabel:'Yarın', taskId:t.id, read:readIds.has(id), mailSent:false, diff });
+          meta:`${lbl} · ${t.team||''} · ${(FIRMS[t.firm]||{}).label||t.firm}`,
+          tag:'late', tagLabel:lbl, taskId:t.id, read:readIds.has(id), mailSent:t.mailSent||false });
       }
     });
   }
@@ -1959,7 +1965,7 @@ function updateNotifUI() {
   const unread = notifications.filter(n => !n.read).length;
   const dot = document.getElementById('notif-dot');
   if (dot) dot.style.display = unread > 0 ? 'block' : 'none';
-  const overdueCount = tasks.filter(t => t.cat==='routine' && !t.done && t.deadline && t.deadline < TODAY).length;
+  const overdueCount = tasks.filter(t => t.cat==='routine' && !t.done && t.is_overdue).length;
   const nb = document.getElementById('sched-nav-badge');
   if (nb) { nb.textContent = overdueCount; nb.style.display = overdueCount > 0 ? 'inline-flex' : 'none'; }
   renderNotifList();
@@ -2011,20 +2017,12 @@ function renderScheduledPage() {
   setDateDisplay('sched-date-day', 'sched-date-full');
   const routines = tasks.filter(t => t.cat === 'routine');
 
-  // Gruplama — renderScheduledList ile birebir aynı mantık
-  const _todayMidnight = new Date(TODAY + 'T00:00:00');
-  let _active = [], _done = [];
-  routines.forEach(t => {
-    const nd = t.next_due       ? new Date(t.next_due + 'T00:00:00') : null;
-    const lc = t.last_completed ? new Date(t.last_completed)          : null;
-    if (lc && nd && nd > _todayMidnight) _done.push(t);
-    else                                  _active.push(t);
-  });
-
-  const overdue  = _active.filter(t => t.deadline && t.deadline < TODAY).length;
-  const dueSoon  = _active.filter(t => t.deadline && t.deadline >= TODAY &&
-    Math.round((new Date(t.deadline)-new Date(TODAY))/86400000) <= 3).length;
-  const done     = _done.length;
+  // v5.1 — Kanonik gruplama: is_done (period_key bazlı) + is_overdue.
+  // Donmuş next_due/last_completed yerine backend'in periyot-aware sinyalleri.
+  const _done   = routines.filter(t => t.done);
+  const overdue = routines.filter(t => !t.done && t.is_overdue).length;
+  const dueSoon = routines.filter(t => !t.done && !t.is_overdue).length;  // bu periyot bekliyor
+  const done    = _done.length;
   document.getElementById('sched-kpi-row').innerHTML = `
     <div class="kpi c-purple" style="animation-delay:.04s"><div class="kpi-icon">🔁</div><div class="kpi-label">Toplam Rutin</div><div class="kpi-value" style="color:var(--accent3)">${routines.length}</div><div class="kpi-sub">Zamanlanmış görev</div></div>
     <div class="kpi c-orange" style="animation-delay:.08s"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">${overdue}</div><div class="kpi-sub">${overdue>0?'Dikkat gerekiyor':'Gecikme yok'}</div></div>
@@ -2055,47 +2053,27 @@ function renderScheduledList() {
   if (periodF) all = all.filter(t => t.period === periodF);
   if (firmF)   all = all.filter(t => t.firm   === firmF);
 
-  // 3 gruba ayır
-  const active   = [];  // deadline <= bugün+7 VE tamamlanmamış
-  const done     = [];  // last_completed bu periyotta var (is_done=false ama son tamamlanma var)
-  const upcoming = [];  // next_due > bugün+7
-
-  const todayMidnight = new Date(TODAY + 'T00:00:00');
+  // v5.1 — Kanonik gruplama: bu periyot için is_done (period_key bazlı).
+  // done  = bu periyot tamamlanmış (t.done === true, backend is_done_now)
+  // active = bu periyot bekliyor VEYA geçmiş periyotlar gecikmiş (t.done === false)
+  // upcoming = rutin için kullanılmaz (her zaman aktif bir periyot vardır)
+  const active   = [];
+  const done     = [];
+  const upcoming = [];
 
   all.forEach(t => {
-    const nd = t.next_due       ? new Date(t.next_due + 'T00:00:00') : null;
-    const lc = t.last_completed ? new Date(t.last_completed)          : null;
-
-    // Kural 1: TAMAMLANDI (bu periyot bitti)
-    // last_completed var VE next_due ileriye atladı (bugünden büyük)
-    if (lc && nd && nd > todayMidnight) {
-      done.push(t);
-    }
-    // Kural 2: AKTİF — last_completed yok (hiç yapılmamış) VEYA next_due geçti
-    // Yeni eklenen görevler, vadelenenler, gecikenler hepsi buraya
-    else {
-      active.push(t);
-    }
-    // NOT: "Gelecek dönem" artık kullanılmıyor — tüm aktif görevler listede görünür
-    // next_due tarihi zaten görevde gösteriliyor
+    if (t.done) done.push(t);
+    else        active.push(t);
   });
 
   // Sırala
-  active.sort((a,b) => {
-    const da = a.deadline ? new Date(a.deadline) : new Date('9999-01-01');
-    const db2 = b.deadline ? new Date(b.deadline) : new Date('9999-01-01');
-    return da - db2;
-  });
-  upcoming.sort((a,b) => {
-    const da = a.next_due ? new Date(a.next_due) : new Date('9999-01-01');
-    const db2 = b.next_due ? new Date(b.next_due) : new Date('9999-01-01');
-    return da - db2;
-  });
-  done.sort((a,b) => new Date(b.last_completed) - new Date(a.last_completed));
+  // v5.1 — Aktif sıralama: en çok gecikmiş (overdue_periods) en üstte, sonra bekleyenler
+  active.sort((a,b) => (b.overdue_periods || 0) - (a.overdue_periods || 0));
+  done.sort((a,b) => new Date(b.last_completed || 0) - new Date(a.last_completed || 0));
 
   // Sayaçlar
   document.getElementById('sched-count-label').textContent = `${active.length} aktif`;
-  _setSchedBadge('active',   active.length,   active.filter(t => t.deadline && t.deadline < TODAY).length > 0 ? 'danger' : 'normal');
+  _setSchedBadge('active',   active.length,   active.some(t => t.is_overdue) ? 'danger' : 'normal');
   _setSchedBadge('done',     done.length,     'done');
   _setSchedBadge('upcoming', upcoming.length, 'upcoming');
 
@@ -2179,10 +2157,23 @@ function toggleSchedSection(section) {
 }
 
 function _renderSchedRow(t) {
-  const diff    = t.deadline ? Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000) : null;
-  const nrClass = t.done ? 'done' : diff === null ? 'upcoming' : diff < 0 ? 'overdue' : diff === 0 ? 'today' : 'upcoming';
-  const nrText  = t.done ? 'Tamamlandı' : diff === null ? '—' : diff < 0 ? `${Math.abs(diff)}g gecikti` : diff === 0 ? 'BUGÜN' : diff === 1 ? 'Yarın' : formatDateTR(t.deadline);
-  const rowClass = t.done ? '' : diff !== null && diff < 0 ? 'row-overdue' : diff !== null && diff <= 1 ? 'row-due' : '';
+  // v5.1 — Rutin görevler: kanonik is_overdue/overdue_periods (donmuş deadline yerine).
+  // Diğer kategoriler (Tek Seferlik rutin dahil): eski deadline-bazlı mantık.
+  let nrClass, nrText, rowClass;
+  if (t.cat === 'routine' && t.period !== 'Tek Seferlik') {
+    if (t.done) {
+      nrClass = 'done';  nrText = t.current_period_label ? `${t.current_period_label} ✓` : 'Tamamlandı';  rowClass = '';
+    } else if (t.is_overdue) {
+      nrClass = 'overdue';  nrText = _routineOverdueLabel(t);  rowClass = 'row-overdue';
+    } else {
+      nrClass = 'today';  nrText = t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor';  rowClass = 'row-due';
+    }
+  } else {
+    const diff = t.deadline ? Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000) : null;
+    nrClass = t.done ? 'done' : diff === null ? 'upcoming' : diff < 0 ? 'overdue' : diff === 0 ? 'today' : 'upcoming';
+    nrText  = t.done ? 'Tamamlandı' : diff === null ? '—' : diff < 0 ? `${Math.abs(diff)}g gecikti` : diff === 0 ? 'BUGÜN' : diff === 1 ? 'Yarın' : formatDateTR(t.deadline);
+    rowClass = t.done ? '' : diff !== null && diff < 0 ? 'row-overdue' : diff !== null && diff <= 1 ? 'row-due' : '';
+  }
   const alarmOn  = t.alarm || false;
   const pColor = {Günlük:'var(--accent3)',Haftalık:'var(--accent)',Aylık:'var(--gold)',Yıllık:'var(--accent2)','Tek Seferlik':'var(--text-muted)'}[t.period]||'var(--text-muted)';
   const pBg    = {Günlük:'rgba(127,108,247,.15)',Haftalık:'rgba(0,229,192,.12)',Aylık:'rgba(244,185,66,.12)',Yıllık:'rgba(255,95,61,.12)','Tek Seferlik':'var(--surface2)'}[t.period]||'var(--surface2)';
@@ -2198,7 +2189,11 @@ function _renderSchedRow(t) {
     </div>
     <div>
       <div class="next-run-chip ${nrClass}">${nrText}</div>
-      ${t.deadline?`<div style="font-size:9px;color:var(--text-dim);margin-top:3px;font-family:'IBM Plex Mono',monospace">${formatDateTR(t.deadline)}</div>`:''}
+      ${(() => {
+        // v5.1 — Rutin: bir sonraki periyot tarihi (canlı); diğerleri: deadline (donuk değil)
+        const showDate = (t.cat === 'routine' && t.period !== 'Tek Seferlik') ? t.next_period_date : t.deadline;
+        return showDate ? `<div style="font-size:9px;color:var(--text-dim);margin-top:3px;font-family:'IBM Plex Mono',monospace">${formatDateTR(showDate)}</div>` : '';
+      })()}
     </div>
     <div><span class="period-badge" style="background:${pBg};color:${pColor}">${t.period}</span></div>
     <div style="display:flex;flex-direction:column;gap:5px">

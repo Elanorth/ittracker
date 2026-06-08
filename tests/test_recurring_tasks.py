@@ -744,3 +744,137 @@ class TestToDictRoutineCurrentMonthBugFix:
         assert d_feb["is_done"] is True, "Şubat görüntülenirken Şubat completion bulunmalı"
         d_mar = task.to_dict(month=3, year=2026)
         assert d_mar["is_done"] is False, "Mart görüntülenirken Şubat completion sayılmamalı"
+
+
+# ════════════════════════════════════════════════════════════════════
+# v5.1 — overdue_period_count + to_dict kanonik rutin alanları
+# ════════════════════════════════════════════════════════════════════
+
+
+class TestOverduePeriodCount:
+    """v5.1 — Ardışık kaçırılan periyot sayısı (aktif periyot hariç)."""
+
+    @freeze_time("2026-06-08")  # ISO W24, Pazartesi
+    def test_haftalik_onceki_periyot_tamamlanmis_sifir(self, db, user_factory, task_factory):
+        """Bug #78 senaryosu: önceki hafta (W23) tamamlanmış → 0 gecikme."""
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="opc1", firm="inventist")
+        t = task_factory(user_id=u.id, title="Firewall bakım", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 5, 10)
+        for wk in ("2026-W20", "2026-W21", "2026-W22", "2026-W23"):
+            db.session.add(TaskOccurrence(task_id=t.id, period_key=wk))
+        db.session.commit()
+
+        assert t.overdue_period_count() == 0
+
+    @freeze_time("2026-06-08")
+    def test_haftalik_iki_hafta_kacirilmis_iki(self, db, user_factory, task_factory):
+        """W22, W23 eksik (W21'de durur) → 2 periyot kaçırılmış."""
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="opc2", firm="inventist")
+        t = task_factory(user_id=u.id, title="Switch bakım", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 5, 10)
+        for wk in ("2026-W20", "2026-W21"):
+            db.session.add(TaskOccurrence(task_id=t.id, period_key=wk))
+        db.session.commit()
+
+        assert t.overdue_period_count() == 2
+
+    @freeze_time("2026-06-08")
+    def test_aylik_gecen_ay_kacirilmis_bir(self, db, user_factory, task_factory):
+        """Aylık görev: Mayıs (önceki ay) eksik → 1 periyot kaçırılmış."""
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="opc3", firm="inventist")
+        t = task_factory(user_id=u.id, title="Aylık tarama", category="routine", period="Aylık")
+        t.created_at = datetime(2026, 1, 1)
+        db.session.add(TaskOccurrence(task_id=t.id, period_key="2026-04"))  # Nisan var, Mayıs yok
+        db.session.commit()
+
+        assert t.overdue_period_count() == 1
+
+    @freeze_time("2026-06-08")
+    def test_created_at_oncesi_periyotlar_sayilmaz(self, db, user_factory, task_factory):
+        """Görev 1 Haziran'da oluşturulmuşsa Mayıs ve öncesi sayılmaz."""
+        u = user_factory(username="opc4", firm="inventist")
+        t = task_factory(user_id=u.id, title="Yeni haftalık", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 6, 1)  # bu hafta (W23) oluşturuldu
+        db.session.commit()
+
+        # Hiç occurrence yok ama görev yeni — sadece W23 (önceki periyot) sayılabilir
+        # W23 başlangıcı 1 Haziran, created 1 Haziran → W23 sayılır = 1
+        assert t.overdue_period_count() <= 1
+
+    @freeze_time("2026-06-08")
+    def test_tek_seferlik_ve_diger_kategoriler_sifir(self, db, user_factory, task_factory):
+        """Rutin olmayan görevler için overdue_period_count her zaman 0."""
+        u = user_factory(username="opc5", firm="inventist")
+        t1 = task_factory(user_id=u.id, title="Proje", category="project", period="Tek Seferlik")
+        t2 = task_factory(user_id=u.id, title="Tek seferlik rutin", category="routine", period="Tek Seferlik")
+        db.session.commit()
+
+        assert t1.overdue_period_count() == 0
+        assert t2.overdue_period_count() == 0
+
+
+class TestToDictRoutineV51:
+    """v5.1 — to_dict rutin kanonik alanları (is_overdue, overdue_periods, vb.)."""
+
+    @freeze_time("2026-06-08")
+    def test_to_dict_rutin_alanlari_mevcut(self, db, user_factory, task_factory):
+        """Rutin görev to_dict'inde v5.1 alanları bulunur."""
+        u = user_factory(username="td51a", firm="inventist")
+        t = task_factory(user_id=u.id, title="Haftalık", category="routine", period="Haftalık")
+        db.session.commit()
+
+        d = t.to_dict(month=6, year=2026)
+        assert "is_overdue" in d
+        assert "overdue_periods" in d
+        assert "current_period_label" in d
+        assert "next_period_date" in d
+        assert d["current_period_label"] == "Bu hafta"
+
+    @freeze_time("2026-06-08")
+    def test_to_dict_onceki_periyot_tamamlanmis_overdue_degil(self, db, user_factory, task_factory):
+        """Bug #78: önceki periyot tamamlanmış → is_overdue=False, overdue_periods=0."""
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="td51b", firm="inventist")
+        t = task_factory(user_id=u.id, title="Firewall", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 5, 10)
+        for wk in ("2026-W22", "2026-W23"):
+            db.session.add(TaskOccurrence(task_id=t.id, period_key=wk))
+        db.session.commit()
+
+        d = t.to_dict(month=6, year=2026)
+        assert d["is_overdue"] is False
+        assert d["overdue_periods"] == 0
+
+    @freeze_time("2026-06-08")
+    def test_to_dict_kacirilmis_overdue_dogru_sayar(self, db, user_factory, task_factory):
+        """2 hafta kaçırılmış → is_overdue=True, overdue_periods=2."""
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="td51c", firm="inventist")
+        t = task_factory(user_id=u.id, title="Switch", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 5, 1)
+        db.session.add(TaskOccurrence(task_id=t.id, period_key="2026-W21"))
+        db.session.commit()
+
+        d = t.to_dict(month=6, year=2026)
+        assert d["is_overdue"] is True
+        assert d["overdue_periods"] >= 2
+
+    @freeze_time("2026-06-08")
+    def test_to_dict_rutin_olmayan_default_degerler(self, db, user_factory, task_factory):
+        """Proje görevinde v5.1 alanları default (False/0/None)."""
+        u = user_factory(username="td51d", firm="inventist")
+        t = task_factory(user_id=u.id, title="Proje", category="project", period="Tek Seferlik")
+        db.session.commit()
+
+        d = t.to_dict(month=6, year=2026)
+        assert d["is_overdue"] is False
+        assert d["overdue_periods"] == 0
+        assert d["current_period_label"] is None
