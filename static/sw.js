@@ -1,4 +1,5 @@
-const CACHE = 'ittracker-v5.5';
+// __VERSION__ Flask /sw.js route'unda APP_VERSION ile değiştirilir (VERSION dosyası)
+const CACHE = 'ittracker-v__VERSION__';
 
 // Uygulama shell'ini önbellekle
 self.addEventListener('install', e => {
