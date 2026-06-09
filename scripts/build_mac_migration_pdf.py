@@ -356,13 +356,6 @@ def build():
         "<font face='Courier'>-Users-levent-Projects-ittracker</font> olur."
     )
 
-    story += _h3("5.2 Subagent'lar")
-    story += _p(
-        "<font face='Courier'>.claude/agents/ui-advisor.md</font> ve "
-        "<font face='Courier'>.claude/agents/qa-tester.md</font> repo'da, otomatik gelir."
-    )
-    story += _tip("<b>Restart:</b> Yeni custom agent eklediğinde Claude Code'u kapat-aç, yeni agent listesine düşsün.")
-
     story.append(PageBreak())
 
     # ── 6. SSH Key ──
