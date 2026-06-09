@@ -1122,7 +1122,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title" id="tasks-page-title">Anlık <span>Görevler</span></div>
       <div class="page-sub" id="tasks-page-sub">Tek seferlik işler — destek, kurulum, ayar, bakım</div>
     </div>
-    <button class="btn btn-primary" onclick="showPage('add');document.getElementById('new-cat').value='task';onCatChange()">＋ Anlık Görev Ekle</button>
+    <button class="btn btn-primary" id="tasks-add-btn" onclick="addTaskFromTasksView()">＋ Anlık Görev Ekle</button>
   </div>
   <div class="card">
     <div class="card-header">
