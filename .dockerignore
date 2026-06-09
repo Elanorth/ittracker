@@ -1,0 +1,55 @@
+# Git geçmişi (38M) — image'a girmesin
+.git
+.gitignore
+.github
+
+# Python cache / artefakt
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.ruff_cache
+*.egg-info
+.coverage
+htmlcov
+
+# Yerel veritabanı + örnek dosyalar (runtime'da volume/env ile gelir)
+instance
+*.db
+*.sqlite
+
+# Ortam dosyaları (compose env_file ile mount edilir, image'a gömülmez)
+.env
+.env.*
+!.env.example
+
+# Geliştirici / dev araçları
+.claude
+.pre-commit-config.yaml
+ruff.toml
+.secrets.baseline
+venv
+.venv
+node_modules
+
+# Dokümantasyon + büyük statik artefaktlar (uygulamada kullanılmaz)
+docs
+*.pdf
+README*.md
+CLAUDE.md
+
+# OS / editör
+.DS_Store
+*.swp
+.idea
+.vscode
+
+# Test dosyaları (runtime'da gerekmez)
+tests
+
+# Yedek/compose varyantları (deploy host'ta git ile gelir, image'da gerekmez)
+docker-compose*.yml
+Dockerfile
+.dockerignore
+certbot
