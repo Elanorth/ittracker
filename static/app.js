@@ -502,6 +502,12 @@ function showPage(name, opts = {}) {
         subEl.textContent = 'Tek seferlik işler — destek, kurulum, ayar, bakım';
       }
     }
+    // v5.6 — Sağ üst "ekle" butonu da moda göre (bug: Destek modunda "Anlık Görev Ekle" diyordu)
+    const addBtn = document.getElementById('tasks-add-btn');
+    if (addBtn) {
+      addBtn.dataset.cat = (opts.cat === 'support') ? 'support' : 'task';
+      addBtn.textContent = (opts.cat === 'support') ? '＋ Destek Talebi Ekle' : '＋ Anlık Görev Ekle';
+    }
     loadTasks().then(() => {
       const filterEl = document.getElementById('tasks-cat-filter');
       if (opts.cat === 'support') {
@@ -659,6 +665,16 @@ function showTasksWithCat(cat) {
 // v5.2 — Pie chart / Firma bar drill-down (v5.4: showPage delege)
 function showTasksWithFirm(firm) {
   showPage('tasks', { firm: firm });
+}
+
+// v5.6 — Tasks sayfası "ekle" butonu: aktif moda göre kategori (task vs support).
+// Bug fix: Destek Talepleri görünümündeyken buton "Anlık Görev" açıyordu.
+function addTaskFromTasksView() {
+  const btn = document.getElementById('tasks-add-btn');
+  const cat = (btn && btn.dataset.cat === 'support') ? 'support' : 'task';
+  showPage('add');
+  const catEl = document.getElementById('new-cat');
+  if (catEl) { catEl.value = cat; onCatChange(); }
 }
 
 // v5.2 — Açık destek talebi sayısını sidebar nav badge'ine yansıt
