@@ -52,7 +52,15 @@ smbclient "//10.34.0.61/Inventist_IT" "$SMB_PASS" -U "$SMB_USER" -c 'cd "Ittrack
 crontab -e
 # Sona ekle:
 0 3 * * * /home/leventcan/ittracker/scripts/backup-db.sh
+# Haftalik docker bakimi + disk alarmi (Pazar 04:00):
+0 4 * * 0 /home/leventcan/ittracker/scripts/docker-maintenance.sh
 ```
+
+> **Docker bakimi neden gerekli:** GHCR'a gecisten sonra her deploy yeni image
+> katmani + build cache birakir. Birikim disk'i doldurursa Postgres "No space
+> left" ile crash eder (2026-06-14'te yasandi, site 2 gun down). Script 7 gun+
+> eski kullanilmayan image/cache'i temizler ve disk %85'i asarsa admin'e mail
+> atar. Log: `/srv/it_tracker/backups/auto/docker-maintenance.log`.
 
 ### 6. Mail test (opsiyonel)
 ```bash
