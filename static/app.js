@@ -1218,6 +1218,66 @@ function dlText(dl, done) {
   if (diff === 0) return 'Bugün son!';
   return `${diff}g kaldı`;
 }
+
+// v5.6 — KANONİK görev zamanlama bilgisi (TEK KAYNAK).
+// Gecikme/gruplama/sıralama/badge mantığı SADECE buradan gelir. Dashboard satırı
+// (taskRow), dashboard gruplama (_dashGroupKey) ve sıralama (_dashSortKey) bunu
+// kullanır → mantık tek yerde, bir render yolu atlanamaz.
+//
+// NEDEN: Rutin görev gecikmesi eskiden her render yolunda ayrı ayrı, hep donmuş
+// `deadline` ile hesaplanıyordu. v5.1 rutin SAYFASINI + bildirimleri düzeltti ama
+// DASHBOARD atlandı → "29g gecikti" bug'ı dashboard'da tekrar etti. Tek kaynak
+// bunu kalıcı çözer.
+//
+// Döner: { group, sortKey, badgeText, badgeClass }
+//   group  : 'overdue'|'today'|'tomorrow'|'upcoming'|'no_deadline'|'done'
+//   sortKey: grup içi sıralama (küçük = üstte)
+function taskTiming(t) {
+  // ── 1) RUTİN (periyodik) — kanonik is_overdue / overdue_periods (donmuş deadline DEĞİL)
+  if (t.cat === 'routine' && t.period !== 'Tek Seferlik') {
+    if (t.done) {
+      return { group:'done', sortKey: Infinity,
+               badgeText: t.current_period_label ? `${t.current_period_label} ✓` : 'Tamamlandı', badgeClass:'ok' };
+    }
+    if (t.is_overdue) {
+      return { group:'overdue', sortKey: -(t.overdue_periods || 1),  // çok atlanan en üstte
+               badgeText: _routineOverdueLabel(t), badgeClass:'late' };
+    }
+    return { group:'today', sortKey: 0,
+             badgeText: t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor', badgeClass:'warn' };
+  }
+
+  // ── 2) DESTEK (SLA)
+  if (t.cat === 'support' && t.sla) {
+    if (t.done) return { group:'done', sortKey: Infinity, badgeText:'Tamamlandı', badgeClass:'ok' };
+    const rem = t.sla.remaining_hours;
+    const slaRem = _slaRemainingHuman(t);
+    const badgeText = slaRem ? `SLA ${slaRem.txt}` : 'SLA';
+    if (t.sla.breached || (typeof rem === 'number' && rem < 0)) {
+      return { group:'overdue', sortKey: (typeof rem === 'number' ? rem : -999), badgeText, badgeClass:'late' };
+    }
+    if (typeof rem === 'number') {
+      const group = rem <= 24 ? 'today' : rem <= 48 ? 'tomorrow' : 'upcoming';
+      const badgeClass = rem < (t.sla.target_hours || 24) * 0.25 ? 'warn' : 'ok';
+      return { group, sortKey: rem, badgeText, badgeClass };
+    }
+  }
+
+  // ── 3) DİĞER (deadline-bazlı: task/project/backup/infra/other + Tek Seferlik rutin)
+  if (t.done) return { group:'done', sortKey: Infinity, badgeText:'Tamamlandı', badgeClass:'ok' };
+  if (!t.deadline) return { group:'no_deadline', sortKey: Infinity, badgeText:null, badgeClass:null };
+  const today = TODAY;
+  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })();
+  const diff = Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000);
+  let group;
+  if (t.deadline < today) group = 'overdue';
+  else if (t.deadline === today) group = 'today';
+  else if (t.deadline === tomorrow) group = 'tomorrow';
+  else group = 'upcoming';
+  const badgeText = diff < 0 ? `${Math.abs(diff)}g gecikti` : diff === 0 ? 'Bugün son!' : `${diff}g kaldı`;
+  const badgeClass = diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
+  return { group, sortKey: new Date(t.deadline).getTime() / 3600000, badgeText, badgeClass };
+}
 function catLabel(cat) {
   return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
 }
@@ -1276,16 +1336,12 @@ function _slaRemainingHuman(t) {
 }
 
 function taskRow(t) {
-  // v5.0 — destek talepleri için deadline yerine SLA kalan süresi gösterilir (sol kolon: dl-badge)
-  let dl;
-  const slaRem = _slaRemainingHuman(t);
-  if (t.cat === 'support' && slaRem) {
-    const cls = (t.sla?.breached || (t.sla?.remaining_hours ?? 99) < 0) ? 'late'
-              : ((t.sla?.remaining_hours ?? 99) < (t.sla?.target_hours || 24) * 0.25 ? 'warn' : 'ok');
-    dl = `<div class="dl-badge ${cls}" title="SLA: hedef ${t.sla?.target_hours||'?'}s">SLA ${slaRem.txt}</div>`;
-  } else {
-    dl = t.deadline ? `<div class="dl-badge ${dlClass(t.deadline,t.done)}">${dlText(t.deadline,t.done)}</div>` : '<div></div>';
-  }
+  // v5.6 — Sol kolon rozeti KANONİK taskTiming()'den (rutin için donmuş deadline
+  // değil is_overdue/overdue_periods; destek için SLA; diğer için deadline).
+  const ti = taskTiming(t);
+  const dl = ti.badgeText
+    ? `<div class="dl-badge ${ti.badgeClass || ''}">${ti.badgeText}</div>`
+    : '<div></div>';
   // Önceki aydan taşınan görev etiketi
   const prevBadge = t.from_previous_month
     ? `<span style="font-size:9px;background:rgba(244,185,66,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:4px;border:1px solid rgba(244,185,66,.25)">⏩ Önceki Aydan</span>`
@@ -1369,39 +1425,9 @@ const DASH_GROUP_META = {
 };
 const DASH_GROUP_ORDER = ['overdue','today','tomorrow','upcoming','no_deadline','done'];
 
-function _dashGroupKey(t) {
-  if (t.done) return 'done';
-  // v4.7.1 — Destek talepleri SLA'ya göre gruplanır (deadline yerine SLA kalan süresi belirler)
-  if (t.cat === 'support' && t.sla) {
-    if (t.sla.breached) return 'overdue';
-    const rem = t.sla.remaining_hours;
-    if (typeof rem === 'number') {
-      if (rem <= 24)  return 'today';
-      if (rem <= 48)  return 'tomorrow';
-      return 'upcoming';
-    }
-  }
-  if (!t.deadline) return 'no_deadline';
-  const today = TODAY;
-  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })();
-  if (t.deadline <  today)    return 'overdue';
-  if (t.deadline === today)   return 'today';
-  if (t.deadline === tomorrow)return 'tomorrow';
-  return 'upcoming';
-}
-
-// v4.7.1 — Grup içinde sıralama anahtarı (saat hassasiyetinde)
-function _dashSortKey(t) {
-  // Destek talepleri: SLA kalan saati → en az kalan en üstte
-  if (t.cat === 'support' && t.sla && typeof t.sla.remaining_hours === 'number') {
-    return t.sla.remaining_hours; // breached negatif olabilir → en başa gider
-  }
-  // Diğer: deadline → ISO string sayısal hale çevrilemez, ms cinsinden epoch dönelim
-  if (t.deadline) {
-    return new Date(t.deadline).getTime() / 3600000; // saat cinsinden
-  }
-  return Number.POSITIVE_INFINITY;
-}
+// v5.6 — Gruplama + sıralama KANONİK taskTiming()'den (tek kaynak).
+function _dashGroupKey(t) { return taskTiming(t).group; }
+function _dashSortKey(t)  { return taskTiming(t).sortKey; }
 
 function renderDashboardTaskList() {
   const body = document.getElementById('task-list-body');
