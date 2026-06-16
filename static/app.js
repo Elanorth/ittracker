@@ -1342,6 +1342,8 @@ function taskRow(t) {
   const dl = ti.badgeText
     ? `<div class="dl-badge ${ti.badgeClass || ''}">${ti.badgeText}</div>`
     : '<div></div>';
+  // Sağ kolonda destek talepleri için SLA kalan süre metni (aşağıda kullanılır)
+  const slaRem = _slaRemainingHuman(t);
   // Önceki aydan taşınan görev etiketi
   const prevBadge = t.from_previous_month
     ? `<span style="font-size:9px;background:rgba(244,185,66,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:4px;border:1px solid rgba(244,185,66,.25)">⏩ Önceki Aydan</span>`
