@@ -702,18 +702,21 @@ def managed_firms_detail():
 
 
 # ── TASKS ──
-@app.route("/api/tasks", methods=["GET"])
-@login_required
-def get_tasks():
-    me = _current_user()
-    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
-    if err:
-        return err
-    month = request.args.get("month", date.today().month, type=int)
-    year = request.args.get("year", date.today().year, type=int)
-    firm_filter = request.args.get("firm")
-    category_filter = request.args.get("category")
+def _collect_tasks_for_month(uid, month, year, firm_filter=None, category_filter=None):
+    """Bir kullanıcının verilen ay için GÖRÜNEN görev listesini döndürür (Task objeleri).
 
+    TEK KAYNAK: /api/tasks (get_tasks), /api/report/pdf ve mail raporu artık aynı
+    görev kümesini kullanır. Önceki sürümde rapor endpoint'leri görevleri yalnızca
+    `created_at` o ay olanlarla filtreliyordu → her ay tekrar eden ve çoğu önceki
+    aylarda açılmış RUTİN görevler rapora HİÇ girmiyordu (F2.1 bug'ı). Ekrandaki
+    liste ile PDF aynı görevleri göstermeli.
+
+    Kurallar:
+      1) routine: hepsi (tamamlanma o aya özel; to_dict period_key ile hesaplar)
+      2) project: tamamlanmamışlar her ayda; tamamlanmışlar yalnızca tamamlandıkları ayda
+      3) diğer (support/infra/backup/other): o ay created/deadline + carry-over
+         (açık & önceki aylarda oluşturulmuş)
+    """
     result = []
 
     # 1) Rutin görevler: her ayın görünümünde listelenir, tamamlanma o aya özel
@@ -766,6 +769,21 @@ def get_tasks():
             oq = oq.filter_by(category=category_filter)
         result += oq.order_by(Task.created_at.desc()).all()
 
+    return result
+
+
+@app.route("/api/tasks", methods=["GET"])
+@login_required
+def get_tasks():
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err:
+        return err
+    month = request.args.get("month", date.today().month, type=int)
+    year = request.args.get("year", date.today().year, type=int)
+    firm_filter = request.args.get("firm")
+    category_filter = request.args.get("category")
+    result = _collect_tasks_for_month(uid, month, year, firm_filter, category_filter)
     return jsonify([t.to_dict(month=month, year=year) for t in result])
 
 
@@ -1530,11 +1548,9 @@ def download_report():
     user = db.session.get(User, uid)
     month = request.args.get("month", date.today().month, type=int)
     year = request.args.get("year", date.today().year, type=int)
-    tasks = Task.query.filter(
-        Task.user_id == user.id,
-        db.extract("month", Task.created_at) == month,
-        db.extract("year", Task.created_at) == year,
-    ).all()
+    # F2.1 fix: ekrandaki liste ile aynı görev kümesi (rutinler + carry-over dahil),
+    # yalnızca created_at o ay olanlar DEĞİL.
+    tasks = _collect_tasks_for_month(user.id, month, year)
     pdf = generate_monthly_pdf(user, tasks, month, year)
     resp = send_file(
         pdf,
@@ -1557,11 +1573,8 @@ def send_report():
     user = db.session.get(User, uid)
     month = data.get("month", date.today().month)
     year = data.get("year", date.today().year)
-    tasks = Task.query.filter(
-        Task.user_id == user.id,
-        db.extract("month", Task.created_at) == month,
-        db.extract("year", Task.created_at) == year,
-    ).all()
+    # F2.1 fix: rapor PDF'i ekrandaki liste ile aynı görev kümesini kullanır.
+    tasks = _collect_tasks_for_month(user.id, month, year)
     pdf = generate_monthly_pdf(user, tasks, month, year)
     return jsonify(send_report_email(user, pdf, month, year, cc=data.get("cc"), o365_token=session.get("o365_token")))
 
