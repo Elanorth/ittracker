@@ -279,6 +279,18 @@ def _resolve_scope_uid(me, requested_uid):
     return None, (jsonify({"error": "Bu kullanıcının verilerine erişim yetkiniz yok"}), 403)
 
 
+def _can_modify_owned_task(me, owner):
+    """Görev sahibi olmayan biri o görevi düzenleyebilir/silebilir mi?
+
+    F2.3 fix: super_admin her görevi; it_director ise YÖNETTİĞİ herhangi bir
+    firmadaki (has_firm_scope — managed_firms + kendi firma'sı) görevi. Eski kod
+    `owner.firm == me.firm` ile yalnızca kendi firma'sını kapsıyordu → çoklu firma
+    yöneten director ikinci firmayı görür ama düzenleyemezdi. update_task,
+    delete_task ve update_task_alarm aynı kuralı kullanır (tek kaynak).
+    """
+    return me.is_super_admin or (me.permission_level == "it_director" and owner and me.has_firm_scope(owner.firm))
+
+
 @app.route("/")
 @login_required
 def dashboard():
@@ -873,7 +885,7 @@ def update_task(task_id):
     # Sahibi veya director+ (firma bazlı) düzenleyebilir
     if task.user_id != me.id:
         owner = db.session.get(User, task.user_id)
-        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+        if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi düzenleme yetkiniz yok"}), 403
     data = request.get_json()
     if "is_done" in data:
@@ -982,7 +994,7 @@ def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     owner = db.session.get(User, task.user_id)
     if task.user_id != me.id:
-        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+        if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi silme yetkiniz yok"}), 403
     log_audit(
         me,
@@ -1580,9 +1592,12 @@ def list_audit():
     Query: start, end (YYYY-MM-DD); action; actor_id; target_user_id; firm; limit (max 500), offset"""
     me = _current_user()
     q = AuditLog.query
-    # Firma kapsamı: super_admin tümünü görür, director sadece kendi firmasını
+    # Firma kapsamı: super_admin tümünü görür; director YÖNETTİĞİ tüm firmaları
+    # (F2.3 — eski kod yalnızca kendi firma'sını filtreliyordu, çoklu firma açığı).
     if not me.is_super_admin:
-        q = q.filter(AuditLog.firm == (me.firm or ""))
+        scope = set(me.managed_firm_slugs)
+        scope.add(me.firm or "")
+        q = q.filter(AuditLog.firm.in_(list(scope)))
     # Tarih aralığı
     start = request.args.get("start")
     end = request.args.get("end")
@@ -1727,7 +1742,7 @@ def update_task_alarm(task_id):
     task = Task.query.get_or_404(task_id)
     if task.user_id != me.id:
         owner = db.session.get(User, task.user_id)
-        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+        if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevin alarmını düzenleme yetkiniz yok"}), 403
     data = request.get_json() or {}
     if "alarm_enabled" in data:
