@@ -27,6 +27,8 @@ from models.database import (
     TaskOccurrence,
     Team,
     User,
+    _period_key,
+    _previous_period_key,
     _sla_target_hours,
     db,
     init_db,
@@ -486,6 +488,36 @@ def firm_users():
     )
 
 
+# ── Firma dashboard'ları için N+1 önleyici yardımcılar ──
+# dashboard_firm_summary / managed_firms_detail eskiden her görev için
+# is_done_now/is_overdue_now çağırıp TaskOccurrence sorguluyordu (firma×görev,
+# trend'de ayrıca ×6 = ağır N+1). Aşağıdaki ön-yükleme firma başına TEK sorgu yapar.
+def _preload_routine_occurrences(tasks):
+    """Verilen görevlerin rutin occurrence period_key'lerini tek sorguda yükler → {task_id: set(period_key)}."""
+    routine_ids = [t.id for t in tasks if t.category == "routine" and t.period != "Tek Seferlik"]
+    occ_map = {}
+    if routine_ids:
+        for occ in TaskOccurrence.query.filter(TaskOccurrence.task_id.in_(routine_ids)).all():
+            occ_map.setdefault(occ.task_id, set()).add(occ.period_key)
+    return occ_map
+
+
+def _task_done_at(t, day, occ_map):
+    """Task.is_done_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
+    if t.category == "routine" and t.period != "Tek Seferlik":
+        key = _period_key(t.period, day)
+        return bool(key and key in occ_map.get(t.id, set()))
+    return bool(t.is_done)
+
+
+def _task_overdue_at(t, day, occ_map):
+    """Task.is_overdue_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
+    if t.category == "routine" and t.period != "Tek Seferlik":
+        prev = _previous_period_key(t.period, day)
+        return bool(prev and prev not in occ_map.get(t.id, set()))
+    return (not t.is_done) and (t.deadline is not None) and (t.deadline < day)
+
+
 # v4.9 — Dashboard firma şeridi için aggregated özet endpoint'i.
 # IT Müdürü yönettiği her firma için tek satırlık özet (total/done/overdue/rate/sla_breach) alır.
 @app.route("/api/dashboard/firm-summary")
@@ -517,9 +549,10 @@ def dashboard_firm_summary():
     for f in firms:
         tasks = Task.query.filter(Task.firm == f.slug).all()
         total = len(tasks)
-        # v5.0 — rutin görevler için period_key bazlı anlık tamamlanma/gecikme
-        done = sum(1 for t in tasks if t.is_done_now(today=today))
-        overdue = sum(1 for t in tasks if t.is_overdue_now(today=today))
+        # v5.0 — rutin görevler için period_key bazlı anlık tamamlanma/gecikme (N+1 önlemeli)
+        occ_map = _preload_routine_occurrences(tasks)
+        done = sum(1 for t in tasks if _task_done_at(t, today, occ_map))
+        overdue = sum(1 for t in tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
         # SLA ihlali — açık destek talepleri için (resolved değil, deadline geçmiş)
         sla_breach = 0
@@ -595,11 +628,12 @@ def managed_firms_detail():
     result = []
     for f in firms:
         all_tasks = Task.query.filter(Task.firm == f.slug).all()
+        occ_map = _preload_routine_occurrences(all_tasks)
 
-        # KPI — anlık durum, periyot bağımsız (v5.0: rutin için period_key bazlı)
+        # KPI — anlık durum, periyot bağımsız (v5.0: rutin için period_key bazlı, N+1 önlemeli)
         total = len(all_tasks)
-        done = sum(1 for t in all_tasks if t.is_done_now(today=today))
-        overdue = sum(1 for t in all_tasks if t.is_overdue_now(today=today))
+        done = sum(1 for t in all_tasks if _task_done_at(t, today, occ_map))
+        overdue = sum(1 for t in all_tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
 
         # SLA ihlali — açık destek talepleri
@@ -630,7 +664,7 @@ def managed_firms_detail():
                     "month": _TR_MONTHS_SHORT[tm - 1],
                     "year": ty,
                     "total": len(month_tasks),
-                    "done": sum(1 for t in month_tasks if t.is_done_now(today=ref_dt)),
+                    "done": sum(1 for t in month_tasks if _task_done_at(t, ref_dt, occ_map)),
                 }
             )
 
