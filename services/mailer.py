@@ -109,9 +109,13 @@ def send_alarm_digest(user, groups):
         firm_team = " / ".join(x for x in [t.get("firm") or "", t.get("team") or ""] if x)
         prefix = f"[{t.get('priority', 'orta').upper()}]" if t.get("priority") else ""
         if kind == "overdue":
-            return f"  - #{t['id']} {prefix} {t['title']} — {t.get('days_late', '?')} gün gecikmeli" + (
-                f" ({firm_team})" if firm_team else ""
-            )
+            # F2.4 — rutin görevlerde "gün gecikmeli" yerine "N periyot atlandı"
+            if t.get("period") and t.get("overdue_periods"):
+                unit = {"Günlük": "gün", "Haftalık": "hafta", "Aylık": "ay", "Yıllık": "yıl"}.get(t["period"], "dönem")
+                detail = f"{t['overdue_periods']} {unit} atlandı (rutin)"
+            else:
+                detail = f"{t.get('days_late', '?')} gün gecikmeli"
+            return f"  - #{t['id']} {prefix} {t['title']} — {detail}" + (f" ({firm_team})" if firm_team else "")
         if kind == "sla_warning":
             rh = t.get("sla_remaining_hours")
             rem = f"{rh:.1f} saat kaldı" if isinstance(rh, int | float) else "süresi azaldı"
@@ -121,7 +125,7 @@ def send_alarm_digest(user, groups):
         return f"  - #{t['id']} {t['title']}"
 
     if overdue:
-        parts.append(f"3+ gün geciken görevler ({len(overdue)}):")
+        parts.append(f"Geciken görevler ({len(overdue)}):")
         parts += [_fmt_task(t, "overdue") for t in overdue]
         parts.append("")
     if sla_breach:

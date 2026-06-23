@@ -88,11 +88,19 @@ def collect_user_alerts(user, now=None):
         # Alarm kapalı görevleri atla
         if t.alarm_enabled is False:
             continue
-        # Rutin görevler ayrı tamamlama mantığıyla çalışıyor → atla
-        if t.category == "routine":
-            continue
-        # Bugün zaten bildirildiyse atla (anti-spam)
+        # Bugün zaten bildirildiyse atla (anti-spam) — rutinler dahil
         if t.last_notified and t.last_notified.date() == today:
+            continue
+
+        # F2.4 — Rutin (periyodik) görevler: kanonik overdue_period_count ile
+        # KAÇIRILAN periyot varsa uyar. Önceden rutinler tamamen atlanıyordu →
+        # gecikmiş haftalık/aylık rutinler hiçbir bildirim üretmiyordu (v5.1'de
+        # eklenen overdue_period_count() notifier'a hiç bağlanmamıştı).
+        if t.category == "routine":
+            if t.period != "Tek Seferlik" and user.notify_overdue:
+                missed = t.overdue_period_count(today=today)
+                if missed > 0:
+                    groups["overdue"].append(_task_summary(t, {"overdue_periods": missed, "period": t.period}))
             continue
 
         # SLA (destek talepleri)
