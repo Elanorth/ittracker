@@ -15,6 +15,8 @@ os.environ.setdefault("ADMIN_USERNAME", "test_admin")
 os.environ.setdefault("ADMIN_EMAIL", "test_admin@example.com")
 os.environ.setdefault("SECRET_KEY", "test-secret-not-for-prod")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+# Test client HTTP üzerinden çalışır; Secure çerez gönderilmezse oturum kaybolur.
+os.environ.setdefault("SESSION_COOKIE_SECURE", "0")
 
 import pytest
 

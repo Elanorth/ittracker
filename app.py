@@ -90,6 +90,17 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:/
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
+# === Oturum çerezi sertleştirme ===
+# HttpOnly: JS çerezi okuyamaz (XSS ile oturum çalınmasını zorlaştırır).
+# SameSite=Lax: çerez cross-site POST/fetch ile gönderilmez → CSRF'i büyük ölçüde
+#   azaltır (state değiştiren tüm endpoint'ler POST/PATCH/DELETE). JSON API zaten
+#   cross-origin basit form ile taklit edilemez (Content-Type: application/json).
+# Secure: çerez yalnızca HTTPS üzerinde gönderilir. Prod/staging nginx TLS arkasında;
+#   varsayılan açık. HTTP test/dev için SESSION_COOKIE_SECURE=0 ile kapatılabilir.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "1") != "0"
+
 O365_CLIENT_ID = os.environ.get("O365_CLIENT_ID", "")
 O365_CLIENT_SECRET = os.environ.get("O365_CLIENT_SECRET", "")
 O365_TENANT_ID = os.environ.get("O365_TENANT_ID", "common")
