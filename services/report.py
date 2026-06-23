@@ -77,6 +77,26 @@ def generate_monthly_pdf(user, tasks, month, year):
     return path
 
 
+def task_done_for_report(task, year, month):
+    """Verilen ay için görev 'tamamlandı' sayılır mı? (PDF raporu).
+
+    F2.2 fix: Rutin (periyodik) görevlerin tamamlanma durumu KANONİK kaynaktan
+    gelir — TaskOccurrence/period_key (Task.is_done_now) — eski `last_completed`
+    proxy'sinden DEĞİL. Eski yöntem (a) un-toggle'da last_completed sıfırlanmadığı
+    için bayat "tamamlandı" gösteriyordu, (b) Günlük/Haftalık periyotları ay
+    granülerliğine indiriyordu. Artık PDF, ekrandaki liste ve /api/tasks ile
+    birebir aynı tamamlanma durumunu gösterir.
+
+    Referans gün: görüntülenen ay bugünün ayıysa bugün, değilse ayın 15'i —
+    models.database.Task.to_dict ile aynı mantık.
+    """
+    if task.category == "routine" and task.period != "Tek Seferlik":
+        today = date.today()
+        ref = today if (today.year == year and today.month == month) else date(year, month, 15)
+        return task.is_done_now(today=ref)
+    return bool(task.is_done)
+
+
 def _build(user, tasks, month, year, path):
     display_name = (user.full_name or "").strip() or user.username
     doc = SimpleDocTemplate(
@@ -100,21 +120,10 @@ def _build(user, tasks, month, year, path):
     footer_s = style("FF", fontSize=9, textColor=MUTED, alignment=TA_CENTER, spaceBefore=6)
     cell_s = style("CC", fontSize=8)
 
-    # Rutin görevler tamamlandığında is_done=False sıfırlanır,
-    # bu yüzden last_completed bu ay içindeyse de "tamamlandı" say
-    from datetime import datetime
-
+    # Rutin tamamlanma KANONİK kaynaktan (TaskOccurrence/period_key) — bkz.
+    # task_done_for_report. Eski last_completed proxy'si kaldırıldı (F2.2).
     def _is_done(t):
-        if t.is_done:
-            return True
-        if t.category == "routine" and t.last_completed:
-            lc = (
-                t.last_completed
-                if hasattr(t.last_completed, "month")
-                else datetime.fromisoformat(str(t.last_completed))
-            )
-            return lc.year == year and lc.month == month
-        return False
+        return task_done_for_report(t, year, month)
 
     done = [t for t in tasks if _is_done(t)]
     pending = [t for t in tasks if not _is_done(t)]
@@ -179,7 +188,8 @@ def _build(user, tasks, month, year, path):
         row_bgs = [
             ("BACKGROUND", (0, ri), (-1, ri), GRAY1 if ri % 2 == 0 else colors.white) for ri in range(1, len(rows))
         ]
-        clrs = [("TEXTCOLOR", (6, ri), (6, ri), GREEN if lst[ri - 1].is_done else RED) for ri in range(1, len(rows))]
+        # Renk de canonical tamamlanma ile (rutinlerde is_done hep False'tur — F2.2)
+        clrs = [("TEXTCOLOR", (6, ri), (6, ri), GREEN if _is_done(lst[ri - 1]) else RED) for ri in range(1, len(rows))]
         tbl = Table(rows, colWidths=[0.7 * cm, 6 * cm, 2.2 * cm, 1.8 * cm, 2.1 * cm, 2 * cm, 1.8 * cm], repeatRows=1)
         tbl.setStyle(
             TableStyle(

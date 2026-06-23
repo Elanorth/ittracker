@@ -27,6 +27,8 @@ from models.database import (
     TaskOccurrence,
     Team,
     User,
+    _period_key,
+    _previous_period_key,
     _sla_target_hours,
     db,
     init_db,
@@ -87,6 +89,17 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///it_tracker.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+
+# === Oturum çerezi sertleştirme ===
+# HttpOnly: JS çerezi okuyamaz (XSS ile oturum çalınmasını zorlaştırır).
+# SameSite=Lax: çerez cross-site POST/fetch ile gönderilmez → CSRF'i büyük ölçüde
+#   azaltır (state değiştiren tüm endpoint'ler POST/PATCH/DELETE). JSON API zaten
+#   cross-origin basit form ile taklit edilemez (Content-Type: application/json).
+# Secure: çerez yalnızca HTTPS üzerinde gönderilir. Prod/staging nginx TLS arkasında;
+#   varsayılan açık. HTTP test/dev için SESSION_COOKIE_SECURE=0 ile kapatılabilir.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "1") != "0"
 
 O365_CLIENT_ID = os.environ.get("O365_CLIENT_ID", "")
 O365_CLIENT_SECRET = os.environ.get("O365_CLIENT_SECRET", "")
@@ -277,6 +290,18 @@ def _resolve_scope_uid(me, requested_uid):
     if me.permission_level == "it_director" and me.has_firm_scope(target.firm):
         return target.id, None
     return None, (jsonify({"error": "Bu kullanıcının verilerine erişim yetkiniz yok"}), 403)
+
+
+def _can_modify_owned_task(me, owner):
+    """Görev sahibi olmayan biri o görevi düzenleyebilir/silebilir mi?
+
+    F2.3 fix: super_admin her görevi; it_director ise YÖNETTİĞİ herhangi bir
+    firmadaki (has_firm_scope — managed_firms + kendi firma'sı) görevi. Eski kod
+    `owner.firm == me.firm` ile yalnızca kendi firma'sını kapsıyordu → çoklu firma
+    yöneten director ikinci firmayı görür ama düzenleyemezdi. update_task,
+    delete_task ve update_task_alarm aynı kuralı kullanır (tek kaynak).
+    """
+    return me.is_super_admin or (me.permission_level == "it_director" and owner and me.has_firm_scope(owner.firm))
 
 
 @app.route("/")
@@ -474,6 +499,36 @@ def firm_users():
     )
 
 
+# ── Firma dashboard'ları için N+1 önleyici yardımcılar ──
+# dashboard_firm_summary / managed_firms_detail eskiden her görev için
+# is_done_now/is_overdue_now çağırıp TaskOccurrence sorguluyordu (firma×görev,
+# trend'de ayrıca ×6 = ağır N+1). Aşağıdaki ön-yükleme firma başına TEK sorgu yapar.
+def _preload_routine_occurrences(tasks):
+    """Verilen görevlerin rutin occurrence period_key'lerini tek sorguda yükler → {task_id: set(period_key)}."""
+    routine_ids = [t.id for t in tasks if t.category == "routine" and t.period != "Tek Seferlik"]
+    occ_map = {}
+    if routine_ids:
+        for occ in TaskOccurrence.query.filter(TaskOccurrence.task_id.in_(routine_ids)).all():
+            occ_map.setdefault(occ.task_id, set()).add(occ.period_key)
+    return occ_map
+
+
+def _task_done_at(t, day, occ_map):
+    """Task.is_done_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
+    if t.category == "routine" and t.period != "Tek Seferlik":
+        key = _period_key(t.period, day)
+        return bool(key and key in occ_map.get(t.id, set()))
+    return bool(t.is_done)
+
+
+def _task_overdue_at(t, day, occ_map):
+    """Task.is_overdue_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
+    if t.category == "routine" and t.period != "Tek Seferlik":
+        prev = _previous_period_key(t.period, day)
+        return bool(prev and prev not in occ_map.get(t.id, set()))
+    return (not t.is_done) and (t.deadline is not None) and (t.deadline < day)
+
+
 # v4.9 — Dashboard firma şeridi için aggregated özet endpoint'i.
 # IT Müdürü yönettiği her firma için tek satırlık özet (total/done/overdue/rate/sla_breach) alır.
 @app.route("/api/dashboard/firm-summary")
@@ -505,9 +560,10 @@ def dashboard_firm_summary():
     for f in firms:
         tasks = Task.query.filter(Task.firm == f.slug).all()
         total = len(tasks)
-        # v5.0 — rutin görevler için period_key bazlı anlık tamamlanma/gecikme
-        done = sum(1 for t in tasks if t.is_done_now(today=today))
-        overdue = sum(1 for t in tasks if t.is_overdue_now(today=today))
+        # v5.0 — rutin görevler için period_key bazlı anlık tamamlanma/gecikme (N+1 önlemeli)
+        occ_map = _preload_routine_occurrences(tasks)
+        done = sum(1 for t in tasks if _task_done_at(t, today, occ_map))
+        overdue = sum(1 for t in tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
         # SLA ihlali — açık destek talepleri için (resolved değil, deadline geçmiş)
         sla_breach = 0
@@ -583,11 +639,12 @@ def managed_firms_detail():
     result = []
     for f in firms:
         all_tasks = Task.query.filter(Task.firm == f.slug).all()
+        occ_map = _preload_routine_occurrences(all_tasks)
 
-        # KPI — anlık durum, periyot bağımsız (v5.0: rutin için period_key bazlı)
+        # KPI — anlık durum, periyot bağımsız (v5.0: rutin için period_key bazlı, N+1 önlemeli)
         total = len(all_tasks)
-        done = sum(1 for t in all_tasks if t.is_done_now(today=today))
-        overdue = sum(1 for t in all_tasks if t.is_overdue_now(today=today))
+        done = sum(1 for t in all_tasks if _task_done_at(t, today, occ_map))
+        overdue = sum(1 for t in all_tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
 
         # SLA ihlali — açık destek talepleri
@@ -618,7 +675,7 @@ def managed_firms_detail():
                     "month": _TR_MONTHS_SHORT[tm - 1],
                     "year": ty,
                     "total": len(month_tasks),
-                    "done": sum(1 for t in month_tasks if t.is_done_now(today=ref_dt)),
+                    "done": sum(1 for t in month_tasks if _task_done_at(t, ref_dt, occ_map)),
                 }
             )
 
@@ -702,18 +759,21 @@ def managed_firms_detail():
 
 
 # ── TASKS ──
-@app.route("/api/tasks", methods=["GET"])
-@login_required
-def get_tasks():
-    me = _current_user()
-    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
-    if err:
-        return err
-    month = request.args.get("month", date.today().month, type=int)
-    year = request.args.get("year", date.today().year, type=int)
-    firm_filter = request.args.get("firm")
-    category_filter = request.args.get("category")
+def _collect_tasks_for_month(uid, month, year, firm_filter=None, category_filter=None):
+    """Bir kullanıcının verilen ay için GÖRÜNEN görev listesini döndürür (Task objeleri).
 
+    TEK KAYNAK: /api/tasks (get_tasks), /api/report/pdf ve mail raporu artık aynı
+    görev kümesini kullanır. Önceki sürümde rapor endpoint'leri görevleri yalnızca
+    `created_at` o ay olanlarla filtreliyordu → her ay tekrar eden ve çoğu önceki
+    aylarda açılmış RUTİN görevler rapora HİÇ girmiyordu (F2.1 bug'ı). Ekrandaki
+    liste ile PDF aynı görevleri göstermeli.
+
+    Kurallar:
+      1) routine: hepsi (tamamlanma o aya özel; to_dict period_key ile hesaplar)
+      2) project: tamamlanmamışlar her ayda; tamamlanmışlar yalnızca tamamlandıkları ayda
+      3) diğer (support/infra/backup/other): o ay created/deadline + carry-over
+         (açık & önceki aylarda oluşturulmuş)
+    """
     result = []
 
     # 1) Rutin görevler: her ayın görünümünde listelenir, tamamlanma o aya özel
@@ -766,6 +826,21 @@ def get_tasks():
             oq = oq.filter_by(category=category_filter)
         result += oq.order_by(Task.created_at.desc()).all()
 
+    return result
+
+
+@app.route("/api/tasks", methods=["GET"])
+@login_required
+def get_tasks():
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err:
+        return err
+    month = request.args.get("month", date.today().month, type=int)
+    year = request.args.get("year", date.today().year, type=int)
+    firm_filter = request.args.get("firm")
+    category_filter = request.args.get("category")
+    result = _collect_tasks_for_month(uid, month, year, firm_filter, category_filter)
     return jsonify([t.to_dict(month=month, year=year) for t in result])
 
 
@@ -873,7 +948,7 @@ def update_task(task_id):
     # Sahibi veya director+ (firma bazlı) düzenleyebilir
     if task.user_id != me.id:
         owner = db.session.get(User, task.user_id)
-        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+        if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi düzenleme yetkiniz yok"}), 403
     data = request.get_json()
     if "is_done" in data:
@@ -982,7 +1057,7 @@ def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     owner = db.session.get(User, task.user_id)
     if task.user_id != me.id:
-        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+        if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi silme yetkiniz yok"}), 403
     log_audit(
         me,
@@ -1530,11 +1605,9 @@ def download_report():
     user = db.session.get(User, uid)
     month = request.args.get("month", date.today().month, type=int)
     year = request.args.get("year", date.today().year, type=int)
-    tasks = Task.query.filter(
-        Task.user_id == user.id,
-        db.extract("month", Task.created_at) == month,
-        db.extract("year", Task.created_at) == year,
-    ).all()
+    # F2.1 fix: ekrandaki liste ile aynı görev kümesi (rutinler + carry-over dahil),
+    # yalnızca created_at o ay olanlar DEĞİL.
+    tasks = _collect_tasks_for_month(user.id, month, year)
     pdf = generate_monthly_pdf(user, tasks, month, year)
     resp = send_file(
         pdf,
@@ -1557,11 +1630,8 @@ def send_report():
     user = db.session.get(User, uid)
     month = data.get("month", date.today().month)
     year = data.get("year", date.today().year)
-    tasks = Task.query.filter(
-        Task.user_id == user.id,
-        db.extract("month", Task.created_at) == month,
-        db.extract("year", Task.created_at) == year,
-    ).all()
+    # F2.1 fix: rapor PDF'i ekrandaki liste ile aynı görev kümesini kullanır.
+    tasks = _collect_tasks_for_month(user.id, month, year)
     pdf = generate_monthly_pdf(user, tasks, month, year)
     return jsonify(send_report_email(user, pdf, month, year, cc=data.get("cc"), o365_token=session.get("o365_token")))
 
@@ -1580,9 +1650,12 @@ def list_audit():
     Query: start, end (YYYY-MM-DD); action; actor_id; target_user_id; firm; limit (max 500), offset"""
     me = _current_user()
     q = AuditLog.query
-    # Firma kapsamı: super_admin tümünü görür, director sadece kendi firmasını
+    # Firma kapsamı: super_admin tümünü görür; director YÖNETTİĞİ tüm firmaları
+    # (F2.3 — eski kod yalnızca kendi firma'sını filtreliyordu, çoklu firma açığı).
     if not me.is_super_admin:
-        q = q.filter(AuditLog.firm == (me.firm or ""))
+        scope = set(me.managed_firm_slugs)
+        scope.add(me.firm or "")
+        q = q.filter(AuditLog.firm.in_(list(scope)))
     # Tarih aralığı
     start = request.args.get("start")
     end = request.args.get("end")
@@ -1727,7 +1800,7 @@ def update_task_alarm(task_id):
     task = Task.query.get_or_404(task_id)
     if task.user_id != me.id:
         owner = db.session.get(User, task.user_id)
-        if not (me.is_super_admin or (me.permission_level == "it_director" and owner and owner.firm == me.firm)):
+        if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevin alarmını düzenleme yetkiniz yok"}), 403
     data = request.get_json() or {}
     if "alarm_enabled" in data:

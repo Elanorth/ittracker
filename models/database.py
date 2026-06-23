@@ -795,52 +795,15 @@ def init_db():
         db.session.commit()
         print(f"v4.9 Migration: {backfilled} it_director için managed_firms backfill edildi")
 
-    # v5.0 Migration — task_completions -> task_occurrences (period_key formatlı).
-    # Eski TaskCompletion sadece (task_id, year, month) tutuyordu; yeni
-    # TaskOccurrence period_key="YYYY-MM" formatında saklar (Aylık varsayım).
-    # Idempotent: NOT EXISTS clause ile zaten taşınmış kayıtlar atlanır.
-    # task_completions tablosu DROP edilmez (rollback için korunur).
-    #
-    # Dialect-aware: printf() SQLite, lpad() PostgreSQL. Postgres'e geçişten
-    # sonra eski staging/prod DB'lerinde bu migration zaten çalışmış olmalı —
-    # yine de güvenli idempotent çalışsın diye iki dialect de destekleniyor.
-    try:
-        table_names = inspector.get_table_names()
-        if "task_completions" in table_names and "task_occurrences" in table_names:
-            old_count = db.session.execute(text("SELECT COUNT(*) FROM task_completions")).scalar() or 0
-            if old_count > 0:
-                dialect = db.engine.dialect.name
-                if dialect == "postgresql":
-                    # PostgreSQL: lpad() + || string concat
-                    period_expr = "lpad(tc.year::text, 4, '0') || '-' || lpad(tc.month::text, 2, '0')"
-                else:
-                    # SQLite (default fallback): printf() format
-                    period_expr = "printf('%04d-%02d', tc.year, tc.month)"
-                result = db.session.execute(
-                    text(f"""
-                    INSERT INTO task_occurrences (task_id, period_key, year, month, completed_at, completed_by)
-                    SELECT
-                        tc.task_id,
-                        {period_expr} AS period_key,
-                        tc.year,
-                        tc.month,
-                        tc.completed_at,
-                        tc.completed_by
-                    FROM task_completions tc
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM task_occurrences tox
-                        WHERE tox.task_id = tc.task_id
-                          AND tox.period_key = {period_expr}
-                    )
-                """)
-                )
-                moved = result.rowcount or 0
-                if moved > 0:
-                    db.session.commit()
-                    print(f"v5.0 Migration: {moved} TaskCompletion → TaskOccurrence taşındı")
-    except Exception as _e:
-        # Yeni kurulumda eski tablo yok — sessiz geç.
-        db.session.rollback()
+    # v5.0 Migration (task_completions → task_occurrences) KALDIRILDI — ölü kod.
+    # Neden: bu migration HİÇ çalışmadı. INSERT, task_occurrences modelinde
+    # bulunmayan `year`/`month` kolonlarına yazıyordu → her başlangıçta "no column
+    # named year" hatası verip sessizce rollback oluyordu (lokalde repro edildi).
+    # Prod incelemesinde (2026-06) kalan 14 task_completions kaydının HEPSİNİN
+    # SİLİNMİŞ görevlere ait olduğu görüldü → kurtarılacak veri yok; task_occurrences
+    # FK (task_id → tasks.id) zaten orphan insert'i engellerdi. Yeni kurulumda
+    # task_completions tablosu hiç oluşmaz. Prod'daki orphan tablo istenirse manuel
+    # `DROP TABLE task_completions;` ile temizlenebilir (v5.0 çoktan stabil).
 
     if not Firm.query.first():
         inv = Firm(name="İnventist", slug="inventist")

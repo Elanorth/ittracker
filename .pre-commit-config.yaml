@@ -29,6 +29,25 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
+  # ────── ESLint: JS no-undef (ReferenceError sınıfını yakalar) ──────
+  # v5.7'de taskRow içinde tanımsız `slaRem` kullanımı prod'da dashboard'u
+  # boşaltmıştı (ReferenceError). node --check yalnızca syntax bakar, bunu
+  # kaçırır. ESLint no-undef tanımsız değişken kullanımını deploy ÖNCESİ yakalar.
+  # CI zaten `pre-commit run --all-files` çalıştırdığı için ekstra ci.yml adımı gerekmez.
+  #
+  # NOT: mirrors-eslint yerine `local` + `language: node` kullanılıyor —
+  # mirrors-eslint yalnızca v9/v10 tag'i sunuyor (flat config zorunlu, .eslintrc.json
+  # okunmuyor). eslint@8 legacy .eslintrc.json + built-in `env`'i destekler ve
+  # pre-commit node'u kendi izole ortamına otomatik kurar (geliştiricide node şart değil).
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (no-undef)
+        entry: eslint
+        language: node
+        additional_dependencies: ["eslint@8.57.1"]
+        files: ^static/.*\.js$
+
   # ────── Gizli bilgi tarama ──────
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
