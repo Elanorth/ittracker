@@ -796,22 +796,41 @@ def init_db():
     # Migration: v5.10 — ayarlanabilir bildirim eşikleri + breach kanalı + müdür digesti.
     # Eşik kolonları bilinçli olarak NULL bırakılır (= varsayılan davranış);
     # boolean kanallar mevcut kullanıcılar için açık (1) başlar.
-    user_cols = [c["name"] for c in inspector.get_columns("users")]
+    #
+    # YARIŞA DAYANIKLI ekleme: deploy sırasında init_db İKİ process'te aynı anda
+    # çalışabiliyor (gunicorn import'u + `flask db upgrade` exec import'u). İkisi de
+    # kolonu "yok" görüp ALTER deneyince kaybeden DuplicateColumn ile patlıyordu
+    # (2026-07 staging deploy hatası). ALTER başarısız olursa rollback + TAZE
+    # inspector ile yeniden bak: kolon eklendiyse (yarışı diğeri kazandı) sorun yok;
+    # hâlâ yoksa gerçek bir hata var → yükselt.
+    def _add_user_column_race_safe(col_name, col_sql):
+        from sqlalchemy import inspect as _inspect
+
+        cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+        if col_name in cols:
+            return False
+        try:
+            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_sql}"))
+            db.session.commit()
+            print(f"Migration: {col_name} sutunu eklendi")
+            return True
+        except Exception:
+            db.session.rollback()
+            cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+            if col_name in cols:
+                return False  # eşzamanlı process ekledi — idempotent devam
+            raise
+
     for col_name, col_sql in (
         ("notify_overdue_days", "INTEGER"),
         ("notify_sla_ratio", "FLOAT"),
         ("notify_digest_hour", "INTEGER"),
     ):
-        if col_name not in user_cols:
-            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_sql}"))
-            db.session.commit()
-            print(f"Migration: {col_name} sutunu eklendi")
+        _add_user_column_race_safe(col_name, col_sql)
     for col_name in ("notify_sla_breach", "notify_manager_digest"):
-        if col_name not in user_cols:
-            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} BOOLEAN DEFAULT 1"))
+        if _add_user_column_race_safe(col_name, "BOOLEAN DEFAULT 1"):
             db.session.execute(text(f"UPDATE users SET {col_name} = 1 WHERE {col_name} IS NULL"))
             db.session.commit()
-            print(f"Migration: {col_name} sutunu eklendi")
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")
