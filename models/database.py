@@ -252,30 +252,40 @@ class Task(db.Model):
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
 
-    def is_done_now(self, today=None):
-        """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı?
+    def is_done_now(self, today=None, occ_set=None):
+        """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı? TEK KANONİK TANIM.
 
         Rutin görevler: aktif periyot için TaskOccurrence kaydı var mı?
         Diğer kategoriler: Task.is_done flag.
+
+        occ_set: bu görevin period_key kümesi önceden yüklenmişse (N+1 önlemek için)
+        buradan geçilir; verilmezse tekil sorgu yapılır. Böylece stats/firma
+        dashboard'ları gibi toplu yollar da AYNI tanımı kullanır (kopya mantık yok).
         """
         if self.category == "routine" and self.period != "Tek Seferlik":
             key = _period_key(self.period, today or _date.today())
             if not key:
                 return False
+            if occ_set is not None:
+                return key in occ_set
             return TaskOccurrence.query.filter_by(task_id=self.id, period_key=key).first() is not None
         return bool(self.is_done)
 
-    def is_overdue_now(self, today=None):
-        """v5.0 — Bu görev şu anda gecikmiş mi?
+    def is_overdue_now(self, today=None, occ_set=None):
+        """v5.0 — Bu görev şu anda gecikmiş mi? TEK KANONİK TANIM.
 
         Rutin görevler: önceki periyot için TaskOccurrence yoksa overdue.
         Diğer kategoriler: deadline geçmiş ve tamamlanmamışsa overdue.
+
+        occ_set: bkz. is_done_now — önceden yüklenmiş period_key kümesi (N+1 önler).
         """
         today = today or _date.today()
         if self.category == "routine" and self.period != "Tek Seferlik":
             prev_key = _previous_period_key(self.period, today)
             if not prev_key:
                 return False
+            if occ_set is not None:
+                return prev_key not in occ_set
             return TaskOccurrence.query.filter_by(task_id=self.id, period_key=prev_key).first() is None
         return (not self.is_done) and (self.deadline is not None) and (self.deadline < today)
 

@@ -27,8 +27,6 @@ from models.database import (
     TaskOccurrence,
     Team,
     User,
-    _period_key,
-    _previous_period_key,
     _sla_target_hours,
     db,
     init_db,
@@ -514,19 +512,17 @@ def _preload_routine_occurrences(tasks):
 
 
 def _task_done_at(t, day, occ_map):
-    """Task.is_done_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
-    if t.category == "routine" and t.period != "Tek Seferlik":
-        key = _period_key(t.period, day)
-        return bool(key and key in occ_map.get(t.id, set()))
-    return bool(t.is_done)
+    """Task.is_done_now'ın ön-yüklenmiş occ_map ile çağrısı (ek sorgu yok).
+
+    Kanonik tanım artık TEK yerde: models.database.Task.is_done_now. Bu sarmalayıcı
+    yalnızca occ_map[task_id] → occ_set adaptasyonunu yapar (N+1 önler).
+    """
+    return t.is_done_now(today=day, occ_set=occ_map.get(t.id, set()))
 
 
 def _task_overdue_at(t, day, occ_map):
-    """Task.is_overdue_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
-    if t.category == "routine" and t.period != "Tek Seferlik":
-        prev = _previous_period_key(t.period, day)
-        return bool(prev and prev not in occ_map.get(t.id, set()))
-    return (not t.is_done) and (t.deadline is not None) and (t.deadline < day)
+    """Task.is_overdue_now'ın ön-yüklenmiş occ_map ile çağrısı (ek sorgu yok)."""
+    return t.is_overdue_now(today=day, occ_set=occ_map.get(t.id, set()))
 
 
 # v4.9 — Dashboard firma şeridi için aggregated özet endpoint'i.
@@ -693,30 +689,37 @@ def managed_firms_detail():
             for c, n in sorted(cat_count.items(), key=lambda x: -x[1])
         ]
 
-        # Overdue top-3 — en eski (en kötü) önce
-        overdue_tasks = sorted(
-            [t for t in all_tasks if not t.is_done and t.deadline and t.deadline < today], key=lambda t: t.deadline
-        )
+        # Overdue top-3 — KANONİK is_overdue (rutinlerde donmuş deadline değil).
+        # Eski kod `not t.is_done and t.deadline < today` idi → rutinler is_done hiç
+        # set edilmediği için geçmiş deadline'lı TÜM rutinler yanlışlıkla listeleniyordu.
+        overdue_tasks = [t for t in all_tasks if _task_overdue_at(t, today, occ_map)]
+        # Deadline'ı olanlar tarihe göre (en kötü önce); rutinler (deadline None) sona.
+        overdue_tasks.sort(key=lambda t: t.deadline or date.max)
         overdue_top3 = []
         for t in overdue_tasks[:3]:
             owner = db.session.get(User, t.user_id) if t.user_id else None
+            is_routine = t.category == "routine" and t.period != "Tek Seferlik"
             overdue_top3.append(
                 {
                     "id": t.id,
                     "title": t.title,
-                    "deadline": t.deadline.isoformat(),
-                    "days_overdue": (today - t.deadline).days,
+                    "deadline": t.deadline.isoformat() if t.deadline else None,
+                    # Rutin: kaç periyot atlandı; diğer: kaç gün gecikti
+                    "days_overdue": (today - t.deadline).days if (t.deadline and not is_routine) else None,
+                    "overdue_periods": t.overdue_period_count(today=today) if is_routine else None,
+                    "period": t.period if is_routine else None,
                     "assigned_to": owner.full_name if owner else "—",
                 }
             )
 
-        # Kullanıcı dağılımı — max 8, açık görev sayısına göre azalan
+        # Kullanıcı dağılımı — max 8, açık görev sayısına göre azalan.
+        # KANONİK tamamlanma (rutinler is_done flag'i kullanmaz → occ_map ile).
         user_stats = {}
         for t in all_tasks:
             if not t.user_id:
                 continue
             stats = user_stats.setdefault(t.user_id, {"open": 0, "done": 0})
-            if t.is_done:
+            if _task_done_at(t, today, occ_map):
                 stats["done"] += 1
             else:
                 stats["open"] += 1
@@ -1172,22 +1175,14 @@ def stats():
 
     tasks = routines + projects + others
 
-    # v5.0 — Rutin is_done: period_key bazlı; Aylık için preload (N+1 önler).
-    from datetime import date as _date
-
-    ref_dt = _date(year, month, 15)
-    monthly_pk = f"{year:04d}-{month:02d}"
-    monthly_completed_ids = {c.task_id for c in TaskOccurrence.query.filter_by(period_key=monthly_pk).all()}
-
-    def _is_done(t):
-        if t.category == "routine" and t.period != "Tek Seferlik":
-            if t.period == "Aylık":
-                return t.id in monthly_completed_ids
-            return t.is_done_now(today=ref_dt)
-        return t.is_done
+    # v5.x — Tamamlanma/gecikme KANONİK kaynaktan (Task.is_done_now/is_overdue_now),
+    # occ_map ile N+1'siz. Referans gün: görüntülenen ay bugünün ayıysa bugün,
+    # değilse ayın 15'i (to_dict ile aynı semantik → ekran/PDF/stats birebir tutar).
+    ref_dt = date.today() if (date.today().year == year and date.today().month == month) else date(year, month, 15)
+    occ_map = _preload_routine_occurrences(tasks)
 
     total = len(tasks)
-    done = sum(1 for t in tasks if _is_done(t))
+    done = sum(1 for t in tasks if _task_done_at(t, ref_dt, occ_map))
     by_cat = {}
     by_team = {}
     by_firm = {}
@@ -1195,7 +1190,7 @@ def stats():
         by_cat[t.category] = by_cat.get(t.category, 0) + 1
         by_team[t.team] = by_team.get(t.team, 0) + 1
         by_firm[t.firm] = by_firm.get(t.firm, 0) + 1
-    overdue = sum(1 for t in tasks if not _is_done(t) and t.deadline and t.deadline < date.today())
+    overdue = sum(1 for t in tasks if _task_overdue_at(t, ref_dt, occ_map))
     return jsonify(
         {
             "total": total,
@@ -1236,23 +1231,14 @@ def _stats_for_month(uid, month, year):
         Task.user_id == uid, Task.category.notin_(["routine", "project"]), db.or_(created_match, deadline_match)
     ).all()
     tasks = routines + projects + others
-    # v5.0 — period_key bazlı _is_done; Aylık preload (N+1 önler)
-    from datetime import date as _date
-
-    ref_dt = _date(year, month, 15)
-    monthly_pk = f"{year:04d}-{month:02d}"
-    monthly_completed_ids = {c.task_id for c in TaskOccurrence.query.filter_by(period_key=monthly_pk).all()}
-
-    def _is_done(t):
-        if t.category == "routine" and t.period != "Tek Seferlik":
-            if t.period == "Aylık":
-                return t.id in monthly_completed_ids
-            return t.is_done_now(today=ref_dt)
-        return t.is_done
+    # v5.x — Kanonik tamamlanma/gecikme (Task.is_done_now/is_overdue_now), occ_map ile
+    # N+1'siz. stats() ile birebir aynı referans-gün semantiği.
+    ref_dt = date.today() if (date.today().year == year and date.today().month == month) else date(year, month, 15)
+    occ_map = _preload_routine_occurrences(tasks)
 
     total = len(tasks)
-    done = sum(1 for t in tasks if _is_done(t))
-    overdue = sum(1 for t in tasks if not _is_done(t) and t.deadline and t.deadline < date.today())
+    done = sum(1 for t in tasks if _task_done_at(t, ref_dt, occ_map))
+    overdue = sum(1 for t in tasks if _task_overdue_at(t, ref_dt, occ_map))
     return {"total": total, "done": done, "overdue": overdue, "rate": round(done / total * 100, 1) if total else 0.0}
 
 

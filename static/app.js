@@ -588,7 +588,9 @@ function renderDashboard() {
   const total   = tasks.length;
   const done    = tasks.filter(t => t.done).length;
   const pending = tasks.filter(t => !t.done).length;
-  const late    = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY).length;
+  // v5.x — "Geciken" KANONİK taskTiming()'den (rutinlerde donmuş deadline değil
+  // is_overdue; destek için SLA). Böylece KPI sayısı, alttaki "Geciken" grubuyla tutar.
+  const late    = tasks.filter(t => taskTiming(t).group === 'overdue').length;
   const backups = tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
@@ -1019,11 +1021,18 @@ function _mfCatBarsHtml(breakdown) {
 
 function _mfOverdueHtml(items) {
   if (!items.length) return '<div class="mf-overdue-empty">🎉 Geciken yok</div>';
-  return `<div class="mf-overdue-list">${items.map(o => `
+  const unit = { 'Günlük':'gün', 'Haftalık':'hafta', 'Aylık':'ay', 'Yıllık':'yıl' };
+  return `<div class="mf-overdue-list">${items.map(o => {
+    // Rutin: "N hafta atlandı"; deadline-bazlı: "Ng geç" (backend kanonik is_overdue)
+    const badge = (o.overdue_periods != null)
+      ? `${o.overdue_periods} ${unit[o.period] || 'dönem'} atlandı`
+      : `${o.days_overdue}g geç`;
+    return `
     <div class="mf-overdue-item" title="${escapeHtml(o.title)}${o.assigned_to ? ' · ' + escapeHtml(o.assigned_to) : ''}">
       <span class="mf-overdue-title">${escapeHtml(o.title)}</span>
-      <span class="mf-overdue-days">${o.days_overdue}g geç</span>
-    </div>`).join('')}</div>`;
+      <span class="mf-overdue-days">${badge}</span>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function _mfUsersHtml(users) {
@@ -2412,16 +2421,26 @@ function calGoToday() {
 }
 
 function renderDashUpcoming() {
-  const upcoming = tasks.filter(t => t.cat==='routine' && !t.done && t.deadline).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)).slice(0,4);
+  // v5.x — KANONİK taskTiming(): rutin gecikmesi donmuş deadline'dan değil
+  // is_overdue/overdue_periods'tan gelir. Geciken önce (sortKey), sonra bekleyenler.
+  const upcoming = tasks
+    .filter(t => t.cat === 'routine' && !t.done)
+    .sort((a, b) => {
+      const ta = taskTiming(a), tb = taskTiming(b);
+      const ga = ta.group === 'overdue' ? 0 : 1, gb = tb.group === 'overdue' ? 0 : 1;
+      if (ga !== gb) return ga - gb;
+      return ta.sortKey - tb.sortKey;
+    })
+    .slice(0, 4);
   const cnt = document.getElementById('dash-sched-count'); if (cnt) cnt.textContent = upcoming.length;
   const el = document.getElementById('dash-upcoming-list'); if (!el) return;
   if (!upcoming.length) { el.innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text-muted);text-align:center">Hepsi zamanında 🎉</div>'; return; }
   el.innerHTML = upcoming.map(t => {
-    const diff = Math.round((new Date(t.deadline)-new Date(TODAY))/86400000);
-    const cls  = diff<0?'late':diff<=1?'warn':'ok';
-    const txt  = diff<0?`${Math.abs(diff)}g gecikti`:diff===0?'BUGÜN':`${diff}g kaldı`;
+    const ti = taskTiming(t);
+    const cls = ti.badgeClass || 'ok';
+    const txt = ti.badgeText || (t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor');
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
-      <div style="flex:1;min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div><div style="font-size:10px;color:var(--text-muted)">${t.period} · ${t.team||''}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.title)}</div><div style="font-size:10px;color:var(--text-muted)">${t.period} · ${escapeHtml(t.team||'')}</div></div>
       <div class="dl-badge ${cls}" style="margin-left:8px;flex-shrink:0">${txt}</div>
     </div>`;
   }).join('');
@@ -3056,7 +3075,8 @@ async function runNotificationTest() {
 // ══════════════════════════════════════════════════════════
 const MONTH_TR_JS = {1:'Ocak',2:'Şubat',3:'Mart',4:'Nisan',5:'Mayıs',6:'Haziran',
                      7:'Temmuz',8:'Ağustos',9:'Eylül',10:'Ekim',11:'Kasım',12:'Aralık'};
-const CAT_LABELS_JS = {routine:'Rutin',support:'Destek',infra:'Altyapı',backup:'Config Backup',other:'Diğer'};
+// v5.x — Ayrı CAT_LABELS_JS kopyası kaldırıldı (project/task anahtarları eksikti).
+// Tek kaynak: yukarıdaki CAT_LABELS.
 
 // Alıcı mail — oturumda sakla, sayfa yenilenmesinde sıfırlanmaz
 let _reportToMail = '';
@@ -3140,7 +3160,7 @@ function renderReportStats(taskList, month, year) {
     if (!all.length) return '';
     const pct = Math.round(comp/all.length*100);
     return `<div class="progress-wrap">
-      <div class="progress-label"><span>${CAT_LABELS_JS[c]||c}</span><span style="color:${catColors[c]}">${comp}/${all.length}</span></div>
+      <div class="progress-label"><span>${CAT_LABELS[c]||c}</span><span style="color:${catColors[c]}">${comp}/${all.length}</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${catColors[c]}"></div></div>
     </div>`;
   }).join('');
