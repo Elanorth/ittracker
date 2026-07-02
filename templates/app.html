@@ -1721,7 +1721,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   <div class="topbar">
     <div>
       <div class="page-title"><span>Bildirim Ayarları</span></div>
-      <div class="page-sub">Her gün 09:00 (UTC) özet maili gönderilir · Uyarı tercihlerinizi ve test mailini buradan yönetin</div>
+      <div class="page-sub" id="notify-page-sub">Uyarı tercihlerinizi, eşiklerinizi ve test mailini buradan yönetin</div>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1100px">
@@ -1734,16 +1734,46 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </div>
         <label class="alarm-toggle" style="margin-bottom:12px;">
           <input type="checkbox" id="notify-overdue" style="margin-right:8px;">
-          <span><b>3+ gün geciken görevler</b><br><span style="color:var(--text-muted);font-size:10px">Deadline'ı veya oluşturulma tarihi 3 günü geçen, tamamlanmamış görevler</span></span>
+          <span><b>Geciken görevler</b><br><span style="color:var(--text-muted);font-size:10px">Deadline'ı eşik gün sayısını aşan, tamamlanmamış görevler (eşiği aşağıdan ayarlayın)</span></span>
         </label>
         <label class="alarm-toggle" style="margin-bottom:12px;">
           <input type="checkbox" id="notify-sla-warning" style="margin-right:8px;">
-          <span><b>SLA uyarıları</b><br><span style="color:var(--text-muted);font-size:10px">Destek taleplerinde kalan süre ≤ %25'e düştüğünde veya aşıldığında</span></span>
+          <span><b>SLA yaklaşıyor</b><br><span style="color:var(--text-muted);font-size:10px">Destek taleplerinde kalan süre uyarı eşiğinin altına düştüğünde</span></span>
         </label>
-        <label class="alarm-toggle" style="margin-bottom:18px;">
+        <label class="alarm-toggle" style="margin-bottom:12px;">
+          <input type="checkbox" id="notify-sla-breach" style="margin-right:8px;">
+          <span><b>SLA aşıldı (anında)</b><br><span style="color:var(--text-muted);font-size:10px">SLA aşımı saatlik kontrolle tespit edilir edilmez mail gönderilir — digest saatini beklemez</span></span>
+        </label>
+        <label class="alarm-toggle" style="margin-bottom:12px;">
           <input type="checkbox" id="notify-daily-digest" style="margin-right:8px;">
-          <span><b>Günlük özet maili</b><br><span style="color:var(--text-muted);font-size:10px">Yukarıdaki uyarıların günde bir defa toplu e-posta olarak iletilmesi</span></span>
+          <span><b>Günlük özet maili</b><br><span style="color:var(--text-muted);font-size:10px">Uyarıların günde bir defa, seçtiğiniz saatte toplu e-posta olarak iletilmesi</span></span>
         </label>
+        <label class="alarm-toggle" id="notify-manager-group" style="margin-bottom:16px;display:none;">
+          <input type="checkbox" id="notify-manager-digest" style="margin-right:8px;">
+          <span><b>Ekip özeti (yönetilen firmalar)</b><br><span style="color:var(--text-muted);font-size:10px">Yönettiğiniz firmalardaki geciken görevler ve SLA aşımlarının günlük toplu özeti</span></span>
+        </label>
+
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:16px">
+          <div style="font-size:10px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Eşikler &amp; Zamanlama</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <label for="notify-overdue-days" style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px">Gecikme eşiği (gün)</label>
+              <input type="number" id="notify-overdue-days" min="1" max="30" step="1" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:7px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace">
+            </div>
+            <div>
+              <label for="notify-sla-ratio" style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px">SLA uyarı eşiği</label>
+              <select id="notify-sla-ratio" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:7px 10px;font-size:12px">
+                <option value="0.1">Kalan %10</option>
+                <option value="0.25">Kalan %25</option>
+                <option value="0.5">Kalan %50</option>
+              </select>
+            </div>
+            <div>
+              <label for="notify-digest-hour" style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px">Digest saati <span id="notify-tz-label"></span></label>
+              <select id="notify-digest-hour" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:7px 10px;font-size:12px"></select>
+            </div>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="saveNotificationSettings()">Kaydet</button>
         </div>

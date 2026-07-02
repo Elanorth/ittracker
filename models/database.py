@@ -40,9 +40,17 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # v4.6 — Bildirim tercihleri
-    notify_overdue = db.Column(db.Boolean, default=True)  # 3+ gün geciken görevler
-    notify_sla_warning = db.Column(db.Boolean, default=True)  # SLA %75 eşiğine yaklaşan destek talepleri
+    notify_overdue = db.Column(db.Boolean, default=True)  # geciken görevler (eşik: notify_overdue_days)
+    notify_sla_warning = db.Column(db.Boolean, default=True)  # SLA eşiğine yaklaşan destek talepleri
     notify_daily_digest = db.Column(db.Boolean, default=True)  # günlük özet maili
+    # v5.10 — Ayarlanabilir bildirim eşikleri + ayrı breach kanalı + müdür digesti.
+    # NULL = varsayılan (notifier tarafında effective_* helper'ları çözer) — böylece
+    # mevcut prod satırları migration sonrası davranış değiştirmez.
+    notify_overdue_days = db.Column(db.Integer, nullable=True)  # gecikme eşiği gün (default 3)
+    notify_sla_ratio = db.Column(db.Float, nullable=True)  # SLA uyarı oranı (default 0.25)
+    notify_digest_hour = db.Column(db.Integer, nullable=True)  # digest saati 0-23 (default NOTIFY_HOUR/9)
+    notify_sla_breach = db.Column(db.Boolean, default=True)  # SLA AŞILDI — 'yaklaştı'dan ayrı kanal
+    notify_manager_digest = db.Column(db.Boolean, default=True)  # director+: yönetilen firma özeti
     # v4.3 — Task'ta iki FK var (user_id sahip, assigned_by atayan). Sahip ilişkisini belirt.
     tasks = db.relationship("Task", backref="user", lazy=True, foreign_keys="Task.user_id")
     assigned_tasks = db.relationship("Task", lazy=True, foreign_keys="Task.assigned_by")
@@ -117,6 +125,13 @@ class User(db.Model):
             "notify_overdue": bool(self.notify_overdue) if self.notify_overdue is not None else True,
             "notify_sla_warning": bool(self.notify_sla_warning) if self.notify_sla_warning is not None else True,
             "notify_daily_digest": bool(self.notify_daily_digest) if self.notify_daily_digest is not None else True,
+            "notify_sla_breach": bool(self.notify_sla_breach) if self.notify_sla_breach is not None else True,
+            "notify_manager_digest": (
+                bool(self.notify_manager_digest) if self.notify_manager_digest is not None else True
+            ),
+            "notify_overdue_days": self.notify_overdue_days,  # None = varsayılan (3)
+            "notify_sla_ratio": self.notify_sla_ratio,  # None = varsayılan (0.25)
+            "notify_digest_hour": self.notify_digest_hour,  # None = varsayılan (NOTIFY_HOUR)
             "o365_linked": bool(self.o365_id),
             "created_at": self.created_at.isoformat(),
         }
@@ -772,6 +787,26 @@ def init_db():
     # Migration: v4.6 — bildirim tercihleri
     user_cols = [c["name"] for c in inspector.get_columns("users")]
     for col_name in ("notify_overdue", "notify_sla_warning", "notify_daily_digest"):
+        if col_name not in user_cols:
+            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} BOOLEAN DEFAULT 1"))
+            db.session.execute(text(f"UPDATE users SET {col_name} = 1 WHERE {col_name} IS NULL"))
+            db.session.commit()
+            print(f"Migration: {col_name} sutunu eklendi")
+
+    # Migration: v5.10 — ayarlanabilir bildirim eşikleri + breach kanalı + müdür digesti.
+    # Eşik kolonları bilinçli olarak NULL bırakılır (= varsayılan davranış);
+    # boolean kanallar mevcut kullanıcılar için açık (1) başlar.
+    user_cols = [c["name"] for c in inspector.get_columns("users")]
+    for col_name, col_sql in (
+        ("notify_overdue_days", "INTEGER"),
+        ("notify_sla_ratio", "FLOAT"),
+        ("notify_digest_hour", "INTEGER"),
+    ):
+        if col_name not in user_cols:
+            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_sql}"))
+            db.session.commit()
+            print(f"Migration: {col_name} sutunu eklendi")
+    for col_name in ("notify_sla_breach", "notify_manager_digest"):
         if col_name not in user_cols:
             db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} BOOLEAN DEFAULT 1"))
             db.session.execute(text(f"UPDATE users SET {col_name} = 1 WHERE {col_name} IS NULL"))

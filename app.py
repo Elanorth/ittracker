@@ -32,7 +32,7 @@ from models.database import (
     init_db,
 )
 from services.mailer import send_invite_email, send_report_email
-from services.notifier import collect_user_alerts, run_digest_job
+from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
 from services.report import generate_monthly_pdf
 from services.storage import save_backup_file
 
@@ -1799,14 +1799,24 @@ def update_task_alarm(task_id):
 @login_required
 def get_notification_settings():
     me = _current_user()
+    from services.notifier import effective_digest_hour, effective_overdue_days, effective_sla_ratio
+
+    tz_name = os.environ.get("SCHEDULER_TZ", "UTC")
+    digest_hour = effective_digest_hour(me)
     return jsonify(
         {
             "notify_overdue": bool(me.notify_overdue) if me.notify_overdue is not None else True,
             "notify_sla_warning": bool(me.notify_sla_warning) if me.notify_sla_warning is not None else True,
             "notify_daily_digest": bool(me.notify_daily_digest) if me.notify_daily_digest is not None else True,
-            "overdue_days": 3,
-            "sla_warning_ratio": 0.25,
-            "schedule": "Her gün 09:00 (UTC)",
+            # v5.10 — ayrı breach kanalı + müdür digesti + ayarlanabilir eşikler
+            "notify_sla_breach": bool(me.notify_sla_breach) if me.notify_sla_breach is not None else True,
+            "notify_manager_digest": (bool(me.notify_manager_digest) if me.notify_manager_digest is not None else True),
+            "overdue_days": effective_overdue_days(me),
+            "sla_warning_ratio": effective_sla_ratio(me),
+            "digest_hour": digest_hour,
+            "timezone": tz_name,
+            "is_director": me.is_director_or_above,
+            "schedule": f"Her gün {digest_hour:02d}:00 ({tz_name})",
         }
     )
 
@@ -1816,16 +1826,55 @@ def get_notification_settings():
 def update_notification_settings():
     me = _current_user()
     data = request.get_json() or {}
-    for field in ("notify_overdue", "notify_sla_warning", "notify_daily_digest"):
+    bool_fields = (
+        "notify_overdue",
+        "notify_sla_warning",
+        "notify_daily_digest",
+        "notify_sla_breach",
+        "notify_manager_digest",
+    )
+    for field in bool_fields:
         if field in data:
             setattr(me, field, bool(data[field]))
+    # v5.10 — ayarlanabilir eşikler; aralık dışı değer 400 döner (sessiz clamp yok)
+    if "notify_overdue_days" in data:
+        try:
+            v = int(data["notify_overdue_days"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Gecikme eşiği sayı olmalı"}), 400
+        if not 1 <= v <= 30:
+            return jsonify({"error": "Gecikme eşiği 1-30 gün aralığında olmalı"}), 400
+        me.notify_overdue_days = v
+    if "notify_sla_ratio" in data:
+        try:
+            r = float(data["notify_sla_ratio"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "SLA oranı sayı olmalı"}), 400
+        if not 0.05 <= r <= 0.9:
+            return jsonify({"error": "SLA uyarı oranı 0.05-0.90 aralığında olmalı"}), 400
+        me.notify_sla_ratio = r
+    if "notify_digest_hour" in data:
+        try:
+            h = int(data["notify_digest_hour"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Digest saati sayı olmalı"}), 400
+        if not 0 <= h <= 23:
+            return jsonify({"error": "Digest saati 0-23 aralığında olmalı"}), 400
+        me.notify_digest_hour = h
     db.session.commit()
+    from services.notifier import effective_digest_hour, effective_overdue_days, effective_sla_ratio
+
     return jsonify(
         {
             "ok": True,
             "notify_overdue": bool(me.notify_overdue),
             "notify_sla_warning": bool(me.notify_sla_warning),
             "notify_daily_digest": bool(me.notify_daily_digest),
+            "notify_sla_breach": bool(me.notify_sla_breach),
+            "notify_manager_digest": bool(me.notify_manager_digest),
+            "overdue_days": effective_overdue_days(me),
+            "sla_warning_ratio": effective_sla_ratio(me),
+            "digest_hour": effective_digest_hour(me),
         }
     )
 
@@ -1995,30 +2044,48 @@ def start_scheduler():
         print("[scheduler] apscheduler kurulu değil — bildirimler pasif")
         return
 
-    hour = int(os.environ.get("NOTIFY_HOUR", "9"))
     minute = int(os.environ.get("NOTIFY_MINUTE", "0"))
 
+    sch = BackgroundScheduler(daemon=True, timezone=os.environ.get("SCHEDULER_TZ", "UTC"))
+    tz_obj = sch.timezone  # scheduler'ın çözümlenmiş timezone objesi — job içinde saat bunun üzerinden
+
+    # v5.10 — Saatlik tek job: her saat başı (NOTIFY_MINUTE dakikasında) çalışır.
+    #   1) Digest saati o saate denk gelen kullanıcılara kişisel (+müdür) digest.
+    #      Eski model tüm kullanıcılar için sabit NOTIFY_HOUR idi; artık kullanıcı
+    #      bazlı notify_digest_hour (NULL → NOTIFY_HOUR varsayılanı, geriye dönük aynı).
+    #   2) SLA breach kontrolü: yeni breach'ler digest saati beklemeden bildirilir
+    #      (4 saatlik SLA'da günlük digest çok geç kalıyordu). Anti-spam last_notified.
     def _job_wrapper():
         with app.app_context():
+            current_hour = datetime.now(tz_obj).hour
             try:
-                rep = run_digest_job()
-                print(f"[scheduler] digest job tamamlandı: {rep.get('users_processed', 0)} kullanıcı")
+                rep = run_digest_job(digest_hour=current_hour)
+                if rep.get("users_processed"):
+                    print(f"[scheduler] digest ({current_hour:02d}:00): {rep['users_processed']} kullanıcı")
             except Exception as e:
                 print(f"[scheduler] digest job HATA: {e}")
+            try:
+                brep = run_breach_check()
+                if brep.get("results"):
+                    print(f"[scheduler] breach check: {len(brep['results'])} kullanıcıya bildirim")
+            except Exception as e:
+                print(f"[scheduler] breach check HATA: {e}")
 
-    sch = BackgroundScheduler(daemon=True, timezone=os.environ.get("SCHEDULER_TZ", "UTC"))
     sch.add_job(
         _job_wrapper,
         "cron",
-        hour=hour,
         minute=minute,
-        id="daily_digest",
+        id="hourly_notify",
         replace_existing=True,
         misfire_grace_time=3600,
     )
     sch.start()
     _scheduler = sch
-    print(f"[scheduler] günlük digest planlandı: {hour:02d}:{minute:02d} ({sch.timezone})")
+    default_h = int(os.environ.get("NOTIFY_HOUR", "9"))
+    print(
+        f"[scheduler] saatlik bildirim job'u planlandı "
+        f"(dk {minute:02d}, digest default {default_h:02d}:00, {sch.timezone})"
+    )
 
 
 if __name__ == "__main__":
