@@ -2990,25 +2990,57 @@ async function loadNotificationsPage() {
   // Preview alanını temizle
   const box = document.getElementById('notify-preview');
   if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  // v5.10 — Digest saati dropdown'unu doldur (00:00–23:00)
+  const hourSel = document.getElementById('notify-digest-hour');
+  if (hourSel && !hourSel.options.length) {
+    hourSel.innerHTML = Array.from({length: 24}, (_, h) =>
+      `<option value="${h}">${String(h).padStart(2,'0')}:00</option>`).join('');
+  }
   try {
     const nRes = await fetch('/api/notifications/settings');
     if (!nRes.ok) return;
     const n = await nRes.json();
     const o = document.getElementById('notify-overdue');
     const s = document.getElementById('notify-sla-warning');
+    const b = document.getElementById('notify-sla-breach');
     const d = document.getElementById('notify-daily-digest');
+    const m = document.getElementById('notify-manager-digest');
     if (o) o.checked = !!n.notify_overdue;
     if (s) s.checked = !!n.notify_sla_warning;
+    if (b) b.checked = !!n.notify_sla_breach;
     if (d) d.checked = !!n.notify_daily_digest;
+    if (m) m.checked = !!n.notify_manager_digest;
+    // Müdür digesti yalnızca director+ kullanıcıya görünür
+    const mGroup = document.getElementById('notify-manager-group');
+    if (mGroup) mGroup.style.display = n.is_director ? '' : 'none';
+    // Eşikler
+    const days = document.getElementById('notify-overdue-days');
+    if (days) days.value = n.overdue_days ?? 3;
+    const ratio = document.getElementById('notify-sla-ratio');
+    if (ratio) ratio.value = String(n.sla_warning_ratio ?? 0.25);
+    if (hourSel) hourSel.value = String(n.digest_hour ?? 9);
+    const tzLabel = document.getElementById('notify-tz-label');
+    if (tzLabel) tzLabel.textContent = n.timezone ? `(${n.timezone})` : '';
+    const sub = document.getElementById('notify-page-sub');
+    if (sub && n.schedule) sub.textContent = `Özet maili: ${n.schedule} · Uyarı tercihlerinizi ve test mailini buradan yönetin`;
   } catch(e) { console.warn('Bildirim ayarları yüklenemedi:', e); }
 }
 
 async function saveNotificationSettings() {
   const body = {
-    notify_overdue:      document.getElementById('notify-overdue')?.checked ?? true,
-    notify_sla_warning:  document.getElementById('notify-sla-warning')?.checked ?? true,
-    notify_daily_digest: document.getElementById('notify-daily-digest')?.checked ?? true,
+    notify_overdue:        document.getElementById('notify-overdue')?.checked ?? true,
+    notify_sla_warning:    document.getElementById('notify-sla-warning')?.checked ?? true,
+    notify_sla_breach:     document.getElementById('notify-sla-breach')?.checked ?? true,
+    notify_daily_digest:   document.getElementById('notify-daily-digest')?.checked ?? true,
+    notify_manager_digest: document.getElementById('notify-manager-digest')?.checked ?? true,
   };
+  // v5.10 — eşikler (geçersiz/boş değer gönderilmez → backend mevcut değeri korur)
+  const days = parseInt(document.getElementById('notify-overdue-days')?.value, 10);
+  if (!Number.isNaN(days)) body.notify_overdue_days = days;
+  const ratio = parseFloat(document.getElementById('notify-sla-ratio')?.value);
+  if (!Number.isNaN(ratio)) body.notify_sla_ratio = ratio;
+  const hour = parseInt(document.getElementById('notify-digest-hour')?.value, 10);
+  if (!Number.isNaN(hour)) body.notify_digest_hour = hour;
   try {
     const r = await fetch('/api/notifications/settings', {
       method: 'PATCH',
@@ -3018,6 +3050,8 @@ async function saveNotificationSettings() {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Kaydedilemedi');
     showToast('ok', 'Bildirim tercihleri kaydedildi');
+    // Subtitle'daki saat/eşik bilgisini tazele
+    loadNotificationsPage();
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
   }
