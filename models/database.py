@@ -827,9 +827,13 @@ def init_db():
         ("notify_digest_hour", "INTEGER"),
     ):
         _add_user_column_race_safe(col_name, col_sql)
+    # NOT: Postgres BOOLEAN kolonuna DEFAULT 1 kabul etmez ("default expression is
+    # of type integer") — TRUE kullanılmalı. SQLite de TRUE'yu tanır (3.23+ alias),
+    # yani her iki backend'de çalışır. Eski v4.6 blokları DEFAULT 1 ile kaldı çünkü
+    # o kolonlar SQLite döneminde eklendi ve artık her ortamda mevcut (idempotent skip).
     for col_name in ("notify_sla_breach", "notify_manager_digest"):
-        if _add_user_column_race_safe(col_name, "BOOLEAN DEFAULT 1"):
-            db.session.execute(text(f"UPDATE users SET {col_name} = 1 WHERE {col_name} IS NULL"))
+        if _add_user_column_race_safe(col_name, "BOOLEAN DEFAULT TRUE"):
+            db.session.execute(text(f"UPDATE users SET {col_name} = TRUE WHERE {col_name} IS NULL"))
             db.session.commit()
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
