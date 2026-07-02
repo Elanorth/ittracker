@@ -27,8 +27,6 @@ from models.database import (
     TaskOccurrence,
     Team,
     User,
-    _period_key,
-    _previous_period_key,
     _sla_target_hours,
     db,
     init_db,
