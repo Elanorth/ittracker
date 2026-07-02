@@ -2039,7 +2039,10 @@ if __name__ == "__main__":
     # Debug modunda reloader iki process çalıştırır — sadece ikinci (main) process
     # init_db + scheduler çalıştırmalı. WERKZEUG_RUN_MAIN sadece reloader child'ında set olur.
     is_reloader_parent = os.environ.get("WERKZEUG_RUN_MAIN") != "true"
-    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    # Varsayılan KAPALI (0). Debugger'ı yalnızca yerel geliştirmede FLASK_DEBUG=1
+    # ile açın. Prod/staging gunicorn kullanır (Dockerfile) ve bu yola hiç girmez;
+    # bu satır "biri prod'da elle python app.py çalıştırırsa" kalkanıdır.
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     if not (debug_mode and is_reloader_parent):
         with app.app_context():
             init_db()
