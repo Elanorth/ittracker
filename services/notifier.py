@@ -247,9 +247,7 @@ def collect_manager_summary(director, now=None):
             if days_late is not None and days_late >= OVERDUE_DAYS:
                 overdue.append(_task_summary(t, {"owner": owner_name, "days_late": days_late}))
         if overdue or breached:
-            summary.append(
-                {"firm": f.slug, "firm_name": f.name, "overdue": overdue[:10], "breached": breached[:10]}
-            )
+            summary.append({"firm": f.slug, "firm_name": f.name, "overdue": overdue[:10], "breached": breached[:10]})
     return summary
 
 
@@ -377,9 +375,7 @@ def run_breach_check(dry_run=False):
             remaining_h, is_breached, target_h = sla_info
             if is_breached:
                 breached.append(
-                    _task_summary(
-                        t, {"sla_remaining_hours": round(remaining_h, 2), "sla_target_hours": target_h}
-                    )
+                    _task_summary(t, {"sla_remaining_hours": round(remaining_h, 2), "sla_target_hours": target_h})
                 )
         if not breached:
             continue

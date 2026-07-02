@@ -1810,9 +1810,7 @@ def get_notification_settings():
             "notify_daily_digest": bool(me.notify_daily_digest) if me.notify_daily_digest is not None else True,
             # v5.10 — ayrı breach kanalı + müdür digesti + ayarlanabilir eşikler
             "notify_sla_breach": bool(me.notify_sla_breach) if me.notify_sla_breach is not None else True,
-            "notify_manager_digest": (
-                bool(me.notify_manager_digest) if me.notify_manager_digest is not None else True
-            ),
+            "notify_manager_digest": (bool(me.notify_manager_digest) if me.notify_manager_digest is not None else True),
             "overdue_days": effective_overdue_days(me),
             "sla_warning_ratio": effective_sla_ratio(me),
             "digest_hour": digest_hour,
