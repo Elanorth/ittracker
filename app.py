@@ -78,7 +78,16 @@ if _SENTRY_DSN:
         pass  # sentry_sdk yoksa veya init başarısız olursa uygulamayı durdurma
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
+# SECRET_KEY zorunlu — sabit fallback ile oturum çerezleri sahtelenebilirdi.
+# Yalnızca FLASK_DEBUG=1 (yerel geliştirme) iken sabit dev anahtarına düşer;
+# prod/staging'de eksikse uygulama ADMIN_PASSWORD gibi açık hatayla durur.
+_secret_key = os.environ.get("SECRET_KEY", "")
+if not _secret_key:
+    if os.environ.get("FLASK_DEBUG", "0") == "1":
+        _secret_key = "dev-secret-change-in-prod"  # pragma: allowlist secret
+    else:
+        raise RuntimeError("SECRET_KEY ortam değişkeni ayarlanmamış! .env dosyasını kontrol edin.")
+app.secret_key = _secret_key
 
 # Nginx reverse proxy arkasında HTTPS ve gerçek IP'yi doğru al
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -322,6 +331,50 @@ def service_worker():
     return resp
 
 
+# ── /login brute-force koruması ──
+# Basit bellek-içi kayan pencere: (ip, username) başına 15 dakikada 5 başarısız
+# deneme → 429. gunicorn tek worker (bkz. Dockerfile) olduğu için process-yerel
+# sözlük yeterli; worker sayısı artarsa paylaşımlı store (redis vb.) gerekir.
+_LOGIN_FAILS: dict = {}
+_LOGIN_MAX_FAILS = 5
+_LOGIN_WINDOW_SEC = 900
+
+
+def _login_rate_limited(ip, username):
+    import time as _time
+
+    key = (ip, username)
+    stamps = _LOGIN_FAILS.get(key)
+    if not stamps:
+        return False
+    now = _time.time()
+    stamps[:] = [t for t in stamps if now - t < _LOGIN_WINDOW_SEC]
+    if not stamps:
+        _LOGIN_FAILS.pop(key, None)
+        return False
+    return len(stamps) >= _LOGIN_MAX_FAILS
+
+
+def _register_login_fail(ip, username):
+    import time as _time
+
+    # Sınırsız büyümeyi engelle: kaba tavan — eski kayıtları topluca at
+    if len(_LOGIN_FAILS) > 1000:
+        _LOGIN_FAILS.clear()
+    _LOGIN_FAILS.setdefault((ip, username), []).append(_time.time())
+
+
+@app.after_request
+def _security_headers(resp):
+    """Temel güvenlik başlıkları. CSP bilinçli olarak YOK — arayüz inline
+    onclick/style kullanıyor; CSP ancak app.js event-listener refactor'ından
+    sonra eklenebilir."""
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    return resp
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -331,6 +384,12 @@ def login():
             data = request.form
         username = (data.get("username") or "").strip().lower()
         password = data.get("password") or ""
+        client_ip = request.remote_addr or "?"
+        if _login_rate_limited(client_ip, username):
+            msg = "Çok fazla başarısız deneme — 15 dakika sonra tekrar deneyin"
+            if request.is_json:
+                return jsonify({"ok": False, "error": msg}), 429
+            return render_template("login.html", admin_mode=True, error=msg), 429
         # Sadece admin kullanıcı local girişe izin verilir.
         # ALLOW_DEMO_LOGIN=1 ortam değişkeni varsa `demo_` prefix'li kullanıcılar da
         # password ile girebilir — sadece staging için (prod .env'de açılmamalı).
@@ -339,6 +398,7 @@ def login():
         allow_demo = os.environ.get("ALLOW_DEMO_LOGIN", "").lower() in ("1", "true", "yes")
         is_demo_user = allow_demo and username.startswith("demo_")
         if username != admin_username and not is_demo_user:
+            _register_login_fail(client_ip, username)
             if request.is_json:
                 return jsonify({"ok": False, "error": "Lütfen Microsoft 365 ile giriş yapın"}), 403
             return render_template(
@@ -346,10 +406,12 @@ def login():
             )
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
+            _LOGIN_FAILS.pop((client_ip, username), None)  # başarılı giriş sayacı sıfırlar
             session["user_id"] = user.id
             if request.is_json:
                 return jsonify({"ok": True, "user": user.to_dict()})
             return redirect(url_for("dashboard"))
+        _register_login_fail(client_ip, username)
         if request.is_json:
             return jsonify({"ok": False, "error": "Hatalı kullanıcı adı veya şifre"}), 401
         return render_template("login.html", admin_mode=True, error="Hatalı kullanıcı adı veya şifre")
@@ -906,7 +968,11 @@ def create_task():
     db.session.add(task)
     db.session.flush()
     if backup_file and backup_file.filename:
-        fp = save_backup_file(backup_file, task.id, target_uid)
+        try:
+            fp = save_backup_file(backup_file, task.id, target_uid)
+        except ValueError as e:  # izin verilmeyen dosya uzantısı — görev de kaydedilmez
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 400
         db.session.add(
             ConfigBackup(
                 task_id=task.id,
@@ -1124,7 +1190,10 @@ def add_task_backup(task_id):
     backup_file = request.files.get("backup_file")
     if not backup_file or not backup_file.filename:
         return jsonify({"error": "Dosya seçilmedi"}), 400
-    fp = save_backup_file(backup_file, task.id, session["user_id"])
+    try:
+        fp = save_backup_file(backup_file, task.id, session["user_id"])
+    except ValueError as e:  # izin verilmeyen dosya uzantısı
+        return jsonify({"error": str(e)}), 400
     b = ConfigBackup(
         filename=backup_file.filename,
         file_path=fp,
