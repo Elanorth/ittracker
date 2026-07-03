@@ -952,16 +952,12 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
   <div class="grid-2">
     <div class="card">
-      <div class="card-header"><div class="card-title">HAFTALIK YÜKLENME</div></div>
+      <div class="card-header"><div class="card-title">SON 5 GÜN · AÇILAN / TAMAMLANAN</div></div>
       <div class="card-body">
         <div class="bar-chart" id="bar-chart"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 2px">
-          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">PAZARTESİ</span>
-          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">SALI</span>
-          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">ÇARŞAMBA</span>
-          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">PERŞEMBE</span>
-          <span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">CUMA</span>
-        </div>
+        <!-- Gün etiketleri artık renderBars() içinde dinamik üretilir (kayan 5 gün);
+             eski statik PAZARTESİ..CUMA etiketleri yalnızca cuma günleri doğruydu. -->
+        <div id="bar-chart-labels" style="display:flex;justify-content:space-between;margin-top:6px;padding:0 2px"></div>
       </div>
     </div>
     <div class="card">
@@ -1394,7 +1390,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <!-- ─── MAIL HATA MODAL ─── -->
 <div id="mail-error-modal" class="modal-overlay hidden">
-  <div class="modal" style="width:560px">
+  <div class="modal" style="width:560px" role="dialog" aria-modal="true" aria-labelledby="mail-error-title">
     <div class="modal-title" id="mail-error-title">📧 Mail Gönderim Sonucu</div>
     <div id="mail-error-body" style="font-size:13px;line-height:1.7;margin-bottom:16px;white-space:pre-wrap"></div>
     <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text-muted)" id="mail-error-hint" style="display:none"></div>
@@ -1859,7 +1855,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <!-- ─── BOARD CARD DETAIL MODAL ─── -->
 <div id="board-card-modal" class="modal-overlay hidden">
-  <div class="modal board-detail">
+  <div class="modal board-detail" role="dialog" aria-modal="true" aria-label="Kart detayı">
     <input type="hidden" id="bcard-id">
     <input type="hidden" id="bcard-mode" value="create">
     <div class="bd-section">
@@ -1927,7 +1923,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <!-- ─── EDIT TASK MODAL ─── -->
 <div id="edit-task-modal" class="modal-overlay hidden">
-  <div class="modal" style="width:560px">
+  <div class="modal" style="width:560px" role="dialog" aria-modal="true" aria-label="Görevi düzenle">
     <div class="modal-title">&#9998; Görevi Düzenle</div>
     <input type="hidden" id="edit-task-id">
     <div class="form-group" style="margin-bottom:12px">
@@ -2039,7 +2035,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <!-- ─── EDIT USER MODAL ─── -->
 <div id="edit-user-modal" class="modal-overlay hidden">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Kullanıcı düzenle">
     <div class="modal-title">&#9998; Kullanıcı Düzenle</div>
     <input type="hidden" id="edit-user-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
@@ -2104,7 +2100,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <!-- ─── INVITE MODAL ─── -->
 <div id="invite-modal" class="modal-overlay hidden">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Kullanıcı davet et">
     <div class="modal-title">✉ Kullanıcı Davet Et</div>
     <div class="form-group" style="margin-bottom:12px"><label>Ad Soyad</label><input class="form-control" id="inv-name" placeholder="Ahmet Yılmaz"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Mail Adresi</label><input class="form-control" id="inv-email" placeholder="ahmet@inventist.com"></div>
