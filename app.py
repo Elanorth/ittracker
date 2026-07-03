@@ -84,7 +84,7 @@ app = Flask(__name__)
 _secret_key = os.environ.get("SECRET_KEY", "")
 if not _secret_key:
     if os.environ.get("FLASK_DEBUG", "0") == "1":
-        _secret_key = "dev-secret-change-in-prod"
+        _secret_key = "dev-secret-change-in-prod"  # pragma: allowlist secret
     else:
         raise RuntimeError("SECRET_KEY ortam değişkeni ayarlanmamış! .env dosyasını kontrol edin.")
 app.secret_key = _secret_key
