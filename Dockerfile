@@ -39,6 +39,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Builder'da kurulmuş Python paketlerini al (/install → /usr/local)
 COPY --from=builder /install /usr/local
 
+# print() çıktıları tamponlanmadan docker logs'a düşsün. Yoksa scheduler/migration
+# satırları buffer'da bekliyor ve `docker compose logs` boş görünüyor (2026-07'de
+# SCHEDULER_TZ doğrulaması bu yüzden loglardan yapılamadı, printenv gerekti).
+ENV PYTHONUNBUFFERED=1
+
 COPY . .
 
 # Backup ve instance klasörleri
