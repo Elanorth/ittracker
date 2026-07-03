@@ -190,7 +190,7 @@ async function initFirmUserFilter() {
     // Options: kendim + diğer kullanıcılar (kendisini ayrı kategori "kendim" olarak sunuyoruz)
     const others = firmUsers.filter(u => u.id !== currentUser.id);
     sel.innerHTML = '<option value="">— Kendim —</option>' +
-      others.map(u => `<option value="${u.id}">${u.full_name}${u.firm ? ' · '+u.firm : ''}</option>`).join('');
+      others.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}${u.firm ? ' · '+escapeHtml(u.firm) : ''}</option>`).join('');
     wrap.style.display = others.length ? 'flex' : 'none';
     refreshAssignModeUI();
   } catch(e) { console.warn('firm users yüklenemedi', e); }
@@ -481,12 +481,17 @@ function showPage(name, opts = {}) {
   // sayfaya giden ama ayrı item'lar için). Yoksa eski onclick-regex geri uyumlu.
   const activeNav = opts.activeNav || name;
   document.querySelectorAll('.nav-item').forEach(n => {
+    let isActive;
     if (n.dataset.nav) {
-      n.classList.toggle('active', n.dataset.nav === activeNav);
+      isActive = n.dataset.nav === activeNav;
     } else {
       const m = (n.getAttribute('onclick') || '').match(/showPage\(['"]([^'"]+)['"]/);
-      n.classList.toggle('active', !!(m && m[1] === activeNav));
+      isActive = !!(m && m[1] === activeNav);
     }
+    n.classList.toggle('active', isActive);
+    // a11y — ekran okuyucular için aktif sayfa işareti (CSS class'a ek)
+    if (isActive) n.setAttribute('aria-current', 'page');
+    else n.removeAttribute('aria-current');
   });
   if (name==='dashboard') renderDashboard();
   if (name==='tasks') {
@@ -588,7 +593,9 @@ function renderDashboard() {
   const total   = tasks.length;
   const done    = tasks.filter(t => t.done).length;
   const pending = tasks.filter(t => !t.done).length;
-  const late    = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY).length;
+  // v5.x — "Geciken" KANONİK taskTiming()'den (rutinlerde donmuş deadline değil
+  // is_overdue; destek için SLA). Böylece KPI sayısı, alttaki "Geciken" grubuyla tutar.
+  const late    = tasks.filter(t => taskTiming(t).group === 'overdue').length;
   const backups = tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
@@ -771,8 +778,8 @@ function renderFirmBars() {
       <div class="progress-wrap" role="button" tabindex="0" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background .15s"
            onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''"
            onclick="showTasksWithFirm('${safe}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTasksWithFirm('${safe}')}"
-           title="${name} firmasının görevlerini gör">
-        <div class="progress-label"><span>${name}</span><span style="color:${colors[i]}">${n} görev · %${pct}</span></div>
+           title="${escapeHtml(name)} firmasının görevlerini gör">
+        <div class="progress-label"><span>${escapeHtml(name)}</span><span style="color:${colors[i]}">${n} görev · %${pct}</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
       </div>`;
   }).join('');
@@ -1019,11 +1026,18 @@ function _mfCatBarsHtml(breakdown) {
 
 function _mfOverdueHtml(items) {
   if (!items.length) return '<div class="mf-overdue-empty">🎉 Geciken yok</div>';
-  return `<div class="mf-overdue-list">${items.map(o => `
+  const unit = { 'Günlük':'gün', 'Haftalık':'hafta', 'Aylık':'ay', 'Yıllık':'yıl' };
+  return `<div class="mf-overdue-list">${items.map(o => {
+    // Rutin: "N hafta atlandı"; deadline-bazlı: "Ng geç" (backend kanonik is_overdue)
+    const badge = (o.overdue_periods != null)
+      ? `${o.overdue_periods} ${unit[o.period] || 'dönem'} atlandı`
+      : `${o.days_overdue}g geç`;
+    return `
     <div class="mf-overdue-item" title="${escapeHtml(o.title)}${o.assigned_to ? ' · ' + escapeHtml(o.assigned_to) : ''}">
       <span class="mf-overdue-title">${escapeHtml(o.title)}</span>
-      <span class="mf-overdue-days">${o.days_overdue}g geç</span>
-    </div>`).join('')}</div>`;
+      <span class="mf-overdue-days">${badge}</span>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function _mfUsersHtml(users) {
@@ -1315,7 +1329,7 @@ function slaBadge(t) {
   return ` <span class="prio-badge ${cls}" title="SLA kalan süre (hedef ${tgt}s)">⏱ SLA ${label}</span>`;
 }
 function firmChip(firm) {
-  const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${firm}</span>` : '';
+  const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${escapeHtml(firm)}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
 }
 // v5.0 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
@@ -1371,8 +1385,8 @@ function taskRow(t) {
   <div class="task-item" id="ti-${t.id}">
     <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
     <div>
-      <div class="task-title ${t.done?'done':''}">${t.title}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${t.team||''}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
       ${clProgress}${lcStr}${mnStr}
     </div>
     ${dl}
@@ -1526,7 +1540,7 @@ function renderProjectsPage() {
     const dlStr = dl ? formatDateTR(t.deadline) : '—';
     const dlColor = isOverdue ? 'var(--danger)' : (dl && !t.done ? 'var(--gold)' : 'var(--text-muted)');
     const statusNote = t.project_status
-      ? `<div class="proj-status-note">📌 ${t.project_status}</div>`
+      ? `<div class="proj-status-note">📌 ${escapeHtml(t.project_status)}</div>`
       : '';
     let clNote = '';
     if (t.checklist && t.checklist.length > 0) {
@@ -1542,10 +1556,10 @@ function renderProjectsPage() {
     <div class="proj-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;${t.done?'text-decoration:line-through;opacity:.5':''}">${t.title}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;${t.done?'text-decoration:line-through;opacity:.5':''}">${escapeHtml(t.title)}</div>
           <div style="font-size:10px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             ${firmChip(t.firm)}
-            <span>${t.team || ''}</span>
+            <span>${escapeHtml(t.team || '')}</span>
             ${isOverdue ? '<span style="color:var(--danger);font-weight:600">⚠ Gecikti</span>' : ''}
           </div>
           ${statusNote}${clNote}
@@ -1724,25 +1738,34 @@ async function addTask() {
 //  CHARTS (gerçek veriden)
 // ══════════════════════════════════════════════════════════
 function renderBars() {
-  // Son 5 günün görev sayısı
+  // Son 5 gün: o gün AÇILAN (gri) vs o gün TAMAMLANAN (renkli) görev sayısı.
+  // Eski sürüm yalnızca startDate'e bakıyordu — rutinler sadece oluşturuldukları
+  // gün göründüğü için grafik yanıltıcıydı. Tamamlanma artık completed_at'ten
+  // bağımsız sayılır (rutinlerde to_dict occurrence completed_at'ini döner).
   const barEl = document.getElementById('bar-chart');
   if (!barEl) return;
   const days = [];
   for (let i = 4; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const ds = d.toISOString().split('T')[0];
-    const dayTasks = tasks.filter(t => t.startDate === ds);
-    days.push({ label: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][d.getDay()], c: dayTasks.length, d: dayTasks.filter(t=>t.done).length });
+    const created   = tasks.filter(t => t.startDate === ds).length;
+    const completed = tasks.filter(t => t.completed_at && t.completed_at.substring(0, 10) === ds).length;
+    days.push({ label: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][d.getDay()], c: created, d: completed });
   }
-  const max = Math.max(...days.map(d=>d.c), 1);
+  const max = Math.max(...days.map(x => Math.max(x.c, x.d)), 1);
   barEl.innerHTML = days.map(d => `
-    <div class="bar-col">
-      <div class="bar-num">${d.c}</div>
+    <div class="bar-col" title="${d.label}: ${d.c} açıldı · ${d.d} tamamlandı">
+      <div class="bar-num">${d.d}</div>
       <div class="bar-inner" style="height:80px">
         <div style="position:absolute;bottom:0;width:100%;height:${(d.c/max)*80}px;background:var(--surface3);border-radius:4px 4px 0 0"></div>
         <div style="position:absolute;bottom:0;width:100%;height:${(d.d/max)*80}px;background:var(--accent);border-radius:4px 4px 0 0;opacity:.85"></div>
       </div>
     </div>`).join('');
+  // Gün etiketleri — kayan 5 günün gerçek gün adları (eski statik PZT..CUM yanlıştı)
+  const lblEl = document.getElementById('bar-chart-labels');
+  if (lblEl) lblEl.innerHTML = days.map(d =>
+    `<span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${d.label.toUpperCase()}</span>`
+  ).join('');
 }
 
 function renderTeamBars() {
@@ -1755,7 +1778,7 @@ function renderTeamBars() {
   const colors = ['var(--accent)','var(--accent3)','var(--accent2)','var(--gold)','var(--green)'];
   el.innerHTML = sorted.map(([name, n], i) => `
     <div class="progress-wrap" style="margin:5px 0">
-      <div class="progress-label"><span>${name}</span><span style="color:${colors[i]}">${n}</span></div>
+      <div class="progress-label"><span>${escapeHtml(name)}</span><span style="color:${colors[i]}">${n}</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${(n/max)*100}%;background:${colors[i]}"></div></div>
     </div>`).join('');
 }
@@ -1806,8 +1829,8 @@ function renderInvitations() {
     const expired = new Date(inv.expires_at) < new Date();
     const expLabel = expired ? '<span style="color:var(--red)">Süresi dolmuş</span>' : new Date(inv.expires_at).toLocaleDateString('tr-TR');
     return `<tr>
-      <td style="font-size:12px">${inv.full_name || '—'}</td>
-      <td style="font-size:11px;font-family:'IBM Plex Mono',monospace">${inv.email}</td>
+      <td style="font-size:12px">${escapeHtml(inv.full_name || '—')}</td>
+      <td style="font-size:11px;font-family:'IBM Plex Mono',monospace">${escapeHtml(inv.email)}</td>
       <td>${permBadge(inv.role === 'Super Admin' ? 'super_admin' : inv.role === 'IT Müdürü' ? 'it_director' : inv.role === 'IT Yöneticisi' ? 'it_manager' : inv.role === 'IT Specialist' ? 'it_specialist' : 'junior')}</td>
       <td>${firmChip(inv.firm)}</td>
       <td style="font-size:11px">${expLabel}</td>
@@ -1828,8 +1851,8 @@ function permBadge(level) {
 function renderUserTable() {
   document.getElementById('user-tbody').innerHTML = USERS.map(u => `
     <tr>
-      <td><div style="font-weight:600;font-size:12px">${u.full_name}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${u.username}</div></td>
-      <td><span style="font-size:11px;color:var(--text-muted)">${u.role || '—'}</span></td>
+      <td><div style="font-weight:600;font-size:12px">${escapeHtml(u.full_name)}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${escapeHtml(u.username)}</div></td>
+      <td><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(u.role || '—')}</span></td>
       <td>${permBadge(u.permission_level)}</td>
       <td>${firmChip(u.firm)}</td>
       <td><span class="status-dot ${u.active?'active':'inactive'}"></span><span style="font-size:11px">${u.active?'Aktif':'Pasif'}</span></td>
@@ -1940,7 +1963,7 @@ function removeBackupType(t) { const idx = BACKUP_TYPES.indexOf(t); if (idx > -1
 function showToast(type, msg) {
   const wrap = document.getElementById('toast-wrap');
   const t = document.createElement('div'); t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type==='ok'?'✓':'✗'}</span> ${msg}`;
+  t.innerHTML = `<span>${type==='ok'?'✓':'✗'}</span> ${escapeHtml(msg)}`;
   wrap.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
 
@@ -2053,8 +2076,8 @@ function renderNotifList() {
     <div class="notif-item ${n.read?'':'unread'}" onclick="notifClick('${n.id}',${n.taskId})">
       <div class="notif-icon ${n.type==='danger'?'ndanger':n.type==='warn'?'nwarn':'ninfo'}">${n.type==='danger'?'🔴':n.type==='warn'?'⚠️':'🔔'}</div>
       <div style="flex:1">
-        <div class="notif-body-title">${n.title}</div>
-        <div class="notif-body-meta">${n.meta}</div>
+        <div class="notif-body-title">${escapeHtml(n.title)}</div>
+        <div class="notif-body-meta">${escapeHtml(n.meta)}</div>
         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:3px">
           <span class="notif-tag ${n.tag}">${n.tagLabel}</span>
           ${n.mailSent?'<span class="mail-sent-badge">📧 Mail gönderildi</span>':''}
@@ -2083,6 +2106,16 @@ function closeNotifDropdown() { document.getElementById('notif-dropdown')?.class
 document.addEventListener('click', e => {
   const wrap = document.getElementById('notif-wrap');
   if (wrap && !wrap.contains(e.target)) closeNotifDropdown();
+});
+
+// a11y — ESC açık modalı (ve bildirim dropdown'unu) kapatır.
+// Tüm modallar .modal-overlay + .hidden class'ı ile yönetiliyor; kapama
+// fonksiyonlarının hepsi hidden eklemekten ibaret → generic kapatma güvenli.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const openModal = document.querySelector('.modal-overlay:not(.hidden)');
+  if (openModal) { openModal.classList.add('hidden'); return; }
+  closeNotifDropdown();
 });
 
 // ══════════════════════════════════════════════════════════
@@ -2173,8 +2206,8 @@ function renderScheduledList() {
         const nextDate = t.next_due ? formatDateTR(t.next_due) : '—';
         return `<div class="sched-done-row">
           <div>
-            <div class="sched-done-title">${t.title}</div>
-            <div class="sched-done-meta">${firmChip(t.firm)} · ${t.team||''} · ${t.period||''}</div>
+            <div class="sched-done-title">${escapeHtml(t.title)}</div>
+            <div class="sched-done-meta">${firmChip(t.firm)} · ${escapeHtml(t.team||'')} · ${t.period||''}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
             <span class="last-done-chip">✓ ${lcDate}</span>
@@ -2200,8 +2233,8 @@ function renderScheduledList() {
         const lcDate = t.last_completed ? new Date(t.last_completed).toLocaleDateString('tr-TR',{day:'numeric',month:'long'}) : null;
         return `<div class="sched-upcoming-row">
           <div>
-            <div class="sched-upcoming-title">${t.title}</div>
-            <div class="sched-upcoming-meta">${firmChip(t.firm)} · ${t.team||''} · ${t.period||''}
+            <div class="sched-upcoming-title">${escapeHtml(t.title)}</div>
+            <div class="sched-upcoming-meta">${firmChip(t.firm)} · ${escapeHtml(t.team||'')} · ${t.period||''}
               ${lcDate ? `· <span style="color:var(--accent);font-size:9px">✓ Son: ${lcDate}</span>` : ''}
             </div>
           </div>
@@ -2256,9 +2289,9 @@ function _renderSchedRow(t) {
   <div class="sched-row ${rowClass}" id="sr-${t.id}">
     <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
     <div style="min-width:0">
-      <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
+      <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.title)}</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        ${firmChip(t.firm)} <span>· ${t.team||''}</span>
+        ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span>
         ${t.last_notified ? `<span title="Son bildirim: ${formatDateTR(t.last_notified.substring(0,10))}" style="color:var(--accent3);font-size:9px">📧 bildirildi</span>` : ''}
       </div>
     </div>
@@ -2299,7 +2332,7 @@ async function toggleAlarm(taskId) {
     // Başarısızsa geri al
     t.alarm = !next;
     renderScheduledList(); buildNotifications();
-    showToast('error', `Alarm değiştirilemedi: ${err.message}`);
+    showToast('err', `Alarm değiştirilemedi: ${err.message}`);
   }
 }
 
@@ -2385,7 +2418,7 @@ function renderCalendar() {
     html += `<div class="cal-day-num">${cell.date.getDate()}</div>`;
     const MAX = 3;
     dayTasks.slice(0, MAX).forEach(({ task, chipClass }) => {
-      html += `<div class="cal-task-chip ${chipClass}" onclick="openEditTask(${task.id})" title="${task.title.replace(/"/g,'&quot;')}">${task.title}</div>`;
+      html += `<div class="cal-task-chip ${chipClass}" onclick="openEditTask(${task.id})" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</div>`;
     });
     if (dayTasks.length > MAX) {
       html += `<div class="cal-more">+${dayTasks.length - MAX} daha</div>`;
@@ -2412,16 +2445,26 @@ function calGoToday() {
 }
 
 function renderDashUpcoming() {
-  const upcoming = tasks.filter(t => t.cat==='routine' && !t.done && t.deadline).sort((a,b)=>new Date(a.deadline)-new Date(b.deadline)).slice(0,4);
+  // v5.x — KANONİK taskTiming(): rutin gecikmesi donmuş deadline'dan değil
+  // is_overdue/overdue_periods'tan gelir. Geciken önce (sortKey), sonra bekleyenler.
+  const upcoming = tasks
+    .filter(t => t.cat === 'routine' && !t.done)
+    .sort((a, b) => {
+      const ta = taskTiming(a), tb = taskTiming(b);
+      const ga = ta.group === 'overdue' ? 0 : 1, gb = tb.group === 'overdue' ? 0 : 1;
+      if (ga !== gb) return ga - gb;
+      return ta.sortKey - tb.sortKey;
+    })
+    .slice(0, 4);
   const cnt = document.getElementById('dash-sched-count'); if (cnt) cnt.textContent = upcoming.length;
   const el = document.getElementById('dash-upcoming-list'); if (!el) return;
   if (!upcoming.length) { el.innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text-muted);text-align:center">Hepsi zamanında 🎉</div>'; return; }
   el.innerHTML = upcoming.map(t => {
-    const diff = Math.round((new Date(t.deadline)-new Date(TODAY))/86400000);
-    const cls  = diff<0?'late':diff<=1?'warn':'ok';
-    const txt  = diff<0?`${Math.abs(diff)}g gecikti`:diff===0?'BUGÜN':`${diff}g kaldı`;
+    const ti = taskTiming(t);
+    const cls = ti.badgeClass || 'ok';
+    const txt = ti.badgeText || (t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor');
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
-      <div style="flex:1;min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div><div style="font-size:10px;color:var(--text-muted)">${t.period} · ${t.team||''}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.title)}</div><div style="font-size:10px;color:var(--text-muted)">${t.period} · ${escapeHtml(t.team||'')}</div></div>
       <div class="dl-badge ${cls}" style="margin-left:8px;flex-shrink:0">${txt}</div>
     </div>`;
   }).join('');
@@ -2651,8 +2694,8 @@ async function loadTaskBackups(taskId) {
       const date = b.uploaded_at ? new Date(b.uploaded_at).toLocaleDateString('tr-TR') : '';
       return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.filename}</div>
-          <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+b.device:''} · ${date}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(b.filename)}</div>
+          <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+escapeHtml(b.device):''} · ${date}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
           <button class="btn btn-sm" style="padding:2px 8px;font-size:9px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" onclick="downloadBackup(${b.id})">&#8595;</button>
@@ -2814,7 +2857,7 @@ async function renderBackupList() {
     return `
     <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:13px 0;border-bottom:1px solid var(--border)">
       <div>
-        <div style="font-size:13px;font-weight:500">${b.task_title || '—'}</div>
+        <div style="font-size:13px;font-weight:500">${escapeHtml(b.task_title || '—')}</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           ${firmChip(b.firm||'')}
           <span>· ${b.team||''}</span>
@@ -2823,8 +2866,8 @@ async function renderBackupList() {
         <div style="margin-top:6px;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;width:fit-content">
           <span style="font-size:18px">💾</span>
           <div>
-            <div style="font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace">${b.filename}</div>
-            <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+b.device:''}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace">${escapeHtml(b.filename)}</div>
+            <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+escapeHtml(b.device):''}</div>
           </div>
         </div>
       </div>
@@ -2971,25 +3014,57 @@ async function loadNotificationsPage() {
   // Preview alanını temizle
   const box = document.getElementById('notify-preview');
   if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  // v5.10 — Digest saati dropdown'unu doldur (00:00–23:00)
+  const hourSel = document.getElementById('notify-digest-hour');
+  if (hourSel && !hourSel.options.length) {
+    hourSel.innerHTML = Array.from({length: 24}, (_, h) =>
+      `<option value="${h}">${String(h).padStart(2,'0')}:00</option>`).join('');
+  }
   try {
     const nRes = await fetch('/api/notifications/settings');
     if (!nRes.ok) return;
     const n = await nRes.json();
     const o = document.getElementById('notify-overdue');
     const s = document.getElementById('notify-sla-warning');
+    const b = document.getElementById('notify-sla-breach');
     const d = document.getElementById('notify-daily-digest');
+    const m = document.getElementById('notify-manager-digest');
     if (o) o.checked = !!n.notify_overdue;
     if (s) s.checked = !!n.notify_sla_warning;
+    if (b) b.checked = !!n.notify_sla_breach;
     if (d) d.checked = !!n.notify_daily_digest;
+    if (m) m.checked = !!n.notify_manager_digest;
+    // Müdür digesti yalnızca director+ kullanıcıya görünür
+    const mGroup = document.getElementById('notify-manager-group');
+    if (mGroup) mGroup.style.display = n.is_director ? '' : 'none';
+    // Eşikler
+    const days = document.getElementById('notify-overdue-days');
+    if (days) days.value = n.overdue_days ?? 3;
+    const ratio = document.getElementById('notify-sla-ratio');
+    if (ratio) ratio.value = String(n.sla_warning_ratio ?? 0.25);
+    if (hourSel) hourSel.value = String(n.digest_hour ?? 9);
+    const tzLabel = document.getElementById('notify-tz-label');
+    if (tzLabel) tzLabel.textContent = n.timezone ? `(${n.timezone})` : '';
+    const sub = document.getElementById('notify-page-sub');
+    if (sub && n.schedule) sub.textContent = `Özet maili: ${n.schedule} · Uyarı tercihlerinizi ve test mailini buradan yönetin`;
   } catch(e) { console.warn('Bildirim ayarları yüklenemedi:', e); }
 }
 
 async function saveNotificationSettings() {
   const body = {
-    notify_overdue:      document.getElementById('notify-overdue')?.checked ?? true,
-    notify_sla_warning:  document.getElementById('notify-sla-warning')?.checked ?? true,
-    notify_daily_digest: document.getElementById('notify-daily-digest')?.checked ?? true,
+    notify_overdue:        document.getElementById('notify-overdue')?.checked ?? true,
+    notify_sla_warning:    document.getElementById('notify-sla-warning')?.checked ?? true,
+    notify_sla_breach:     document.getElementById('notify-sla-breach')?.checked ?? true,
+    notify_daily_digest:   document.getElementById('notify-daily-digest')?.checked ?? true,
+    notify_manager_digest: document.getElementById('notify-manager-digest')?.checked ?? true,
   };
+  // v5.10 — eşikler (geçersiz/boş değer gönderilmez → backend mevcut değeri korur)
+  const days = parseInt(document.getElementById('notify-overdue-days')?.value, 10);
+  if (!Number.isNaN(days)) body.notify_overdue_days = days;
+  const ratio = parseFloat(document.getElementById('notify-sla-ratio')?.value);
+  if (!Number.isNaN(ratio)) body.notify_sla_ratio = ratio;
+  const hour = parseInt(document.getElementById('notify-digest-hour')?.value, 10);
+  if (!Number.isNaN(hour)) body.notify_digest_hour = hour;
   try {
     const r = await fetch('/api/notifications/settings', {
       method: 'PATCH',
@@ -2999,6 +3074,8 @@ async function saveNotificationSettings() {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Kaydedilemedi');
     showToast('ok', 'Bildirim tercihleri kaydedildi');
+    // Subtitle'daki saat/eşik bilgisini tazele
+    loadNotificationsPage();
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
   }
@@ -3056,7 +3133,8 @@ async function runNotificationTest() {
 // ══════════════════════════════════════════════════════════
 const MONTH_TR_JS = {1:'Ocak',2:'Şubat',3:'Mart',4:'Nisan',5:'Mayıs',6:'Haziran',
                      7:'Temmuz',8:'Ağustos',9:'Eylül',10:'Ekim',11:'Kasım',12:'Aralık'};
-const CAT_LABELS_JS = {routine:'Rutin',support:'Destek',infra:'Altyapı',backup:'Config Backup',other:'Diğer'};
+// v5.x — Ayrı CAT_LABELS_JS kopyası kaldırıldı (project/task anahtarları eksikti).
+// Tek kaynak: yukarıdaki CAT_LABELS.
 
 // Alıcı mail — oturumda sakla, sayfa yenilenmesinde sıfırlanmaz
 let _reportToMail = '';
@@ -3140,7 +3218,7 @@ function renderReportStats(taskList, month, year) {
     if (!all.length) return '';
     const pct = Math.round(comp/all.length*100);
     return `<div class="progress-wrap">
-      <div class="progress-label"><span>${CAT_LABELS_JS[c]||c}</span><span style="color:${catColors[c]}">${comp}/${all.length}</span></div>
+      <div class="progress-label"><span>${CAT_LABELS[c]||c}</span><span style="color:${catColors[c]}">${comp}/${all.length}</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${catColors[c]}"></div></div>
     </div>`;
   }).join('');
@@ -3452,7 +3530,7 @@ function setBCardCol(c) {
 function populateBCardAssigned(selectedId) {
   const sel = document.getElementById('bcard-assigned');
   sel.innerHTML = '<option value="">— Kimse —</option>' +
-    boardUsers.map(u => `<option value="${u.id}" ${u.id===selectedId?'selected':''}>${u.full_name}</option>`).join('');
+    boardUsers.map(u => `<option value="${u.id}" ${u.id===selectedId?'selected':''}>${escapeHtml(u.full_name)}</option>`).join('');
 }
 
 // Checklist

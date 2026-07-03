@@ -27,14 +27,12 @@ from models.database import (
     TaskOccurrence,
     Team,
     User,
-    _period_key,
-    _previous_period_key,
     _sla_target_hours,
     db,
     init_db,
 )
 from services.mailer import send_invite_email, send_report_email
-from services.notifier import collect_user_alerts, run_digest_job
+from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
 from services.report import generate_monthly_pdf
 from services.storage import save_backup_file
 
@@ -80,7 +78,16 @@ if _SENTRY_DSN:
         pass  # sentry_sdk yoksa veya init başarısız olursa uygulamayı durdurma
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
+# SECRET_KEY zorunlu — sabit fallback ile oturum çerezleri sahtelenebilirdi.
+# Yalnızca FLASK_DEBUG=1 (yerel geliştirme) iken sabit dev anahtarına düşer;
+# prod/staging'de eksikse uygulama ADMIN_PASSWORD gibi açık hatayla durur.
+_secret_key = os.environ.get("SECRET_KEY", "")
+if not _secret_key:
+    if os.environ.get("FLASK_DEBUG", "0") == "1":
+        _secret_key = "dev-secret-change-in-prod"  # pragma: allowlist secret
+    else:
+        raise RuntimeError("SECRET_KEY ortam değişkeni ayarlanmamış! .env dosyasını kontrol edin.")
+app.secret_key = _secret_key
 
 # Nginx reverse proxy arkasında HTTPS ve gerçek IP'yi doğru al
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -324,6 +331,50 @@ def service_worker():
     return resp
 
 
+# ── /login brute-force koruması ──
+# Basit bellek-içi kayan pencere: (ip, username) başına 15 dakikada 5 başarısız
+# deneme → 429. gunicorn tek worker (bkz. Dockerfile) olduğu için process-yerel
+# sözlük yeterli; worker sayısı artarsa paylaşımlı store (redis vb.) gerekir.
+_LOGIN_FAILS: dict = {}
+_LOGIN_MAX_FAILS = 5
+_LOGIN_WINDOW_SEC = 900
+
+
+def _login_rate_limited(ip, username):
+    import time as _time
+
+    key = (ip, username)
+    stamps = _LOGIN_FAILS.get(key)
+    if not stamps:
+        return False
+    now = _time.time()
+    stamps[:] = [t for t in stamps if now - t < _LOGIN_WINDOW_SEC]
+    if not stamps:
+        _LOGIN_FAILS.pop(key, None)
+        return False
+    return len(stamps) >= _LOGIN_MAX_FAILS
+
+
+def _register_login_fail(ip, username):
+    import time as _time
+
+    # Sınırsız büyümeyi engelle: kaba tavan — eski kayıtları topluca at
+    if len(_LOGIN_FAILS) > 1000:
+        _LOGIN_FAILS.clear()
+    _LOGIN_FAILS.setdefault((ip, username), []).append(_time.time())
+
+
+@app.after_request
+def _security_headers(resp):
+    """Temel güvenlik başlıkları. CSP bilinçli olarak YOK — arayüz inline
+    onclick/style kullanıyor; CSP ancak app.js event-listener refactor'ından
+    sonra eklenebilir."""
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    return resp
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -333,6 +384,12 @@ def login():
             data = request.form
         username = (data.get("username") or "").strip().lower()
         password = data.get("password") or ""
+        client_ip = request.remote_addr or "?"
+        if _login_rate_limited(client_ip, username):
+            msg = "Çok fazla başarısız deneme — 15 dakika sonra tekrar deneyin"
+            if request.is_json:
+                return jsonify({"ok": False, "error": msg}), 429
+            return render_template("login.html", admin_mode=True, error=msg), 429
         # Sadece admin kullanıcı local girişe izin verilir.
         # ALLOW_DEMO_LOGIN=1 ortam değişkeni varsa `demo_` prefix'li kullanıcılar da
         # password ile girebilir — sadece staging için (prod .env'de açılmamalı).
@@ -341,6 +398,7 @@ def login():
         allow_demo = os.environ.get("ALLOW_DEMO_LOGIN", "").lower() in ("1", "true", "yes")
         is_demo_user = allow_demo and username.startswith("demo_")
         if username != admin_username and not is_demo_user:
+            _register_login_fail(client_ip, username)
             if request.is_json:
                 return jsonify({"ok": False, "error": "Lütfen Microsoft 365 ile giriş yapın"}), 403
             return render_template(
@@ -348,10 +406,12 @@ def login():
             )
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
+            _LOGIN_FAILS.pop((client_ip, username), None)  # başarılı giriş sayacı sıfırlar
             session["user_id"] = user.id
             if request.is_json:
                 return jsonify({"ok": True, "user": user.to_dict()})
             return redirect(url_for("dashboard"))
+        _register_login_fail(client_ip, username)
         if request.is_json:
             return jsonify({"ok": False, "error": "Hatalı kullanıcı adı veya şifre"}), 401
         return render_template("login.html", admin_mode=True, error="Hatalı kullanıcı adı veya şifre")
@@ -514,19 +574,17 @@ def _preload_routine_occurrences(tasks):
 
 
 def _task_done_at(t, day, occ_map):
-    """Task.is_done_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
-    if t.category == "routine" and t.period != "Tek Seferlik":
-        key = _period_key(t.period, day)
-        return bool(key and key in occ_map.get(t.id, set()))
-    return bool(t.is_done)
+    """Task.is_done_now'ın ön-yüklenmiş occ_map ile çağrısı (ek sorgu yok).
+
+    Kanonik tanım artık TEK yerde: models.database.Task.is_done_now. Bu sarmalayıcı
+    yalnızca occ_map[task_id] → occ_set adaptasyonunu yapar (N+1 önler).
+    """
+    return t.is_done_now(today=day, occ_set=occ_map.get(t.id, set()))
 
 
 def _task_overdue_at(t, day, occ_map):
-    """Task.is_overdue_now eşdeğeri — ön-yüklenmiş occ_map ile (ek sorgu yok)."""
-    if t.category == "routine" and t.period != "Tek Seferlik":
-        prev = _previous_period_key(t.period, day)
-        return bool(prev and prev not in occ_map.get(t.id, set()))
-    return (not t.is_done) and (t.deadline is not None) and (t.deadline < day)
+    """Task.is_overdue_now'ın ön-yüklenmiş occ_map ile çağrısı (ek sorgu yok)."""
+    return t.is_overdue_now(today=day, occ_set=occ_map.get(t.id, set()))
 
 
 # v4.9 — Dashboard firma şeridi için aggregated özet endpoint'i.
@@ -693,30 +751,37 @@ def managed_firms_detail():
             for c, n in sorted(cat_count.items(), key=lambda x: -x[1])
         ]
 
-        # Overdue top-3 — en eski (en kötü) önce
-        overdue_tasks = sorted(
-            [t for t in all_tasks if not t.is_done and t.deadline and t.deadline < today], key=lambda t: t.deadline
-        )
+        # Overdue top-3 — KANONİK is_overdue (rutinlerde donmuş deadline değil).
+        # Eski kod `not t.is_done and t.deadline < today` idi → rutinler is_done hiç
+        # set edilmediği için geçmiş deadline'lı TÜM rutinler yanlışlıkla listeleniyordu.
+        overdue_tasks = [t for t in all_tasks if _task_overdue_at(t, today, occ_map)]
+        # Deadline'ı olanlar tarihe göre (en kötü önce); rutinler (deadline None) sona.
+        overdue_tasks.sort(key=lambda t: t.deadline or date.max)
         overdue_top3 = []
         for t in overdue_tasks[:3]:
             owner = db.session.get(User, t.user_id) if t.user_id else None
+            is_routine = t.category == "routine" and t.period != "Tek Seferlik"
             overdue_top3.append(
                 {
                     "id": t.id,
                     "title": t.title,
-                    "deadline": t.deadline.isoformat(),
-                    "days_overdue": (today - t.deadline).days,
+                    "deadline": t.deadline.isoformat() if t.deadline else None,
+                    # Rutin: kaç periyot atlandı; diğer: kaç gün gecikti
+                    "days_overdue": (today - t.deadline).days if (t.deadline and not is_routine) else None,
+                    "overdue_periods": t.overdue_period_count(today=today) if is_routine else None,
+                    "period": t.period if is_routine else None,
                     "assigned_to": owner.full_name if owner else "—",
                 }
             )
 
-        # Kullanıcı dağılımı — max 8, açık görev sayısına göre azalan
+        # Kullanıcı dağılımı — max 8, açık görev sayısına göre azalan.
+        # KANONİK tamamlanma (rutinler is_done flag'i kullanmaz → occ_map ile).
         user_stats = {}
         for t in all_tasks:
             if not t.user_id:
                 continue
             stats = user_stats.setdefault(t.user_id, {"open": 0, "done": 0})
-            if t.is_done:
+            if _task_done_at(t, today, occ_map):
                 stats["done"] += 1
             else:
                 stats["open"] += 1
@@ -903,7 +968,11 @@ def create_task():
     db.session.add(task)
     db.session.flush()
     if backup_file and backup_file.filename:
-        fp = save_backup_file(backup_file, task.id, target_uid)
+        try:
+            fp = save_backup_file(backup_file, task.id, target_uid)
+        except ValueError as e:  # izin verilmeyen dosya uzantısı — görev de kaydedilmez
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 400
         db.session.add(
             ConfigBackup(
                 task_id=task.id,
@@ -1121,7 +1190,10 @@ def add_task_backup(task_id):
     backup_file = request.files.get("backup_file")
     if not backup_file or not backup_file.filename:
         return jsonify({"error": "Dosya seçilmedi"}), 400
-    fp = save_backup_file(backup_file, task.id, session["user_id"])
+    try:
+        fp = save_backup_file(backup_file, task.id, session["user_id"])
+    except ValueError as e:  # izin verilmeyen dosya uzantısı
+        return jsonify({"error": str(e)}), 400
     b = ConfigBackup(
         filename=backup_file.filename,
         file_path=fp,
@@ -1172,22 +1244,14 @@ def stats():
 
     tasks = routines + projects + others
 
-    # v5.0 — Rutin is_done: period_key bazlı; Aylık için preload (N+1 önler).
-    from datetime import date as _date
-
-    ref_dt = _date(year, month, 15)
-    monthly_pk = f"{year:04d}-{month:02d}"
-    monthly_completed_ids = {c.task_id for c in TaskOccurrence.query.filter_by(period_key=monthly_pk).all()}
-
-    def _is_done(t):
-        if t.category == "routine" and t.period != "Tek Seferlik":
-            if t.period == "Aylık":
-                return t.id in monthly_completed_ids
-            return t.is_done_now(today=ref_dt)
-        return t.is_done
+    # v5.x — Tamamlanma/gecikme KANONİK kaynaktan (Task.is_done_now/is_overdue_now),
+    # occ_map ile N+1'siz. Referans gün: görüntülenen ay bugünün ayıysa bugün,
+    # değilse ayın 15'i (to_dict ile aynı semantik → ekran/PDF/stats birebir tutar).
+    ref_dt = date.today() if (date.today().year == year and date.today().month == month) else date(year, month, 15)
+    occ_map = _preload_routine_occurrences(tasks)
 
     total = len(tasks)
-    done = sum(1 for t in tasks if _is_done(t))
+    done = sum(1 for t in tasks if _task_done_at(t, ref_dt, occ_map))
     by_cat = {}
     by_team = {}
     by_firm = {}
@@ -1195,7 +1259,7 @@ def stats():
         by_cat[t.category] = by_cat.get(t.category, 0) + 1
         by_team[t.team] = by_team.get(t.team, 0) + 1
         by_firm[t.firm] = by_firm.get(t.firm, 0) + 1
-    overdue = sum(1 for t in tasks if not _is_done(t) and t.deadline and t.deadline < date.today())
+    overdue = sum(1 for t in tasks if _task_overdue_at(t, ref_dt, occ_map))
     return jsonify(
         {
             "total": total,
@@ -1236,23 +1300,14 @@ def _stats_for_month(uid, month, year):
         Task.user_id == uid, Task.category.notin_(["routine", "project"]), db.or_(created_match, deadline_match)
     ).all()
     tasks = routines + projects + others
-    # v5.0 — period_key bazlı _is_done; Aylık preload (N+1 önler)
-    from datetime import date as _date
-
-    ref_dt = _date(year, month, 15)
-    monthly_pk = f"{year:04d}-{month:02d}"
-    monthly_completed_ids = {c.task_id for c in TaskOccurrence.query.filter_by(period_key=monthly_pk).all()}
-
-    def _is_done(t):
-        if t.category == "routine" and t.period != "Tek Seferlik":
-            if t.period == "Aylık":
-                return t.id in monthly_completed_ids
-            return t.is_done_now(today=ref_dt)
-        return t.is_done
+    # v5.x — Kanonik tamamlanma/gecikme (Task.is_done_now/is_overdue_now), occ_map ile
+    # N+1'siz. stats() ile birebir aynı referans-gün semantiği.
+    ref_dt = date.today() if (date.today().year == year and date.today().month == month) else date(year, month, 15)
+    occ_map = _preload_routine_occurrences(tasks)
 
     total = len(tasks)
-    done = sum(1 for t in tasks if _is_done(t))
-    overdue = sum(1 for t in tasks if not _is_done(t) and t.deadline and t.deadline < date.today())
+    done = sum(1 for t in tasks if _task_done_at(t, ref_dt, occ_map))
+    overdue = sum(1 for t in tasks if _task_overdue_at(t, ref_dt, occ_map))
     return {"total": total, "done": done, "overdue": overdue, "rate": round(done / total * 100, 1) if total else 0.0}
 
 
@@ -1813,14 +1868,24 @@ def update_task_alarm(task_id):
 @login_required
 def get_notification_settings():
     me = _current_user()
+    from services.notifier import effective_digest_hour, effective_overdue_days, effective_sla_ratio
+
+    tz_name = os.environ.get("SCHEDULER_TZ", "UTC")
+    digest_hour = effective_digest_hour(me)
     return jsonify(
         {
             "notify_overdue": bool(me.notify_overdue) if me.notify_overdue is not None else True,
             "notify_sla_warning": bool(me.notify_sla_warning) if me.notify_sla_warning is not None else True,
             "notify_daily_digest": bool(me.notify_daily_digest) if me.notify_daily_digest is not None else True,
-            "overdue_days": 3,
-            "sla_warning_ratio": 0.25,
-            "schedule": "Her gün 09:00 (UTC)",
+            # v5.10 — ayrı breach kanalı + müdür digesti + ayarlanabilir eşikler
+            "notify_sla_breach": bool(me.notify_sla_breach) if me.notify_sla_breach is not None else True,
+            "notify_manager_digest": (bool(me.notify_manager_digest) if me.notify_manager_digest is not None else True),
+            "overdue_days": effective_overdue_days(me),
+            "sla_warning_ratio": effective_sla_ratio(me),
+            "digest_hour": digest_hour,
+            "timezone": tz_name,
+            "is_director": me.is_director_or_above,
+            "schedule": f"Her gün {digest_hour:02d}:00 ({tz_name})",
         }
     )
 
@@ -1830,16 +1895,55 @@ def get_notification_settings():
 def update_notification_settings():
     me = _current_user()
     data = request.get_json() or {}
-    for field in ("notify_overdue", "notify_sla_warning", "notify_daily_digest"):
+    bool_fields = (
+        "notify_overdue",
+        "notify_sla_warning",
+        "notify_daily_digest",
+        "notify_sla_breach",
+        "notify_manager_digest",
+    )
+    for field in bool_fields:
         if field in data:
             setattr(me, field, bool(data[field]))
+    # v5.10 — ayarlanabilir eşikler; aralık dışı değer 400 döner (sessiz clamp yok)
+    if "notify_overdue_days" in data:
+        try:
+            v = int(data["notify_overdue_days"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Gecikme eşiği sayı olmalı"}), 400
+        if not 1 <= v <= 30:
+            return jsonify({"error": "Gecikme eşiği 1-30 gün aralığında olmalı"}), 400
+        me.notify_overdue_days = v
+    if "notify_sla_ratio" in data:
+        try:
+            r = float(data["notify_sla_ratio"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "SLA oranı sayı olmalı"}), 400
+        if not 0.05 <= r <= 0.9:
+            return jsonify({"error": "SLA uyarı oranı 0.05-0.90 aralığında olmalı"}), 400
+        me.notify_sla_ratio = r
+    if "notify_digest_hour" in data:
+        try:
+            h = int(data["notify_digest_hour"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Digest saati sayı olmalı"}), 400
+        if not 0 <= h <= 23:
+            return jsonify({"error": "Digest saati 0-23 aralığında olmalı"}), 400
+        me.notify_digest_hour = h
     db.session.commit()
+    from services.notifier import effective_digest_hour, effective_overdue_days, effective_sla_ratio
+
     return jsonify(
         {
             "ok": True,
             "notify_overdue": bool(me.notify_overdue),
             "notify_sla_warning": bool(me.notify_sla_warning),
             "notify_daily_digest": bool(me.notify_daily_digest),
+            "notify_sla_breach": bool(me.notify_sla_breach),
+            "notify_manager_digest": bool(me.notify_manager_digest),
+            "overdue_days": effective_overdue_days(me),
+            "sla_warning_ratio": effective_sla_ratio(me),
+            "digest_hour": effective_digest_hour(me),
         }
     )
 
@@ -2009,37 +2113,58 @@ def start_scheduler():
         print("[scheduler] apscheduler kurulu değil — bildirimler pasif")
         return
 
-    hour = int(os.environ.get("NOTIFY_HOUR", "9"))
     minute = int(os.environ.get("NOTIFY_MINUTE", "0"))
 
+    sch = BackgroundScheduler(daemon=True, timezone=os.environ.get("SCHEDULER_TZ", "UTC"))
+    tz_obj = sch.timezone  # scheduler'ın çözümlenmiş timezone objesi — job içinde saat bunun üzerinden
+
+    # v5.10 — Saatlik tek job: her saat başı (NOTIFY_MINUTE dakikasında) çalışır.
+    #   1) Digest saati o saate denk gelen kullanıcılara kişisel (+müdür) digest.
+    #      Eski model tüm kullanıcılar için sabit NOTIFY_HOUR idi; artık kullanıcı
+    #      bazlı notify_digest_hour (NULL → NOTIFY_HOUR varsayılanı, geriye dönük aynı).
+    #   2) SLA breach kontrolü: yeni breach'ler digest saati beklemeden bildirilir
+    #      (4 saatlik SLA'da günlük digest çok geç kalıyordu). Anti-spam last_notified.
     def _job_wrapper():
         with app.app_context():
+            current_hour = datetime.now(tz_obj).hour
             try:
-                rep = run_digest_job()
-                print(f"[scheduler] digest job tamamlandı: {rep.get('users_processed', 0)} kullanıcı")
+                rep = run_digest_job(digest_hour=current_hour)
+                if rep.get("users_processed"):
+                    print(f"[scheduler] digest ({current_hour:02d}:00): {rep['users_processed']} kullanıcı")
             except Exception as e:
                 print(f"[scheduler] digest job HATA: {e}")
+            try:
+                brep = run_breach_check()
+                if brep.get("results"):
+                    print(f"[scheduler] breach check: {len(brep['results'])} kullanıcıya bildirim")
+            except Exception as e:
+                print(f"[scheduler] breach check HATA: {e}")
 
-    sch = BackgroundScheduler(daemon=True, timezone=os.environ.get("SCHEDULER_TZ", "UTC"))
     sch.add_job(
         _job_wrapper,
         "cron",
-        hour=hour,
         minute=minute,
-        id="daily_digest",
+        id="hourly_notify",
         replace_existing=True,
         misfire_grace_time=3600,
     )
     sch.start()
     _scheduler = sch
-    print(f"[scheduler] günlük digest planlandı: {hour:02d}:{minute:02d} ({sch.timezone})")
+    default_h = int(os.environ.get("NOTIFY_HOUR", "9"))
+    print(
+        f"[scheduler] saatlik bildirim job'u planlandı "
+        f"(dk {minute:02d}, digest default {default_h:02d}:00, {sch.timezone})"
+    )
 
 
 if __name__ == "__main__":
     # Debug modunda reloader iki process çalıştırır — sadece ikinci (main) process
     # init_db + scheduler çalıştırmalı. WERKZEUG_RUN_MAIN sadece reloader child'ında set olur.
     is_reloader_parent = os.environ.get("WERKZEUG_RUN_MAIN") != "true"
-    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    # Varsayılan KAPALI (0). Debugger'ı yalnızca yerel geliştirmede FLASK_DEBUG=1
+    # ile açın. Prod/staging gunicorn kullanır (Dockerfile) ve bu yola hiç girmez;
+    # bu satır "biri prod'da elle python app.py çalıştırırsa" kalkanıdır.
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     if not (debug_mode and is_reloader_parent):
         with app.app_context():
             init_db()

@@ -39,6 +39,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Builder'da kurulmuş Python paketlerini al (/install → /usr/local)
 COPY --from=builder /install /usr/local
 
+# print() çıktıları tamponlanmadan docker logs'a düşsün. Yoksa scheduler/migration
+# satırları buffer'da bekliyor ve `docker compose logs` boş görünüyor (2026-07'de
+# SCHEDULER_TZ doğrulaması bu yüzden loglardan yapılamadı, printenv gerekti).
+ENV PYTHONUNBUFFERED=1
+
 COPY . .
 
 # Backup ve instance klasörleri
@@ -46,4 +51,14 @@ RUN mkdir -p /srv/it_tracker/backups /app/instance
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+# Production WSGI sunucusu — Flask dev server (werkzeug) DEĞİL.
+# Neden: `python app.py` werkzeug dev sunucusunu FLASK_DEBUG varsayılanıyla
+# çalıştırıyordu → prod'da interaktif debugger (/console) + stack-trace sızıntısı
+# = uzaktan kod çalıştırma riski. gunicorn bu yüzeyi kapatır.
+#
+# --workers 1: APScheduler digest job'u (services/notifier) app import edilince
+#   start_scheduler() ile tek process'te başlar. Birden fazla worker olsaydı her
+#   worker kendi scheduler'ını kurup digest mailini N kez atardı. Eş zamanlılık
+#   --threads ile sağlanır (iş I/O-bound: DB + SMTP). İleride ölçek gerekirse önce
+#   scheduler ayrı servise taşınmalı, ANCAK ondan sonra worker sayısı artırılmalı.
+CMD ["gunicorn", "--workers", "1", "--threads", "4", "--timeout", "120", "--bind", "0.0.0.0:5000", "app:app"]

@@ -40,9 +40,17 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # v4.6 — Bildirim tercihleri
-    notify_overdue = db.Column(db.Boolean, default=True)  # 3+ gün geciken görevler
-    notify_sla_warning = db.Column(db.Boolean, default=True)  # SLA %75 eşiğine yaklaşan destek talepleri
+    notify_overdue = db.Column(db.Boolean, default=True)  # geciken görevler (eşik: notify_overdue_days)
+    notify_sla_warning = db.Column(db.Boolean, default=True)  # SLA eşiğine yaklaşan destek talepleri
     notify_daily_digest = db.Column(db.Boolean, default=True)  # günlük özet maili
+    # v5.10 — Ayarlanabilir bildirim eşikleri + ayrı breach kanalı + müdür digesti.
+    # NULL = varsayılan (notifier tarafında effective_* helper'ları çözer) — böylece
+    # mevcut prod satırları migration sonrası davranış değiştirmez.
+    notify_overdue_days = db.Column(db.Integer, nullable=True)  # gecikme eşiği gün (default 3)
+    notify_sla_ratio = db.Column(db.Float, nullable=True)  # SLA uyarı oranı (default 0.25)
+    notify_digest_hour = db.Column(db.Integer, nullable=True)  # digest saati 0-23 (default NOTIFY_HOUR/9)
+    notify_sla_breach = db.Column(db.Boolean, default=True)  # SLA AŞILDI — 'yaklaştı'dan ayrı kanal
+    notify_manager_digest = db.Column(db.Boolean, default=True)  # director+: yönetilen firma özeti
     # v4.3 — Task'ta iki FK var (user_id sahip, assigned_by atayan). Sahip ilişkisini belirt.
     tasks = db.relationship("Task", backref="user", lazy=True, foreign_keys="Task.user_id")
     assigned_tasks = db.relationship("Task", lazy=True, foreign_keys="Task.assigned_by")
@@ -117,6 +125,13 @@ class User(db.Model):
             "notify_overdue": bool(self.notify_overdue) if self.notify_overdue is not None else True,
             "notify_sla_warning": bool(self.notify_sla_warning) if self.notify_sla_warning is not None else True,
             "notify_daily_digest": bool(self.notify_daily_digest) if self.notify_daily_digest is not None else True,
+            "notify_sla_breach": bool(self.notify_sla_breach) if self.notify_sla_breach is not None else True,
+            "notify_manager_digest": (
+                bool(self.notify_manager_digest) if self.notify_manager_digest is not None else True
+            ),
+            "notify_overdue_days": self.notify_overdue_days,  # None = varsayılan (3)
+            "notify_sla_ratio": self.notify_sla_ratio,  # None = varsayılan (0.25)
+            "notify_digest_hour": self.notify_digest_hour,  # None = varsayılan (NOTIFY_HOUR)
             "o365_linked": bool(self.o365_id),
             "created_at": self.created_at.isoformat(),
         }
@@ -252,30 +267,40 @@ class Task(db.Model):
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
 
-    def is_done_now(self, today=None):
-        """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı?
+    def is_done_now(self, today=None, occ_set=None):
+        """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı? TEK KANONİK TANIM.
 
         Rutin görevler: aktif periyot için TaskOccurrence kaydı var mı?
         Diğer kategoriler: Task.is_done flag.
+
+        occ_set: bu görevin period_key kümesi önceden yüklenmişse (N+1 önlemek için)
+        buradan geçilir; verilmezse tekil sorgu yapılır. Böylece stats/firma
+        dashboard'ları gibi toplu yollar da AYNI tanımı kullanır (kopya mantık yok).
         """
         if self.category == "routine" and self.period != "Tek Seferlik":
             key = _period_key(self.period, today or _date.today())
             if not key:
                 return False
+            if occ_set is not None:
+                return key in occ_set
             return TaskOccurrence.query.filter_by(task_id=self.id, period_key=key).first() is not None
         return bool(self.is_done)
 
-    def is_overdue_now(self, today=None):
-        """v5.0 — Bu görev şu anda gecikmiş mi?
+    def is_overdue_now(self, today=None, occ_set=None):
+        """v5.0 — Bu görev şu anda gecikmiş mi? TEK KANONİK TANIM.
 
         Rutin görevler: önceki periyot için TaskOccurrence yoksa overdue.
         Diğer kategoriler: deadline geçmiş ve tamamlanmamışsa overdue.
+
+        occ_set: bkz. is_done_now — önceden yüklenmiş period_key kümesi (N+1 önler).
         """
         today = today or _date.today()
         if self.category == "routine" and self.period != "Tek Seferlik":
             prev_key = _previous_period_key(self.period, today)
             if not prev_key:
                 return False
+            if occ_set is not None:
+                return prev_key not in occ_set
             return TaskOccurrence.query.filter_by(task_id=self.id, period_key=prev_key).first() is None
         return (not self.is_done) and (self.deadline is not None) and (self.deadline < today)
 
@@ -767,6 +792,49 @@ def init_db():
             db.session.execute(text(f"UPDATE users SET {col_name} = 1 WHERE {col_name} IS NULL"))
             db.session.commit()
             print(f"Migration: {col_name} sutunu eklendi")
+
+    # Migration: v5.10 — ayarlanabilir bildirim eşikleri + breach kanalı + müdür digesti.
+    # Eşik kolonları bilinçli olarak NULL bırakılır (= varsayılan davranış);
+    # boolean kanallar mevcut kullanıcılar için açık (1) başlar.
+    #
+    # YARIŞA DAYANIKLI ekleme: deploy sırasında init_db İKİ process'te aynı anda
+    # çalışabiliyor (gunicorn import'u + `flask db upgrade` exec import'u). İkisi de
+    # kolonu "yok" görüp ALTER deneyince kaybeden DuplicateColumn ile patlıyordu
+    # (2026-07 staging deploy hatası). ALTER başarısız olursa rollback + TAZE
+    # inspector ile yeniden bak: kolon eklendiyse (yarışı diğeri kazandı) sorun yok;
+    # hâlâ yoksa gerçek bir hata var → yükselt.
+    def _add_user_column_race_safe(col_name, col_sql):
+        from sqlalchemy import inspect as _inspect
+
+        cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+        if col_name in cols:
+            return False
+        try:
+            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_sql}"))
+            db.session.commit()
+            print(f"Migration: {col_name} sutunu eklendi")
+            return True
+        except Exception:
+            db.session.rollback()
+            cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+            if col_name in cols:
+                return False  # eşzamanlı process ekledi — idempotent devam
+            raise
+
+    for col_name, col_sql in (
+        ("notify_overdue_days", "INTEGER"),
+        ("notify_sla_ratio", "FLOAT"),
+        ("notify_digest_hour", "INTEGER"),
+    ):
+        _add_user_column_race_safe(col_name, col_sql)
+    # NOT: Postgres BOOLEAN kolonuna DEFAULT 1 kabul etmez ("default expression is
+    # of type integer") — TRUE kullanılmalı. SQLite de TRUE'yu tanır (3.23+ alias),
+    # yani her iki backend'de çalışır. Eski v4.6 blokları DEFAULT 1 ile kaldı çünkü
+    # o kolonlar SQLite döneminde eklendi ve artık her ortamda mevcut (idempotent skip).
+    for col_name in ("notify_sla_breach", "notify_manager_digest"):
+        if _add_user_column_race_safe(col_name, "BOOLEAN DEFAULT TRUE"):
+            db.session.execute(text(f"UPDATE users SET {col_name} = TRUE WHERE {col_name} IS NULL"))
+            db.session.commit()
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")

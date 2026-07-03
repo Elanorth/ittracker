@@ -10,10 +10,18 @@ ALLOWED_EXTENSIONS = {".cfg", ".conf", ".txt", ".bin", ".xml", ".json", ".tar", 
 
 
 def save_backup_file(file_obj, task_id: int, user_id: int) -> str:
-    """Yüklenen dosyayı güvenli isimle kaydeder, tam yolu döner."""
-    os.makedirs(BACKUP_DIR, exist_ok=True)
+    """Yüklenen dosyayı güvenli isimle kaydeder, tam yolu döner.
+
+    ALLOWED_EXTENSIONS dışındaki uzantılar ValueError fırlatır — liste öteden
+    beri tanımlıydı ama hiç kontrol edilmiyordu (her uzantı yüklenebiliyordu).
+    Çağıran endpoint'ler ValueError'ı 400'e çevirir.
+    """
     orig = secure_filename(file_obj.filename)
     ext = os.path.splitext(orig)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        allowed = ", ".join(sorted(ALLOWED_EXTENSIONS))
+        raise ValueError(f"'{ext or 'uzantısız'}' dosya türüne izin verilmiyor. İzinli türler: {allowed}")
+    os.makedirs(BACKUP_DIR, exist_ok=True)
     fname = f"task{task_id}_user{user_id}_{uuid.uuid4().hex[:8]}{ext}"
     path = os.path.join(BACKUP_DIR, fname)
     file_obj.save(path)
