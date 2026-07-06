@@ -1770,7 +1770,8 @@ def update_me():
 @app.route("/api/settings/smtp", methods=["GET", "POST"])
 @super_admin_required
 def smtp_settings():
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    # ENV_FILE_PATH ile override edilebilir (test izolasyonu); yoksa proje kökü .env.
+    env_path = os.environ.get("ENV_FILE_PATH") or os.path.join(os.path.dirname(__file__), ".env")
     if request.method == "GET":
         return jsonify(
             {
@@ -1781,21 +1782,43 @@ def smtp_settings():
             }
         )
     data = request.get_json() or {}
+
+    # GÜVENLİK — env injection savunması. Değerler .env'e ham yazıldığı için
+    # newline/CR içeren bir değer YENİ satır enjekte edebilir, örn:
+    #   smtp_pass = "x\nADMIN_PASSWORD=attacker"  → .env'e ekstra env değişkeni.
+    # super_admin gate var ama oturum ele geçirme (XSS/CSRF) veya kötü niyetli
+    # super_admin bununla SECRET_KEY/ADMIN_PASSWORD/DATABASE_URL yazıp sistemi
+    # kalıcı ele geçirebilir. Kontrol karakteri içeren her değer reddedilir.
+    def _clean_env_value(raw):
+        if raw is None:
+            return None
+        s = str(raw)
+        if any(c in s for c in ("\n", "\r", "\x00")):
+            raise ValueError("Değerlerde satır sonu / kontrol karakteri kullanılamaz")
+        return s.strip()
+
+    try:
+        updates = {}
+        if data.get("smtp_host"):
+            updates["SMTP_HOST"] = _clean_env_value(data["smtp_host"])
+        if data.get("smtp_port"):
+            port_str = _clean_env_value(data["smtp_port"])
+            if not port_str.isdigit() or not (1 <= int(port_str) <= 65535):
+                return jsonify({"error": "SMTP port 1-65535 aralığında bir sayı olmalı"}), 400
+            updates["SMTP_PORT"] = port_str
+        if data.get("smtp_user"):
+            updates["SMTP_USER"] = _clean_env_value(data["smtp_user"])
+        if data.get("smtp_pass") and data["smtp_pass"] != "••••••":
+            updates["SMTP_PASS"] = _clean_env_value(data["smtp_pass"])
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     try:
         if os.path.exists(env_path):
             with open(env_path, encoding="utf-8") as f:
                 lines = f.readlines()
         else:
             lines = []
-        updates = {}
-        if data.get("smtp_host"):
-            updates["SMTP_HOST"] = data["smtp_host"]
-        if data.get("smtp_port"):
-            updates["SMTP_PORT"] = str(data["smtp_port"])
-        if data.get("smtp_user"):
-            updates["SMTP_USER"] = data["smtp_user"]
-        if data.get("smtp_pass") and data["smtp_pass"] != "••••••":
-            updates["SMTP_PASS"] = data["smtp_pass"]
         new_lines = []
         updated_keys = set()
         for line in lines:
@@ -1814,8 +1837,23 @@ def smtp_settings():
                 new_lines.append(f"{key}={val}\n")
         with open(env_path, "w", encoding="utf-8") as f:
             f.writelines(new_lines)
+        # .env yalnızca sahibi okuyabilsin (gizli bilgi içerir) — best-effort.
+        try:
+            os.chmod(env_path, 0o600)
+        except OSError:
+            pass
         for key, val in updates.items():
             os.environ[key] = val
+        # Denetim kaydı — kim değiştirdi (şifre DEĞERİ loglanmaz, yalnız anahtarlar).
+        me = _current_user()
+        log_audit(
+            me,
+            "settings.smtp",
+            entity_type="settings",
+            summary=f"SMTP ayarları güncellendi ({', '.join(sorted(updates.keys())) or 'değişiklik yok'})",
+            details={"updated_keys": sorted(updates.keys())},
+        )
+        db.session.commit()
         return jsonify({"ok": True, "updated": list(updates.keys())})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
