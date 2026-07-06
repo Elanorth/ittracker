@@ -4,17 +4,27 @@
 // ══════════════════════════════════════════════════════════
 //  KULLANICI FİRMA BAZLI TEMA (v3)
 // ══════════════════════════════════════════════════════════
+// Sürüm TEK KAYNAK: Flask APP_VERSION (VERSION dosyası) app.html'de logo-sub-text
+// data-app-version'a enjekte edilir; buradan okunur. Eskiden 3 string'de elle 'v5.0'
+// yazılıydı ve sürüm bump'larında güncellenmiyordu (prod'da v5.11 sekmesi + v5.0 logo).
+function _appVersionSuffix() {
+  const el = document.getElementById('logo-sub-text');
+  const v = el && el.dataset ? el.dataset.appVersion : '';
+  return v ? ' · v' + v : '';
+}
+
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
+  const vs = _appVersionSuffix();
   let theme = null;
-  let logoText = 'İnventist & Assos · v5.0';
+  let logoText = 'İnventist & Assos' + vs;
 
   if (f.includes('assos')) {
     theme = 'assos';
-    logoText = 'Assos Pharma · v5.0';
+    logoText = 'Assos Pharma' + vs;
   } else if (f.includes('inventist')) {
     theme = 'inventist';
-    logoText = 'İnventist · v5.0';
+    logoText = 'İnventist' + vs;
   }
 
   if (theme) {
