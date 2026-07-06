@@ -47,10 +47,30 @@ Repo > **Settings** > **Branches** > **Add rule**:
 - Branch pattern: `main`
 - ✅ Require a pull request before merging
 - ✅ Require status checks to pass before merging — `test` workflow secilsin
-- ✅ Require linear history (rebase merge zorunlu)
+- ❌ Require linear history — **KAPALI** (2026-07 karari; bkz. asagidaki Merge Politikasi)
 - ✅ Do not allow bypassing the above settings
 
 `develop` icin daha gevsek — sadece status check yeterli.
+
+### Merge Politikasi (ONEMLI — VERSION cakismasinin kok cozumu)
+
+Iki farkli merge yontemi, iki farkli amac:
+
+| Merge | Yontem | Neden |
+|---|---|---|
+| **feature → develop** | **Squash and merge** | Temiz, tek-satir gecmis. Feature'in ara commit'leri develop'i kirletmez. |
+| **develop → main** (release) | **Create a merge commit** | main ↔ develop ORTAK GECMISI korunur. |
+
+**Neden release'de merge-commit zorunlu:** Release PR'i squash (veya rebase) edilirse
+GitHub main'de develop'inkiyle icerik-ayni ama SHA-farkli yeni bir commit olusturur;
+ortak gecmis kopar. Sonraki her develop↔main merge'inde merge-base cok eskiye duser ve
+`VERSION` gibi iki tarafin da dokundugu dosyalar "ikisi de degisti" diye **phantom
+cakisir** (2026-06/07'de tekrar tekrar yasandi). Merge-commit gecmisi birlestirir →
+gelecekte cakisma olmaz. Bu yuzden `main`'de "Require linear history" KAPATILDI
+(linear-history merge-commit'i engelliyordu).
+
+> Release PR'ini birlestirirken GitHub'da **"Create a merge commit"** sec — "Squash"
+> veya "Rebase" KULLANMA.
 
 ### 5. `develop` branch'i olustur
 
