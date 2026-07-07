@@ -28,8 +28,10 @@ from models.database import (
     Team,
     User,
     _sla_target_hours,
+    business_hours_between,
     db,
     init_db,
+    sla_deadline,
 )
 from services.mailer import send_invite_email, send_report_email
 from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
@@ -623,14 +625,13 @@ def dashboard_firm_summary():
         done = sum(1 for t in tasks if _task_done_at(t, today, occ_map))
         overdue = sum(1 for t in tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
-        # SLA ihlali — açık destek talepleri için (resolved değil, deadline geçmiş)
+        # SLA ihlali — açık destek talepleri için (resolved değil, iş-saati deadline geçmiş)
         sla_breach = 0
         for t in tasks:
             if t.category != "support" or t.is_done or not t.created_at:
                 continue
-            target_h = _sla_target_hours(t.priority)
-            deadline_dt = t.created_at + timedelta(hours=target_h)
-            if now > deadline_dt:
+            deadline_dt = sla_deadline(t.created_at, t.priority)
+            if deadline_dt and now > deadline_dt:
                 sla_breach += 1
         summary.append(
             {
@@ -705,14 +706,13 @@ def managed_firms_detail():
         overdue = sum(1 for t in all_tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
 
-        # SLA ihlali — açık destek talepleri
+        # SLA ihlali — açık destek talepleri (iş-saati bazlı)
         sla_breach = 0
         for t in all_tasks:
             if t.category != "support" or t.is_done or not t.created_at:
                 continue
-            target_h = _sla_target_hours(t.priority)
-            deadline_dt = t.created_at + timedelta(hours=target_h)
-            if now > deadline_dt:
+            deadline_dt = sla_deadline(t.created_at, t.priority)
+            if deadline_dt and now > deadline_dt:
                 sla_breach += 1
 
         # Trend — son 6 ay (en yaşlı önce, en yeni sonda)
@@ -1380,7 +1380,7 @@ def sla_stats():
     for t in tasks:
         prio = (t.priority or "orta").strip().lower()
         target_h = _sla_target_hours(prio)
-        deadline_dt = t.created_at + timedelta(hours=target_h) if t.created_at else None
+        deadline_dt = sla_deadline(t.created_at, prio) if t.created_at else None  # v5.13 iş-saati
         bucket = by_priority.setdefault(
             prio,
             {
@@ -1401,7 +1401,7 @@ def sla_stats():
         if t.is_done and t.completed_at:
             totals["resolved"] += 1
             bucket["resolved"] += 1
-            res_h = (t.completed_at - t.created_at).total_seconds() / 3600.0
+            res_h = business_hours_between(t.created_at, t.completed_at)  # v5.13 iş-saati
             sum_resolution += res_h
             resolved_count += 1
             bucket["_sum_resolution"] += res_h
@@ -1436,11 +1436,25 @@ def sla_stats():
         b.pop("_resolved_cnt", None)
         out_priority[p] = b
 
+    # v5.13 — iş-saati yapılandırması (UI'da "İş saati: 09:00-18:00, Pzt-Cum" göstermek için)
+    from models.database import _business_config
+
+    cfg = _business_config()
+    _DAY_TR = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    business = {
+        "enabled": cfg["enabled"],
+        "work_start": cfg["start"],
+        "work_end": cfg["end"],
+        "work_days": sorted(cfg["days"]),
+        "work_days_label": ", ".join(_DAY_TR[d] for d in sorted(cfg["days"])),
+        "holidays": sorted(h.isoformat() for h in cfg["holidays"]),
+    }
     return jsonify(
         {
             **totals,
             "by_priority": out_priority,
             "sla_targets": SLA_HOURS,
+            "business_hours": business,
             "month": month,
             "year": year,
         }

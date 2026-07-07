@@ -150,6 +150,167 @@ def _sla_target_hours(priority):
     return SLA_HOURS.get((priority or "orta").strip().lower(), 24)
 
 
+# ══════════════════════════════════════════════════════════
+#  v5.13 — İŞ-SAATİ (business-hours) SLA
+# ══════════════════════════════════════════════════════════
+# Eskiden SLA hedefi = created_at + timedelta(hours=target) → 7/24 duvar-saati.
+# Cuma 17:00'de açılan 4 saatlik yüksek öncelikli talep Cuma 21:00'de "ihlal"
+# sayılıyordu; oysa 09:00-18:00 mesaisinde Pazartesi ~11:00 olmalı. Bu blok
+# SLA'yı yalnız çalışma saatleri (varsayılan Pzt-Cum 09:00-18:00) + tatil takvimi
+# üzerinden sayar. SLA_BUSINESS_HOURS=0 ile 7/24 eski davranışa dönülür.
+import os as _os
+from datetime import UTC
+from datetime import time as _time
+
+try:
+    from zoneinfo import ZoneInfo as _ZoneInfo
+except ImportError:  # pragma: no cover
+    _ZoneInfo = None
+
+
+def _business_config():
+    """İş-saati yapılandırması — env'den, güvenli varsayılanlarla.
+
+    Saatler `tz` (SLA_TZ veya SCHEDULER_TZ, default Europe/Istanbul) yerel
+    saatinde yorumlanır. created_at/now UTC (utcnow) olduğu için hesap sınırında
+    yerel↔UTC dönüşümü yapılır. tz çözülemezse UTC-saati fallback (dönüşüm yok).
+    """
+
+    def _int(env, default):
+        try:
+            return int(_os.environ.get(env, default))
+        except (TypeError, ValueError):
+            return default
+
+    start_h = _int("SLA_WORK_START", 9)
+    end_h = _int("SLA_WORK_END", 18)
+    if not (0 <= start_h < end_h <= 24):
+        start_h, end_h = 9, 18
+    try:
+        work_days = {int(x) for x in _os.environ.get("SLA_WORK_DAYS", "0,1,2,3,4").split(",") if x.strip() != ""}
+    except ValueError:
+        work_days = {0, 1, 2, 3, 4}
+    if not work_days:
+        work_days = {0, 1, 2, 3, 4}
+    holidays = set()
+    for tok in _os.environ.get("SLA_HOLIDAYS", "").split(","):
+        tok = tok.strip()
+        if tok:
+            try:
+                holidays.add(_date.fromisoformat(tok))
+            except ValueError:
+                pass
+    tz = None
+    tz_name = _os.environ.get("SLA_TZ") or _os.environ.get("SCHEDULER_TZ", "Europe/Istanbul")
+    if _ZoneInfo is not None:
+        try:
+            tz = _ZoneInfo(tz_name)
+        except Exception:
+            tz = None
+    return {
+        "start": start_h,
+        "end": end_h,
+        "days": work_days,  # Python weekday: Pzt=0 ... Paz=6
+        "holidays": holidays,
+        "enabled": _os.environ.get("SLA_BUSINESS_HOURS", "1") != "0",
+        "tz": tz,
+    }
+
+
+def _to_local(dt_utc, cfg):
+    """Naive-UTC datetime'ı iş-saati tz'sinde naive-yerel'e çevirir (tz yoksa aynen)."""
+    tz = cfg.get("tz")
+    if tz is None or dt_utc is None:
+        return dt_utc
+    return dt_utc.replace(tzinfo=UTC).astimezone(tz).replace(tzinfo=None)
+
+
+def _to_utc(dt_local, cfg):
+    """Naive-yerel datetime'ı naive-UTC'ye çevirir (tz yoksa aynen)."""
+    tz = cfg.get("tz")
+    if tz is None or dt_local is None:
+        return dt_local
+    return dt_local.replace(tzinfo=tz).astimezone(UTC).replace(tzinfo=None)
+
+
+def _is_workday(d, cfg):
+    return d.weekday() in cfg["days"] and d not in cfg["holidays"]
+
+
+def _day_end(d, cfg):
+    """Çalışma günü bitiş anı (end_h=24 için gün sonuna yakın güvenli değer)."""
+    if cfg["end"] >= 24:
+        return datetime.combine(d, _time(hour=23, minute=59, second=59))
+    return datetime.combine(d, _time(hour=cfg["end"]))
+
+
+def _next_work_moment(dt, cfg):
+    """dt (naive-yerel) itibaren mevcut veya bir sonraki çalışma anına ilerlet."""
+    cur = dt
+    for _ in range(3660):  # ~10 yıl güvenlik tavanı
+        d = cur.date()
+        if _is_workday(d, cfg):
+            ws = datetime.combine(d, _time(hour=cfg["start"]))
+            we = _day_end(d, cfg)
+            if cur < ws:
+                return ws
+            if cur < we:
+                return cur
+        cur = datetime.combine(d + timedelta(days=1), _time(hour=cfg["start"]))
+    return cur
+
+
+def _add_bh_local(start, hours, cfg):
+    """Naive-yerel `start`'a `hours` iş saati ekler (yerel uzayda)."""
+    remaining = timedelta(hours=hours)
+    cur = _next_work_moment(start, cfg)
+    for _ in range(3660):
+        we = _day_end(cur.date(), cfg)
+        avail = we - cur
+        if remaining <= avail:
+            return cur + remaining
+        remaining -= avail
+        cur = _next_work_moment(datetime.combine(cur.date() + timedelta(days=1), _time(hour=cfg["start"])), cfg)
+    return cur
+
+
+def add_business_hours(start, hours, cfg=None):
+    """UTC `start`'a `hours` İŞ saati ekleyip UTC son tarihi döndürür."""
+    cfg = cfg or _business_config()
+    if not cfg["enabled"]:
+        return start + timedelta(hours=hours)
+    return _to_utc(_add_bh_local(_to_local(start, cfg), hours, cfg), cfg)
+
+
+def business_hours_between(a, b, cfg=None):
+    """UTC a ile b arasındaki İŞ saatini (float) döndürür. b<a ise negatif."""
+    cfg = cfg or _business_config()
+    if not cfg["enabled"]:
+        return (b - a).total_seconds() / 3600.0
+    a, b = _to_local(a, cfg), _to_local(b, cfg)
+    sign = 1
+    if b < a:
+        a, b = b, a
+        sign = -1
+    total = timedelta(0)
+    cur = _next_work_moment(a, cfg)
+    for _ in range(3660):
+        if cur >= b:
+            break
+        seg_end = min(_day_end(cur.date(), cfg), b)
+        if seg_end > cur:
+            total += seg_end - cur
+        cur = _next_work_moment(datetime.combine(cur.date() + timedelta(days=1), _time(hour=cfg["start"])), cfg)
+    return sign * total.total_seconds() / 3600.0
+
+
+def sla_deadline(created_at, priority, cfg=None):
+    """Destek talebinin İŞ-saati bazlı SLA son tarihi (UTC, None-güvenli)."""
+    if not created_at:
+        return None
+    return add_business_hours(created_at, _sla_target_hours(priority), cfg)
+
+
 def _period_key(period: str, dt) -> str | None:
     """v5.0 — Verilen tarih için periyota karşılık gelen kanonik string key.
 
@@ -387,20 +548,21 @@ class Task(db.Model):
             )
 
         # v4.5 — SLA hesaplamaları (destek talepleri için)
+        # v5.13 — İŞ-saati bazlı: deadline + kalan/çözüm süreleri çalışma saatleri
+        # üzerinden (7/24 değil). SLA_BUSINESS_HOURS=0 ile eski davranışa döner.
         sla = None
         if self.category == "support":
             target_h = _sla_target_hours(self.priority)
-            deadline_dt = self.created_at + timedelta(hours=target_h) if self.created_at else None
+            deadline_dt = sla_deadline(self.created_at, self.priority) if self.created_at else None
             now = datetime.utcnow()
             if is_done and self.completed_at:
-                resolution_h = (self.completed_at - self.created_at).total_seconds() / 3600.0
+                resolution_h = business_hours_between(self.created_at, self.completed_at)
                 breached = (self.completed_at > deadline_dt) if deadline_dt else False
                 remaining_h = 0.0
             else:
                 resolution_h = None
-                remaining_seconds = (deadline_dt - now).total_seconds() if deadline_dt else 0
-                remaining_h = remaining_seconds / 3600.0
-                breached = remaining_seconds < 0
+                remaining_h = business_hours_between(now, deadline_dt) if deadline_dt else 0
+                breached = (now > deadline_dt) if deadline_dt else False
             sla = {
                 "target_hours": target_h,
                 "deadline": deadline_dt.isoformat() if deadline_dt else None,
