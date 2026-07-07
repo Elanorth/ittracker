@@ -92,6 +92,7 @@ class TestSlaIntegration:
 
         7/24 olsaydı Cuma 21:00'de ihlal sayılırdı; iş-saatinde deadline Pzt 12:00.
         """
+        monkeypatch.setenv("SLA_BUSINESS_HOURS", "1")
         monkeypatch.setenv("SLA_TZ", "UTC")  # deterministik: mesai 09-18 UTC
         u = user_factory(username="bh_u1", firm="inventist")
         t = task_factory(user_id=u.id, category="support", priority="yüksek", firm="inventist")
@@ -106,6 +107,7 @@ class TestSlaIntegration:
 
     @freeze_time("2026-05-11 13:00:00")  # Pazartesi 13:00, deadline (12:00) geçmiş
     def test_deadline_sonrasi_breach(self, db, client, user_factory, task_factory, login_as, monkeypatch):
+        monkeypatch.setenv("SLA_BUSINESS_HOURS", "1")
         monkeypatch.setenv("SLA_TZ", "UTC")
         u = user_factory(username="bh_u2", firm="inventist")
         t = task_factory(user_id=u.id, category="support", priority="yüksek", firm="inventist")
@@ -117,6 +119,7 @@ class TestSlaIntegration:
     @freeze_time("2026-05-09 10:00:00")
     def test_sla_stats_business_hours_alani(self, db, client, user_factory, task_factory, login_as, monkeypatch):
         """/api/sla/stats yanıtı iş-saati yapılandırmasını döndürür."""
+        monkeypatch.setenv("SLA_BUSINESS_HOURS", "1")
         monkeypatch.setenv("SLA_TZ", "UTC")
         u = user_factory(username="bh_u3", firm="inventist", permission_level="super_admin", is_admin=True)
         login_as(u)
