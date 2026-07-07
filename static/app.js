@@ -1121,8 +1121,14 @@ async function loadSlaKpi() {
       s.resolved ? `${s.resolved} ticket üzerinden` : 'Destek talepleri';
     // Open
     document.getElementById('sla-kpi-open').textContent = s.open;
-    document.getElementById('sla-kpi-open-sub').textContent =
-      `Toplam ${s.total} talep`;
+    // v5.13 — SLA iş-saati bazlıysa alt-satırda çalışma penceresini göster
+    const bh = s.business_hours;
+    if (bh && bh.enabled) {
+      const wh = `${String(bh.work_start).padStart(2,'0')}:00-${String(bh.work_end).padStart(2,'0')}:00`;
+      document.getElementById('sla-kpi-open-sub').textContent = `${s.total} talep · İş saati ${bh.work_days_label} ${wh}`;
+    } else {
+      document.getElementById('sla-kpi-open-sub').textContent = `Toplam ${s.total} talep` + (bh && !bh.enabled ? ' · SLA 7/24' : '');
+    }
   } catch (e) {
     console.warn('[sla] kpi yüklenemedi', e);
     row.style.display = 'none';
