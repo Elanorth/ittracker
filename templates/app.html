@@ -1382,7 +1382,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <input class="form-control" id="report-cc" placeholder="yonetici@sirket.com (opsiyonel)">
         </div>
         <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="previewReportPdf()">&#8595; PDF Önizle / İndir</button>
-        <button class="btn btn-outline" style="width:100%;font-size:11px" onclick="sendReportMail()">📧 Seçili Aya Ait PDF'i Gönder</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px;margin-bottom:10px" onclick="sendReportMail()">📧 Seçili Aya Ait PDF'i Gönder</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px" onclick="exportTasksCsv()">&#8595; CSV İndir (Excel)</button>
       </div>
     </div>
   </div>
@@ -1464,6 +1465,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Kim, ne zaman, ne yaptı · <span id="audit-scope-hint">Firmanız için tüm işlemler</span></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-outline btn-sm" onclick="exportAuditCsv()">&#8595; CSV</button>
       <button class="btn btn-outline btn-sm" onclick="resetAuditFilters()">Sıfırla</button>
       <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Yenile</button>
     </div>
