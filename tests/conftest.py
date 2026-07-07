@@ -17,6 +17,10 @@ os.environ.setdefault("SECRET_KEY", "test-secret-not-for-prod")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 # Test client HTTP üzerinden çalışır; Secure çerez gönderilmezse oturum kaybolur.
 os.environ.setdefault("SESSION_COOKIE_SECURE", "0")
+# v5.13 — SLA testlerinin çoğu 7/24 varsayımıyla yazıldı (created_at - N saat = breach).
+# İş-saati takvimi bu varsayımı bozar; testlerde varsayılan KAPALI, business-hours
+# davranışı yalnız test_sla_business_hours.py'de açıkça (SLA_BUSINESS_HOURS=1) test edilir.
+os.environ.setdefault("SLA_BUSINESS_HOURS", "0")
 
 import pytest
 

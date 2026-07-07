@@ -360,20 +360,30 @@ function resetAuditFilters() {
   loadAuditLog();
 }
 
+// v5.14 — Denetim kayıtlarını ekrandaki filtrelerle CSV (Excel) olarak indir.
+function _auditFilterParams() {
+  const params = new URLSearchParams();
+  const s = document.getElementById('audit-start')?.value;
+  const e = document.getElementById('audit-end')?.value;
+  const a = document.getElementById('audit-action')?.value;
+  const t = document.getElementById('audit-target-user')?.value;
+  if (s) params.set('start', s);
+  if (e) params.set('end', e);
+  if (a) params.set('action', a);
+  if (t) params.set('target_user_id', t);
+  return params;
+}
+function exportAuditCsv() {
+  window.location.href = '/api/audit/export?' + _auditFilterParams().toString();
+  showToast('ok', 'CSV indiriliyor…');
+}
+
 async function loadAuditLog() {
   const tbody = document.getElementById('audit-tbody');
   const count = document.getElementById('audit-count');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px">Yükleniyor…</td></tr>';
-  const params = new URLSearchParams();
-  const s = document.getElementById('audit-start').value;
-  const e = document.getElementById('audit-end').value;
-  const a = document.getElementById('audit-action').value;
-  const t = document.getElementById('audit-target-user').value;
-  if (s) params.set('start', s);
-  if (e) params.set('end', e);
-  if (a) params.set('action', a);
-  if (t) params.set('target_user_id', t);
+  const params = _auditFilterParams();
   try {
     const res = await fetch('/api/audit?' + params.toString());
     if (!res.ok) throw new Error((await res.json()).error || 'API hatası');
@@ -1121,8 +1131,14 @@ async function loadSlaKpi() {
       s.resolved ? `${s.resolved} ticket üzerinden` : 'Destek talepleri';
     // Open
     document.getElementById('sla-kpi-open').textContent = s.open;
-    document.getElementById('sla-kpi-open-sub').textContent =
-      `Toplam ${s.total} talep`;
+    // v5.13 — SLA iş-saati bazlıysa alt-satırda çalışma penceresini göster
+    const bh = s.business_hours;
+    if (bh && bh.enabled) {
+      const wh = `${String(bh.work_start).padStart(2,'0')}:00-${String(bh.work_end).padStart(2,'0')}:00`;
+      document.getElementById('sla-kpi-open-sub').textContent = `${s.total} talep · İş saati ${bh.work_days_label} ${wh}`;
+    } else {
+      document.getElementById('sla-kpi-open-sub').textContent = `Toplam ${s.total} talep` + (bh && !bh.enabled ? ' · SLA 7/24' : '');
+    }
   } catch (e) {
     console.warn('[sla] kpi yüklenemedi', e);
     row.style.display = 'none';
@@ -3246,6 +3262,16 @@ function previewReportPdf() {
   if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
   const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
   window.open(`/api/report/pdf?month=${my.month}&year=${my.year}${userParam}`, '_blank');
+}
+
+// v5.14 — Seçili ayın görev listesini CSV (Excel) olarak indir. Ekrandaki
+// ay/kullanıcı kapsamıyla aynı küme (backend _collect_tasks_for_month).
+function exportTasksCsv() {
+  const my = _getSelectedMonthYear();
+  if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
+  const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
+  window.location.href = `/api/tasks/export?month=${my.month}&year=${my.year}${userParam}`;
+  showToast('ok', 'CSV indiriliyor…');
 }
 
 async function sendReportMail() {

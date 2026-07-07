@@ -8,6 +8,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+import csv as _csv
+import io as _io
 import json as _json
 import secrets
 from datetime import date, datetime, timedelta
@@ -28,8 +30,10 @@ from models.database import (
     Team,
     User,
     _sla_target_hours,
+    business_hours_between,
     db,
     init_db,
+    sla_deadline,
 )
 from services.mailer import send_invite_email, send_report_email
 from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
@@ -252,6 +256,25 @@ def board_access_required(f):
 def _current_user():
     """Yardımcı: mevcut kullanıcıyı döndürür"""
     return db.session.get(User, session.get("user_id"))
+
+
+def _csv_response(filename, header, rows):
+    """v5.14 — UTF-8 BOM + ';' ayraçlı CSV yanıtı (TR Excel uyumlu).
+
+    Excel Türkçe locale'de virgülü ondalık ayırıcı sayar; sütunların düzgün
+    ayrılması için ';' kullanılır. BOM olmadan Türkçe karakterler Excel'de bozuk
+    görünür (mojibake) → başa '﻿' eklenir.
+    """
+    buf = _io.StringIO()
+    buf.write("﻿")
+    writer = _csv.writer(buf, delimiter=";", lineterminator="\r\n")
+    writer.writerow(header)
+    for r in rows:
+        writer.writerow(["" if c is None else c for c in r])
+    resp = app.response_class(buf.getvalue(), mimetype="text/csv; charset=utf-8")
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 def log_audit(actor, action, *, entity_type="", entity_id=None, target_user=None, firm="", summary="", details=None):
@@ -623,14 +646,13 @@ def dashboard_firm_summary():
         done = sum(1 for t in tasks if _task_done_at(t, today, occ_map))
         overdue = sum(1 for t in tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
-        # SLA ihlali — açık destek talepleri için (resolved değil, deadline geçmiş)
+        # SLA ihlali — açık destek talepleri için (resolved değil, iş-saati deadline geçmiş)
         sla_breach = 0
         for t in tasks:
             if t.category != "support" or t.is_done or not t.created_at:
                 continue
-            target_h = _sla_target_hours(t.priority)
-            deadline_dt = t.created_at + timedelta(hours=target_h)
-            if now > deadline_dt:
+            deadline_dt = sla_deadline(t.created_at, t.priority)
+            if deadline_dt and now > deadline_dt:
                 sla_breach += 1
         summary.append(
             {
@@ -705,14 +727,13 @@ def managed_firms_detail():
         overdue = sum(1 for t in all_tasks if _task_overdue_at(t, today, occ_map))
         rate = round((done / total) * 100) if total else 0
 
-        # SLA ihlali — açık destek talepleri
+        # SLA ihlali — açık destek talepleri (iş-saati bazlı)
         sla_breach = 0
         for t in all_tasks:
             if t.category != "support" or t.is_done or not t.created_at:
                 continue
-            target_h = _sla_target_hours(t.priority)
-            deadline_dt = t.created_at + timedelta(hours=target_h)
-            if now > deadline_dt:
+            deadline_dt = sla_deadline(t.created_at, t.priority)
+            if deadline_dt and now > deadline_dt:
                 sla_breach += 1
 
         # Trend — son 6 ay (en yaşlı önce, en yeni sonda)
@@ -907,6 +928,61 @@ def get_tasks():
     category_filter = request.args.get("category")
     result = _collect_tasks_for_month(uid, month, year, firm_filter, category_filter)
     return jsonify([t.to_dict(month=month, year=year) for t in result])
+
+
+@app.route("/api/tasks/export")
+@login_required
+def export_tasks_csv():
+    """v5.14 — Görev listesini CSV olarak dışa aktarır (ekrandaki ay/filtre ile aynı küme)."""
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err:
+        return err
+    month = request.args.get("month", date.today().month, type=int)
+    year = request.args.get("year", date.today().year, type=int)
+    firm_filter = request.args.get("firm")
+    category_filter = request.args.get("category")
+    tasks = _collect_tasks_for_month(uid, month, year, firm_filter, category_filter)
+    header = [
+        "ID",
+        "Başlık",
+        "Kategori",
+        "Öncelik",
+        "Periyot",
+        "Firma",
+        "Ekip",
+        "Durum",
+        "Deadline",
+        "Oluşturulma",
+        "SLA Durumu",
+        "SLA Kalan (iş saati)",
+    ]
+    rows = []
+    for t in tasks:
+        d = t.to_dict(month=month, year=year)
+        sla = d.get("sla")
+        sla_status, sla_rem = "", ""
+        if sla:
+            sla_status = "İhlal" if sla.get("breached") else ("Çözüldü" if d["is_done"] else "Açık")
+            if not d["is_done"] and isinstance(sla.get("remaining_hours"), int | float):
+                sla_rem = f"{sla['remaining_hours']:.1f}"
+        rows.append(
+            [
+                t.id,
+                t.title,
+                _CAT_LABELS.get(t.category, t.category),
+                t.priority or "",
+                t.period or "",
+                t.firm or "",
+                t.team or "",
+                "Tamam" if d["is_done"] else "Bekliyor",
+                t.deadline.isoformat() if t.deadline else "",
+                t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "",
+                sla_status,
+                sla_rem,
+            ]
+        )
+    return _csv_response(f"gorevler_{year}_{month:02d}.csv", header, rows)
 
 
 @app.route("/api/tasks", methods=["POST"])
@@ -1380,7 +1456,7 @@ def sla_stats():
     for t in tasks:
         prio = (t.priority or "orta").strip().lower()
         target_h = _sla_target_hours(prio)
-        deadline_dt = t.created_at + timedelta(hours=target_h) if t.created_at else None
+        deadline_dt = sla_deadline(t.created_at, prio) if t.created_at else None  # v5.13 iş-saati
         bucket = by_priority.setdefault(
             prio,
             {
@@ -1401,7 +1477,7 @@ def sla_stats():
         if t.is_done and t.completed_at:
             totals["resolved"] += 1
             bucket["resolved"] += 1
-            res_h = (t.completed_at - t.created_at).total_seconds() / 3600.0
+            res_h = business_hours_between(t.created_at, t.completed_at)  # v5.13 iş-saati
             sum_resolution += res_h
             resolved_count += 1
             bucket["_sum_resolution"] += res_h
@@ -1436,11 +1512,25 @@ def sla_stats():
         b.pop("_resolved_cnt", None)
         out_priority[p] = b
 
+    # v5.13 — iş-saati yapılandırması (UI'da "İş saati: 09:00-18:00, Pzt-Cum" göstermek için)
+    from models.database import _business_config
+
+    cfg = _business_config()
+    _DAY_TR = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    business = {
+        "enabled": cfg["enabled"],
+        "work_start": cfg["start"],
+        "work_end": cfg["end"],
+        "work_days": sorted(cfg["days"]),
+        "work_days_label": ", ".join(_DAY_TR[d] for d in sorted(cfg["days"])),
+        "holidays": sorted(h.isoformat() for h in cfg["holidays"]),
+    }
     return jsonify(
         {
             **totals,
             "by_priority": out_priority,
             "sla_targets": SLA_HOURS,
+            "business_hours": business,
             "month": month,
             "year": year,
         }
@@ -1698,31 +1788,24 @@ def me():
 
 
 # ── v4.4 AUDIT LOG ──
-@app.route("/api/audit")
-@director_required
-def list_audit():
-    """Denetim kayıtları — director+ için.
-    Query: start, end (YYYY-MM-DD); action; actor_id; target_user_id; firm; limit (max 500), offset"""
-    me = _current_user()
+def _audit_scoped_query(me):
+    """AuditLog sorgusu: firma kapsamı + request.args filtreleri (TEK KAYNAK).
+
+    list_audit ve export_audit_csv aynı kapsam/filtre mantığını kullanır.
+    Geçersiz tarih formatında ValueError fırlatır (çağıran 400 döner).
+    """
     q = AuditLog.query
-    # Firma kapsamı: super_admin tümünü görür; director YÖNETTİĞİ tüm firmaları
-    # (F2.3 — eski kod yalnızca kendi firma'sını filtreliyordu, çoklu firma açığı).
+    # Firma kapsamı: super_admin tümünü; director YÖNETTİĞİ tüm firmaları (F2.3).
     if not me.is_super_admin:
         scope = set(me.managed_firm_slugs)
         scope.add(me.firm or "")
         q = q.filter(AuditLog.firm.in_(list(scope)))
-    # Tarih aralığı
     start = request.args.get("start")
     end = request.args.get("end")
-    try:
-        if start:
-            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(start))
-        if end:
-            end_dt = datetime.fromisoformat(end) + timedelta(days=1)  # inclusive gün sonu
-            q = q.filter(AuditLog.created_at < end_dt)
-    except ValueError:
-        return jsonify({"error": "Geçersiz tarih formatı (YYYY-MM-DD bekleniyor)"}), 400
-    # Filtreler
+    if start:
+        q = q.filter(AuditLog.created_at >= datetime.fromisoformat(start))
+    if end:
+        q = q.filter(AuditLog.created_at < datetime.fromisoformat(end) + timedelta(days=1))
     action = request.args.get("action")
     if action:
         q = q.filter(AuditLog.action == action)
@@ -1735,12 +1818,67 @@ def list_audit():
     firm = request.args.get("firm")
     if firm and me.is_super_admin:
         q = q.filter(AuditLog.firm == firm)
+    return q
 
+
+# CSV/UI'da okunabilir işlem etiketleri (app.js AUDIT_ACTION_LABELS ile paralel)
+_AUDIT_ACTION_LABELS = {
+    "task.create": "Görev Oluşturma",
+    "task.assign": "Görev Atama",
+    "task.update": "Görev Güncelleme",
+    "task.complete": "Görev Tamamlama",
+    "task.reopen": "Görev Yeniden Açma",
+    "task.manager_note": "IT Müdürü Notu",
+    "task.delete": "Görev Silme",
+    "user.invite": "Kullanıcı Daveti",
+    "user.update": "Kullanıcı Güncelleme",
+    "user.delete": "Kullanıcı Silme",
+    "settings.smtp": "SMTP Ayarı",
+}
+
+
+@app.route("/api/audit")
+@director_required
+def list_audit():
+    """Denetim kayıtları — director+ için.
+    Query: start, end (YYYY-MM-DD); action; actor_id; target_user_id; firm; limit (max 500), offset"""
+    me = _current_user()
+    try:
+        q = _audit_scoped_query(me)
+    except ValueError:
+        return jsonify({"error": "Geçersiz tarih formatı (YYYY-MM-DD bekleniyor)"}), 400
     limit = min(request.args.get("limit", 200, type=int), 500)
     offset = request.args.get("offset", 0, type=int)
     total = q.count()
     rows = q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
     return jsonify({"total": total, "rows": [r.to_dict() for r in rows]})
+
+
+@app.route("/api/audit/export")
+@director_required
+def export_audit_csv():
+    """v5.14 — Denetim kayıtlarını CSV olarak dışa aktarır (liste ile aynı filtreler, max 5000)."""
+    me = _current_user()
+    try:
+        q = _audit_scoped_query(me)
+    except ValueError:
+        return jsonify({"error": "Geçersiz tarih formatı (YYYY-MM-DD bekleniyor)"}), 400
+    rows_db = q.order_by(AuditLog.created_at.desc()).limit(5000).all()
+    header = ["Tarih", "İşlem", "Aktör", "Hedef", "Firma", "Özet"]
+    rows = []
+    for r in rows_db:
+        rows.append(
+            [
+                r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+                _AUDIT_ACTION_LABELS.get(r.action, r.action),
+                r.actor_name or "",
+                r.target_name or "",
+                r.firm or "",
+                r.summary or "",
+            ]
+        )
+    today = date.today().isoformat()
+    return _csv_response(f"denetim_{today}.csv", header, rows)
 
 
 @app.route("/api/me", methods=["PATCH"])

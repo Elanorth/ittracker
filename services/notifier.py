@@ -28,9 +28,9 @@ Anti-spam:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from models.database import Firm, Task, User, _sla_target_hours, db
+from models.database import Firm, Task, User, _sla_target_hours, business_hours_between, db, sla_deadline
 from services.mailer import send_alarm_digest, send_manager_digest
 
 OVERDUE_DAYS = 3
@@ -89,16 +89,15 @@ def _days_late(task, now):
 
 
 def _sla_state(task, now):
-    """Destek görevleri için SLA durumu.
+    """Destek görevleri için SLA durumu (v5.13 — İŞ-saati bazlı).
     Döner: (remaining_hours, breached, target_hours) veya None.
     """
     if task.category != "support" or task.is_done or not task.created_at:
         return None
     target_h = _sla_target_hours(task.priority)
-    deadline_dt = task.created_at + timedelta(hours=target_h)
-    remaining_sec = (deadline_dt - now).total_seconds()
-    remaining_h = remaining_sec / 3600.0
-    breached = remaining_sec < 0
+    deadline_dt = sla_deadline(task.created_at, task.priority)
+    breached = bool(deadline_dt and now > deadline_dt)
+    remaining_h = business_hours_between(now, deadline_dt) if deadline_dt else 0.0
     return remaining_h, breached, target_h
 
 
