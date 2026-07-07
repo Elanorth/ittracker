@@ -944,8 +944,18 @@ def export_tasks_csv():
     category_filter = request.args.get("category")
     tasks = _collect_tasks_for_month(uid, month, year, firm_filter, category_filter)
     header = [
-        "ID", "Başlık", "Kategori", "Öncelik", "Periyot", "Firma", "Ekip",
-        "Durum", "Deadline", "Oluşturulma", "SLA Durumu", "SLA Kalan (iş saati)",
+        "ID",
+        "Başlık",
+        "Kategori",
+        "Öncelik",
+        "Periyot",
+        "Firma",
+        "Ekip",
+        "Durum",
+        "Deadline",
+        "Oluşturulma",
+        "SLA Durumu",
+        "SLA Kalan (iş saati)",
     ]
     rows = []
     for t in tasks:
@@ -956,20 +966,22 @@ def export_tasks_csv():
             sla_status = "İhlal" if sla.get("breached") else ("Çözüldü" if d["is_done"] else "Açık")
             if not d["is_done"] and isinstance(sla.get("remaining_hours"), int | float):
                 sla_rem = f"{sla['remaining_hours']:.1f}"
-        rows.append([
-            t.id,
-            t.title,
-            _CAT_LABELS.get(t.category, t.category),
-            t.priority or "",
-            t.period or "",
-            t.firm or "",
-            t.team or "",
-            "Tamam" if d["is_done"] else "Bekliyor",
-            t.deadline.isoformat() if t.deadline else "",
-            t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "",
-            sla_status,
-            sla_rem,
-        ])
+        rows.append(
+            [
+                t.id,
+                t.title,
+                _CAT_LABELS.get(t.category, t.category),
+                t.priority or "",
+                t.period or "",
+                t.firm or "",
+                t.team or "",
+                "Tamam" if d["is_done"] else "Bekliyor",
+                t.deadline.isoformat() if t.deadline else "",
+                t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "",
+                sla_status,
+                sla_rem,
+            ]
+        )
     return _csv_response(f"gorevler_{year}_{month:02d}.csv", header, rows)
 
 
@@ -1855,14 +1867,16 @@ def export_audit_csv():
     header = ["Tarih", "İşlem", "Aktör", "Hedef", "Firma", "Özet"]
     rows = []
     for r in rows_db:
-        rows.append([
-            r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
-            _AUDIT_ACTION_LABELS.get(r.action, r.action),
-            r.actor_name or "",
-            r.target_name or "",
-            r.firm or "",
-            r.summary or "",
-        ])
+        rows.append(
+            [
+                r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+                _AUDIT_ACTION_LABELS.get(r.action, r.action),
+                r.actor_name or "",
+                r.target_name or "",
+                r.firm or "",
+                r.summary or "",
+            ]
+        )
     today = date.today().isoformat()
     return _csv_response(f"denetim_{today}.csv", header, rows)
 
