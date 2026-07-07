@@ -159,8 +159,8 @@ def _sla_target_hours(priority):
 # SLA'yı yalnız çalışma saatleri (varsayılan Pzt-Cum 09:00-18:00) + tatil takvimi
 # üzerinden sayar. SLA_BUSINESS_HOURS=0 ile 7/24 eski davranışa dönülür.
 import os as _os
+from datetime import UTC
 from datetime import time as _time
-from datetime import timezone as _timezone
 
 try:
     from zoneinfo import ZoneInfo as _ZoneInfo
@@ -222,7 +222,7 @@ def _to_local(dt_utc, cfg):
     tz = cfg.get("tz")
     if tz is None or dt_utc is None:
         return dt_utc
-    return dt_utc.replace(tzinfo=_timezone.utc).astimezone(tz).replace(tzinfo=None)
+    return dt_utc.replace(tzinfo=UTC).astimezone(tz).replace(tzinfo=None)
 
 
 def _to_utc(dt_local, cfg):
@@ -230,7 +230,7 @@ def _to_utc(dt_local, cfg):
     tz = cfg.get("tz")
     if tz is None or dt_local is None:
         return dt_local
-    return dt_local.replace(tzinfo=tz).astimezone(_timezone.utc).replace(tzinfo=None)
+    return dt_local.replace(tzinfo=tz).astimezone(UTC).replace(tzinfo=None)
 
 
 def _is_workday(d, cfg):

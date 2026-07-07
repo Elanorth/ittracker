@@ -28,7 +28,7 @@ Anti-spam:
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from models.database import Firm, Task, User, _sla_target_hours, business_hours_between, db, sla_deadline
 from services.mailer import send_alarm_digest, send_manager_digest
