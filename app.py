@@ -11,6 +11,7 @@ load_dotenv()
 import csv as _csv
 import io as _io
 import json as _json
+import re as _re
 import secrets
 from datetime import date, datetime, timedelta
 from functools import wraps
@@ -2162,8 +2163,163 @@ def notifications_run_now():
 
 
 # ══════════════════════════════════════════════════════════
-#  ORTAK ALAN (BOARD) API
+#  v5.15 — İNTRANET PORTAL (self-service, LOGIN YOK)
 # ══════════════════════════════════════════════════════════
+# Son kullanıcı /portal üzerinden destek talebi açar; tahmin edilemez bir
+# Case No (INV-7K3M9Q) üretilir ve ACK maili gönderilir. Takip sorgusu
+# Case No + e-posta İKİSİ birlikte doğrulanarak yapılır (tek başına kod yetmez).
+# Faz A: form + ACK + temel durum görüntüleme. Faz B: CaseMessage yanıt akışı.
+
+# Karışabilen karakterler yok (0/O, 1/I/L) — telefonda okunabilir kod
+_CASE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # pragma: allowlist secret  (case-kodu alfabesi, sır değil)
+_CASE_PREFIX = {"inventist": "INV", "assos": "ASS"}
+_EMAIL_RE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Public form/lookup için IP bazlı basit rate-limit (login limiter kalıbı)
+_PORTAL_HITS: dict = {}
+_PORTAL_MAX = 10  # 10 dakikada 10 istek / IP
+_PORTAL_WINDOW = 600
+
+
+def _portal_rate_limited(ip):
+    import time as _t
+
+    stamps = _PORTAL_HITS.get(ip)
+    if not stamps:
+        return False
+    now = _t.time()
+    stamps[:] = [t for t in stamps if now - t < _PORTAL_WINDOW]
+    if not stamps:
+        _PORTAL_HITS.pop(ip, None)
+        return False
+    return len(stamps) >= _PORTAL_MAX
+
+
+def _portal_register_hit(ip):
+    import time as _t
+
+    if len(_PORTAL_HITS) > 2000:
+        _PORTAL_HITS.clear()
+    _PORTAL_HITS.setdefault(ip, []).append(_t.time())
+
+
+def _gen_case_code(firm_slug):
+    """Tahmin edilemez, marka önekli case kodu: INV-7K3M9Q (unique garantili)."""
+    prefix = _CASE_PREFIX.get((firm_slug or "").lower(), "GEN")
+    for _ in range(20):
+        body = "".join(secrets.choice(_CASE_ALPHABET) for _ in range(6))
+        code = f"{prefix}-{body}"
+        if not Task.query.filter_by(case_code=code).first():
+            return code
+    # Aşırı düşük olasılık: 8 haneye çık
+    body = "".join(secrets.choice(_CASE_ALPHABET) for _ in range(8))
+    return f"{prefix}-{body}"
+
+
+@app.route("/portal")
+def portal_home():
+    """Public intranet portal SPA — login gerektirmez."""
+    return render_template("portal.html", version=APP_VERSION)
+
+
+@app.route("/portal/api/cases", methods=["POST"])
+def portal_create_case():
+    """Portaldan yeni destek talebi — LOGIN YOK. Case No üretir + ACK mail."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    data = request.get_json(silent=True) or {}
+    firm = (data.get("firm") or "").strip().lower()
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    subject = (data.get("subject") or "").strip()
+    category = (data.get("category") or "other").strip()
+    description = (data.get("description") or "").strip()
+    # Doğrulama (form kuralları: ad+mail+konu zorunlu, açıklama ≥60)
+    if firm not in _CASE_PREFIX:
+        return jsonify({"error": "Geçersiz firma"}), 400
+    if not name or not subject:
+        return jsonify({"error": "Ad-soyad ve konu zorunludur"}), 400
+    if not _EMAIL_RE.match(email):
+        return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
+    if len(description) < 60:
+        return jsonify({"error": "Açıklama en az 60 karakter olmalı"}), 400
+    # Firma varsayılan kuyruk sahibi: o firmadaki ilk aktif super_admin/it_* (yoksa herhangi admin)
+    assignee = (
+        User.query.filter(User.firm == firm, User.active == True, User.is_admin == True).order_by(User.id).first()
+    )
+    if not assignee:
+        assignee = User.query.filter(User.is_admin == True, User.active == True).order_by(User.id).first()
+    case_code = _gen_case_code(firm)
+    task = Task(
+        user_id=assignee.id if assignee else None,
+        title=subject[:300],
+        category="support",
+        priority="orta",
+        period="Tek Seferlik",
+        firm=firm,
+        notes=description,
+        source="portal",
+        case_code=case_code,
+        reporter_email=email,
+        reporter_name=name[:100],
+    )
+    db.session.add(task)
+    db.session.flush()
+    log_audit(
+        assignee,
+        "task.create",
+        entity_type="task",
+        entity_id=task.id,
+        firm=firm,
+        summary=f"Portal talebi {case_code} — {subject[:80]}",
+        details={"source": "portal", "case_code": case_code, "reporter": email, "category": category},
+    )
+    db.session.commit()
+    # ACK maili (best-effort — başarısızsa case yine açık)
+    try:
+        from services.mailer import send_case_ack
+
+        send_case_ack(email, name, case_code, subject, firm)
+    except Exception as e:
+        print(f"[portal] ACK mail hatası: {e}")
+    return jsonify({"ok": True, "case_code": case_code}), 201
+
+
+def _case_public_dict(task):
+    """Case takip sayfası için GÜVENLİ alanlar (iç notlar/atanan mail vb. YOK)."""
+    STATUS = "resolved" if task.is_done else ("in_progress" if task.user_id else "received")
+    return {
+        "case_code": task.case_code,
+        "subject": task.title,
+        "category": task.category,
+        "firm": task.firm,
+        "status": STATUS,
+        "is_done": bool(task.is_done),
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "reporter_name": task.reporter_name,
+        "description": task.notes or "",
+    }
+
+
+@app.route("/portal/api/lookup", methods=["POST"])
+def portal_lookup_case():
+    """Case takip — Case No + e-posta İKİSİ birlikte doğrulanır (tek başına kod yetmez)."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla deneme — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    data = request.get_json(silent=True) or {}
+    code = (data.get("case_code") or "").strip().upper()
+    email = (data.get("email") or "").strip().lower()
+    task = Task.query.filter_by(case_code=code, source="portal").first()
+    # Sabit-zamanlı olmasa da: kod+mail eşleşmezse aynı genel hata (enumeration'ı zorlaştır)
+    if not task or (task.reporter_email or "").lower() != email:
+        return jsonify({"error": "Case No veya e-posta hatalı"}), 404
+    return jsonify(_case_public_dict(task))
+
+
 @app.route("/api/board/cards", methods=["GET"])
 @board_access_required
 def board_list_cards():
