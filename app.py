@@ -23,6 +23,7 @@ from models.database import (
     AuditLog,
     BoardCard,
     BoardComment,
+    CaseMessage,
     ConfigBackup,
     Firm,
     Invitation,
@@ -2288,19 +2289,42 @@ def portal_create_case():
 
 
 def _case_public_dict(task):
-    """Case takip sayfası için GÜVENLİ alanlar (iç notlar/atanan mail vb. YOK)."""
-    STATUS = "resolved" if task.is_done else ("in_progress" if task.user_id else "received")
+    """Case takip sayfası için GÜVENLİ alanlar (iç notlar/atanan mail vb. YOK).
+
+    v5.15 Faz B — durum artık daha anlamlı: IT en az bir KULLANICIYA yanıt (it)
+    mesajı yazdıysa "in_progress"; yalnız kuyruğa atanmış ama yanıt yoksa "received".
+    (Eski: user_id varsa hep in_progress → oto-atama yüzünden yeni case hep işlemde
+    görünüyordu.) Mesaj akışı reporter+it (internal HARİÇ) döner.
+    """
+    has_it_reply = CaseMessage.query.filter_by(task_id=task.id, sender_type="it").first() is not None
+    status = "resolved" if task.is_done else ("in_progress" if has_it_reply else "received")
+    msgs = (
+        CaseMessage.query.filter(CaseMessage.task_id == task.id, CaseMessage.sender_type.in_(["reporter", "it"]))
+        .order_by(CaseMessage.created_at.asc())
+        .all()
+    )
     return {
         "case_code": task.case_code,
         "subject": task.title,
         "category": task.category,
         "firm": task.firm,
-        "status": STATUS,
+        "status": status,
         "is_done": bool(task.is_done),
         "created_at": task.created_at.isoformat() if task.created_at else None,
         "reporter_name": task.reporter_name,
         "description": task.notes or "",
+        "messages": [m.to_public_dict() for m in msgs],
     }
+
+
+def _portal_verify_case(data):
+    """Portal doğrulaması: Case No + e-posta → (task, error_response). Tek kaynak."""
+    code = (data.get("case_code") or "").strip().upper()
+    email = (data.get("email") or "").strip().lower()
+    task = Task.query.filter_by(case_code=code, source="portal").first()
+    if not task or (task.reporter_email or "").lower() != email:
+        return None, (jsonify({"error": "Case No veya e-posta hatalı"}), 404)
+    return task, None
 
 
 @app.route("/portal/api/lookup", methods=["POST"])
@@ -2310,14 +2334,102 @@ def portal_lookup_case():
     if _portal_rate_limited(ip):
         return jsonify({"error": "Çok fazla deneme — birkaç dakika sonra tekrar deneyin"}), 429
     _portal_register_hit(ip)
-    data = request.get_json(silent=True) or {}
-    code = (data.get("case_code") or "").strip().upper()
-    email = (data.get("email") or "").strip().lower()
-    task = Task.query.filter_by(case_code=code, source="portal").first()
-    # Sabit-zamanlı olmasa da: kod+mail eşleşmezse aynı genel hata (enumeration'ı zorlaştır)
-    if not task or (task.reporter_email or "").lower() != email:
-        return jsonify({"error": "Case No veya e-posta hatalı"}), 404
+    task, err = _portal_verify_case(request.get_json(silent=True) or {})
+    if err:
+        return err
     return jsonify(_case_public_dict(task))
+
+
+@app.route("/portal/api/case/reply", methods=["POST"])
+def portal_case_reply():
+    """Kullanıcı case'ine yanıt yazar (login yok — her istekte Case No + e-posta doğrulanır)."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    data = request.get_json(silent=True) or {}
+    task, err = _portal_verify_case(data)
+    if err:
+        return err
+    body = (data.get("body") or "").strip()
+    if len(body) < 2:
+        return jsonify({"error": "Mesaj boş olamaz"}), 400
+    if len(body) > 5000:
+        body = body[:5000]
+    msg = CaseMessage(
+        task_id=task.id,
+        sender_type="reporter",
+        author_id=None,
+        author_name=task.reporter_name or "Talep Sahibi",
+        body=body,
+    )
+    db.session.add(msg)
+    db.session.commit()
+    # Atanan IT'yi bilgilendir (best-effort; anlık — digest beklemez)
+    try:
+        owner = db.session.get(User, task.user_id) if task.user_id else None
+        if owner and owner.email:
+            from services.mailer import send_case_user_replied
+
+            send_case_user_replied(owner.email, task.case_code, task.title, task.reporter_name or "")
+    except Exception as e:
+        print(f"[portal] IT bildirim hatası: {e}")
+    return jsonify(_case_public_dict(task)), 201
+
+
+# ── IT tarafı: case mesajları (auth) — İç Notlar | Kullanıcıya Yanıt ──
+def _can_view_task(me, task):
+    owner = db.session.get(User, task.user_id) if task.user_id else None
+    return task.user_id == me.id or _can_modify_owned_task(me, owner)
+
+
+@app.route("/api/tasks/<int:task_id>/messages", methods=["GET"])
+@login_required
+def list_case_messages(task_id):
+    """IT: bir case'in TÜM mesajları (reporter + it + internal). Görünürlük IT'de."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if not _can_view_task(me, task):
+        return jsonify({"error": "Bu talebi görüntüleme yetkiniz yok"}), 403
+    msgs = CaseMessage.query.filter_by(task_id=task_id).order_by(CaseMessage.created_at.asc()).all()
+    return jsonify(
+        {"case_code": task.case_code, "reporter_email": task.reporter_email, "messages": [m.to_dict() for m in msgs]}
+    )
+
+
+@app.route("/api/tasks/<int:task_id>/messages", methods=["POST"])
+@login_required
+def add_case_message(task_id):
+    """IT mesaj ekler. sender_type: 'it' (kullanıcıya yanıt → mail) | 'internal' (iç not)."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if not _can_view_task(me, task):
+        return jsonify({"error": "Bu talebe yazma yetkiniz yok"}), 403
+    data = request.get_json() or {}
+    stype = data.get("sender_type")
+    if stype not in ("it", "internal"):
+        return jsonify({"error": "Geçersiz mesaj türü"}), 400
+    body = (data.get("body") or "").strip()
+    if not body:
+        return jsonify({"error": "Mesaj boş olamaz"}), 400
+    msg = CaseMessage(
+        task_id=task.id,
+        sender_type=stype,
+        author_id=me.id,
+        author_name=me.full_name or me.username,
+        body=body[:5000],
+    )
+    db.session.add(msg)
+    db.session.commit()
+    # "it" (kullanıcıya yanıt) → talep sahibine bildirim maili
+    if stype == "it" and task.reporter_email:
+        try:
+            from services.mailer import send_case_reply_notice
+
+            send_case_reply_notice(task.reporter_email, task.case_code, task.title)
+        except Exception as e:
+            print(f"[case] yanıt bildirimi hatası: {e}")
+    return jsonify(msg.to_dict()), 201
 
 
 @app.route("/api/board/cards", methods=["GET"])

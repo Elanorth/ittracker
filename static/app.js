@@ -2582,6 +2582,21 @@ function openEditTask(id) {
     if (t.cat === 'backup') loadTaskBackups(id);
   }
 
+  // v5.15 Faz B — Portal yazışması (yalnız portal kaynaklı case'lerde)
+  const caseSec = document.getElementById('edit-case-section');
+  if (caseSec) {
+    const isPortal = t.source === 'portal' && t.case_code;
+    caseSec.classList.toggle('hidden', !isPortal);
+    if (isPortal) {
+      document.getElementById('edit-case-code').textContent = t.case_code;
+      document.getElementById('edit-case-reporter').textContent =
+        `${t.reporter_name || ''} <${t.reporter_email || ''}>`;
+      _caseTab = 'it';
+      caseTab('it');
+      loadCaseMessages(id);
+    }
+  }
+
   // Tamamlandı butonunu duruma göre güncelle
   const completeBtn = document.getElementById('edit-complete-btn');
   if (completeBtn) {
@@ -2712,6 +2727,91 @@ async function deleteTask() {
   } catch(e) { showToast('err', e.message); }
 }
 function closeEditTaskModal() { document.getElementById('edit-task-modal').classList.add('hidden'); }
+
+// ══════════════════════════════════════════════════════════
+//  v5.15 Faz B — PORTAL CASE YAZIŞMASI (IT tarafı)
+// ══════════════════════════════════════════════════════════
+let _caseTab = 'it';        // 'it' (kullanıcıya yanıt) | 'internal' (iç not)
+let _caseMessages = [];     // son yüklenen tüm mesajlar (reporter+it+internal)
+
+function caseTab(which) {
+  _caseTab = which;
+  const ti = document.getElementById('case-tab-it');
+  const ii = document.getElementById('case-tab-internal');
+  ti.classList.toggle('active', which === 'it');
+  ii.classList.toggle('active', which === 'internal');
+  ti.style.color = which === 'it' ? 'var(--accent)' : 'var(--text-muted)';
+  ti.style.borderBottomColor = which === 'it' ? 'var(--accent)' : 'transparent';
+  ii.style.color = which === 'internal' ? 'var(--accent)' : 'var(--text-muted)';
+  ii.style.borderBottomColor = which === 'internal' ? 'var(--accent)' : 'transparent';
+  const hint = document.getElementById('case-tab-hint');
+  const inp = document.getElementById('case-msg-input');
+  if (which === 'it') {
+    hint.textContent = '📧 Gönderdiğinizde talep sahibine "yanıt var" e-postası iletilir · portalda görünür.';
+    if (inp) inp.placeholder = 'Kullanıcıya yanıt yazın…';
+  } else {
+    hint.textContent = '🔒 İç notlar yalnızca IT ekibince görülür — kullanıcıya ASLA gösterilmez.';
+    if (inp) inp.placeholder = 'İç not yazın (kullanıcı görmez)…';
+  }
+  renderCaseThread();
+}
+
+async function loadCaseMessages(taskId) {
+  try {
+    const r = await fetch(`/api/tasks/${taskId}/messages`);
+    if (!r.ok) return;
+    const d = await r.json();
+    _caseMessages = d.messages || [];
+    // "Kullanıcıya Yanıt" sekmesinde okunmamış reporter mesajı sayısı rozeti
+    const badge = document.getElementById('case-it-badge');
+    if (badge) {
+      const reporterCount = _caseMessages.filter(m => m.sender_type === 'reporter').length;
+      badge.textContent = reporterCount ? `(${reporterCount})` : '';
+    }
+    renderCaseThread();
+  } catch (e) { console.warn('[case] mesajlar yüklenemedi', e); }
+}
+
+function renderCaseThread() {
+  const el = document.getElementById('case-thread');
+  if (!el) return;
+  // İç Notlar sekmesi: yalnız internal · Kullanıcıya Yanıt sekmesi: reporter+it
+  const list = _caseTab === 'internal'
+    ? _caseMessages.filter(m => m.sender_type === 'internal')
+    : _caseMessages.filter(m => m.sender_type === 'reporter' || m.sender_type === 'it');
+  if (!list.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:10px">${_caseTab==='internal'?'Henüz iç not yok.':'Henüz yazışma yok.'}</div>`;
+    return;
+  }
+  el.innerHTML = list.map(m => {
+    const t = m.created_at ? new Date(m.created_at).toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    const mine = m.sender_type === 'it' || m.sender_type === 'internal';  // IT üretimi → sağ
+    const isInternal = m.sender_type === 'internal';
+    const bg = isInternal ? 'rgba(244,185,66,.12)' : (m.sender_type==='it' ? 'var(--accent)' : 'var(--surface2)');
+    const col = m.sender_type==='it' ? '#06231d' : 'var(--text)';
+    const bd = isInternal ? '1px solid rgba(244,185,66,.35)' : '1px solid var(--border)';
+    return `<div style="align-self:${mine?'flex-end':'flex-start'};max-width:82%;background:${bg};color:${col};border:${bd};border-radius:11px;padding:8px 11px;font-size:12px;line-height:1.5;white-space:pre-wrap">
+      <div style="font-size:9px;opacity:.7;margin-bottom:3px;font-family:'IBM Plex Mono',monospace">${escapeHtml(m.author_name||(m.sender_type==='reporter'?'Kullanıcı':'IT'))} · ${t}</div>${escapeHtml(m.body)}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendCaseMessage() {
+  const id = parseInt(document.getElementById('edit-task-id').value);
+  const inp = document.getElementById('case-msg-input');
+  const body = inp.value.trim();
+  if (!body) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}/messages`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sender_type: _caseTab, body })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Gönderilemedi');
+    inp.value = '';
+    await loadCaseMessages(id);
+    showToast('ok', _caseTab === 'it' ? '💬 Yanıt gönderildi (kullanıcıya mail iletildi)' : '📝 İç not kaydedildi');
+  } catch (e) { showToast('err', e.message); }
+}
 
 // ══════════════════════════════════════════════════════════
 //  BACKUP DOSYA YÖNETİMİ — Edit modal içi

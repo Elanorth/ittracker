@@ -813,6 +813,48 @@ class BoardComment(db.Model):
         }
 
 
+class CaseMessage(db.Model):
+    """v5.15 Faz B — Portal destek talebi yazışması.
+
+    sender_type üç değer alır ve GÖRÜNÜRLÜK bununla belirlenir:
+      - "reporter" : talebi açan kullanıcı (portalda + IT'de görünür)
+      - "it"       : IT'nin KULLANICIYA yanıtı (portalda + IT'de görünür)
+      - "internal" : IT'nin özel iç notu (YALNIZCA IT görür, portalda ASLA)
+    Böylece IT'nin iç notları ile kullanıcıya yazdıkları tek thread'de ama net
+    ayrımlı tutulur. Portal tarafı yalnız reporter+it döndürür (bkz. app.py).
+    """
+
+    __tablename__ = "case_messages"
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_type = db.Column(db.String(10), nullable=False)  # reporter | it | internal
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # IT ise kim
+    author_name = db.Column(db.String(120), default="")  # snapshot (kullanıcı silinse de kalır)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_public_dict(self):
+        """Portal için — kimlik detayı yok, yalnız taraf + metin + zaman."""
+        return {
+            "sender": "it" if self.sender_type == "it" else "reporter",
+            "author_name": self.author_name or ("IT Destek" if self.sender_type == "it" else ""),
+            "body": self.body,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def to_dict(self):
+        """IT tarafı için — sender_type dahil (internal ayrımı görünür)."""
+        return {
+            "id": self.id,
+            "task_id": self.task_id,
+            "sender_type": self.sender_type,
+            "author_id": self.author_id,
+            "author_name": self.author_name or "",
+            "body": self.body,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class AuditLog(db.Model):
     """v4.4 — Denetim kaydı. Kim, ne zaman, ne yaptı."""
 
