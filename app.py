@@ -2237,6 +2237,8 @@ def portal_create_case():
     subject = (data.get("subject") or "").strip()
     category = (data.get("category") or "other").strip()
     description = (data.get("description") or "").strip()
+    # AnyDesk ID — opsiyonel; kontrol karakterleri temizlenir, 40 kr tavan
+    anydesk = " ".join((data.get("anydesk") or "").split())[:40]
     # Doğrulama (form kuralları: ad+mail+konu zorunlu, açıklama ≥60)
     if firm not in _CASE_PREFIX:
         return jsonify({"error": "Geçersiz firma"}), 400
@@ -2265,6 +2267,7 @@ def portal_create_case():
         case_code=case_code,
         reporter_email=email,
         reporter_name=name[:100],
+        reporter_anydesk=anydesk or None,
     )
     db.session.add(task)
     db.session.flush()
@@ -2312,6 +2315,7 @@ def _case_public_dict(task):
         "is_done": bool(task.is_done),
         "created_at": task.created_at.isoformat() if task.created_at else None,
         "reporter_name": task.reporter_name,
+        "reporter_anydesk": task.reporter_anydesk,
         "description": task.notes or "",
         "messages": [m.to_public_dict() for m in msgs],
     }

@@ -147,6 +147,11 @@ body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;mi
           <div class="fg"><label>Konu <span class="req">*</span></label><input id="f-subject" placeholder="Kısa başlık"></div>
         </div>
         <div class="fg">
+          <label>AnyDesk ID <span style="color:var(--mut);font-weight:400">(opsiyonel)</span></label>
+          <input id="f-anydesk" class="mono" placeholder="örn. 123 456 789" inputmode="numeric">
+          <div class="hint">Uzaktan bağlantı gerekirse IT ekibi bu ID ile bağlanabilir. AnyDesk açıkken paylaşın.</div>
+        </div>
+        <div class="fg">
           <label>Sorun Açıklaması <span class="req">*</span></label>
           <textarea id="f-desc" placeholder="Sorunu mümkün olduğunca ayrıntılı anlatın — ne zaman başladı, hangi cihazda, hata mesajı var mı?"></textarea>
           <div class="counter" id="f-cnt">0/60 — en az 60 karakter yazmalısınız</div>
@@ -219,7 +224,7 @@ function openForm(b){
   setBrand(b);
   document.getElementById('f-name').textContent = BRANDS[b].name;
   document.getElementById('f-dot').textContent  = BRANDS[b].dot;
-  ['f-name-in','f-email','f-subject','f-desc'].forEach(id=>document.getElementById(id).value='');
+  ['f-name-in','f-email','f-subject','f-desc','f-anydesk'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-err').textContent='';
   updateCnt();
   show('s-form');
@@ -241,7 +246,8 @@ async function submitCase(){
     email:document.getElementById('f-email').value.trim(),
     subject:document.getElementById('f-subject').value.trim(),
     category:document.getElementById('f-cat').value,
-    description:document.getElementById('f-desc').value.trim()
+    description:document.getElementById('f-desc').value.trim(),
+    anydesk:document.getElementById('f-anydesk').value.trim()
   };
   if(!body.name||!body.subject){err.textContent='Ad-soyad ve konu zorunludur.';return;}
   sub.disabled=true; sub.textContent='Gönderiliyor…';
