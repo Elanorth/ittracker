@@ -2171,7 +2171,7 @@ def notifications_run_now():
 # Faz A: form + ACK + temel durum görüntüleme. Faz B: CaseMessage yanıt akışı.
 
 # Karışabilen karakterler yok (0/O, 1/I/L) — telefonda okunabilir kod
-_CASE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+_CASE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # pragma: allowlist secret  (case-kodu alfabesi, sır değil)
 _CASE_PREFIX = {"inventist": "INV", "assos": "ASS"}
 _EMAIL_RE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
