@@ -6,7 +6,18 @@ POST /portal/api/lookup → Case No + e-posta İKİSİ birlikte doğrulanır
 GET  /portal            → public sayfa
 """
 
+import pytest
+
+import app as app_module
 from models.database import Task
+
+
+@pytest.fixture(autouse=True)
+def _reset_portal_limiter():
+    """Portal IP rate-limiter modül-global; testler arası state taşımasın."""
+    app_module._PORTAL_HITS.clear()
+    yield
+    app_module._PORTAL_HITS.clear()
 
 
 def _valid_case(firm="inventist", **over):
