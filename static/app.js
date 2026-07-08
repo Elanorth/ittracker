@@ -439,6 +439,11 @@ function normalizeTask(t) {
     completed_at:        t.completed_at || null,
     from_previous_month: t.from_previous_month || false,
     sla:                 t.sla || null,
+    // v5.15 — portal kaynaklı destek talepleri
+    source:              t.source || 'manual',
+    case_code:           t.case_code || null,
+    reporter_email:      t.reporter_email || null,
+    reporter_name:       t.reporter_name || null,
     // v5.1 — Rutin kanonik sinyaller (deadline/next_due donmuş alanları yerine)
     is_overdue:          t.is_overdue || false,
     overdue_periods:     t.overdue_periods || 0,
@@ -1358,6 +1363,11 @@ function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${escapeHtml(firm)}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
 }
+// v5.15 — portal kaynaklı destek talebi rozeti (case kodu ile)
+function portalBadge(t) {
+  if (!t || t.source !== 'portal' || !t.case_code) return '';
+  return ` <span class="prio-badge low" title="İntranet portalından açıldı" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>`;
+}
 // v5.0 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
 function _slaRemainingHuman(t) {
   if (t.cat !== 'support' || !t.sla) return null;
@@ -1412,7 +1422,8 @@ function taskRow(t) {
     <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      ${t.source==='portal' && t.reporter_email ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">🌐 Portal talebi · ${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email)}&gt;</div>` : ''}
       ${clProgress}${lcStr}${mnStr}
     </div>
     ${dl}

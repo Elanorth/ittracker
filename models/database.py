@@ -424,6 +424,11 @@ class Task(db.Model):
     # v4.6 — Bildirim/alarm
     alarm_enabled = db.Column(db.Boolean, default=True)  # bu görev için bildirim/alarm aktif mi
     last_notified = db.Column(db.DateTime, nullable=True)  # son bildirim maili atılan zaman (anti-spam)
+    # v5.15 — İntranet portal (self-service) kaynaklı destek talepleri
+    source = db.Column(db.String(20), default="manual")  # manual | portal
+    case_code = db.Column(db.String(20), nullable=True, unique=True, index=True)  # INV-7K3M9Q (public takip)
+    reporter_email = db.Column(db.String(150), nullable=True)  # formdaki e-posta (ACK + sorgu doğrulama)
+    reporter_name = db.Column(db.String(100), nullable=True)  # formdaki ad-soyad
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
@@ -619,6 +624,11 @@ class Task(db.Model):
             "sla": sla,
             "alarm_enabled": bool(self.alarm_enabled) if self.alarm_enabled is not None else True,
             "last_notified": self.last_notified.isoformat() if self.last_notified else None,
+            # v5.15 — portal kaynaklı talepler
+            "source": self.source or "manual",
+            "case_code": self.case_code,
+            "reporter_email": self.reporter_email,
+            "reporter_name": self.reporter_name,
             # v5.1 — Rutin kanonik sinyaller (rutin değilse default değerler)
             "is_overdue": is_overdue,
             "overdue_periods": overdue_periods,
@@ -965,23 +975,26 @@ def init_db():
     # (2026-07 staging deploy hatası). ALTER başarısız olursa rollback + TAZE
     # inspector ile yeniden bak: kolon eklendiyse (yarışı diğeri kazandı) sorun yok;
     # hâlâ yoksa gerçek bir hata var → yükselt.
-    def _add_user_column_race_safe(col_name, col_sql):
+    def _add_column_race_safe(table, col_name, col_sql):
         from sqlalchemy import inspect as _inspect
 
-        cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+        cols = [c["name"] for c in _inspect(db.engine).get_columns(table)]
         if col_name in cols:
             return False
         try:
-            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_sql}"))
+            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_sql}"))
             db.session.commit()
-            print(f"Migration: {col_name} sutunu eklendi")
+            print(f"Migration: {table}.{col_name} sutunu eklendi")
             return True
         except Exception:
             db.session.rollback()
-            cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+            cols = [c["name"] for c in _inspect(db.engine).get_columns(table)]
             if col_name in cols:
                 return False  # eşzamanlı process ekledi — idempotent devam
             raise
+
+    def _add_user_column_race_safe(col_name, col_sql):
+        return _add_column_race_safe("users", col_name, col_sql)
 
     for col_name, col_sql in (
         ("notify_overdue_days", "INTEGER"),
@@ -997,6 +1010,19 @@ def init_db():
         if _add_user_column_race_safe(col_name, "BOOLEAN DEFAULT TRUE"):
             db.session.execute(text(f"UPDATE users SET {col_name} = TRUE WHERE {col_name} IS NULL"))
             db.session.commit()
+
+    # Migration: v5.15 — intranet portal kolonları (tasks).
+    # SQLite ALTER ile UNIQUE eklenemez → kolon düz TEXT, uniqueness ayrı index'le
+    # (CREATE UNIQUE INDEX IF NOT EXISTS iki backend'de de çalışır; NULL'lar serbest).
+    _add_column_race_safe("tasks", "source", "TEXT DEFAULT 'manual'")
+    _add_column_race_safe("tasks", "case_code", "TEXT")
+    _add_column_race_safe("tasks", "reporter_email", "TEXT")
+    _add_column_race_safe("tasks", "reporter_name", "TEXT")
+    try:
+        db.session.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_tasks_case_code ON tasks (case_code)"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()  # eşzamanlı process oluşturduysa idempotent devam
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")

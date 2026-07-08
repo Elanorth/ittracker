@@ -235,6 +235,50 @@ def send_manager_digest(user, firm_summaries):
         return {"ok": False, "error": f"{type(e).__name__}: {str(e)}"}
 
 
+def send_case_ack(email, name, case_code, subject, firm):
+    """v5.15 — Portal talebi alındı bilgilendirmesi (Case No + takip linki)."""
+    host, port, smtp_user, smtp_pass = _smtp()
+    if not smtp_user or not smtp_pass:
+        return {"ok": False, "error": "SMTP ayarları eksik"}
+    base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
+    track = f"{base}/portal"
+    mail_subject = f"Destek talebiniz alındı — {case_code}"
+    body = f"""Merhaba{" " + name if name else ""},
+
+"{subject}" konulu destek talebiniz alınmıştır.
+
+Takip numaranız: {case_code}
+
+Talebinizin durumunu görmek ve IT ekibiyle yazışmak için portala gidip
+Case No'nuz ve bu e-posta adresinizle sorgulama yapabilirsiniz:
+
+{track}
+
+IT ekibimiz iş saatleri içinde en kısa sürede dönüş yapacaktır.
+
+IT Görev Takip Sistemi"""
+    msg = MIMEMultipart()
+    msg["From"] = smtp_user
+    msg["To"] = email
+    msg["Subject"] = mail_subject
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+    import ssl
+
+    ctx = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(host, port, timeout=15) as s:
+            s.ehlo()
+            s.starttls(context=ctx)
+            s.ehlo()
+            s.login(smtp_user, smtp_pass)
+            s.sendmail(smtp_user, [email], msg.as_string())
+        return {"ok": True}
+    except smtplib.SMTPAuthenticationError as e:
+        return {"ok": False, "error": f"Kimlik doğrulama hatası: {str(e)}"}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {str(e)}"}
+
+
 def send_invite_email(email, name, invite_url, role):
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
