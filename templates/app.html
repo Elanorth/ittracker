@@ -2025,6 +2025,25 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <input class="form-control" id="edit-new-checklist-item" placeholder="Yeni adım..." style="font-size:11px;margin-top:6px"
         onkeydown="if(event.key==='Enter'){event.preventDefault();addEditChecklistItem()}">
     </div>
+    <!-- v5.15 Faz B — Portal yazışması (yalnız portal kaynaklı case'lerde) -->
+    <div id="edit-case-section" class="hidden" style="margin-bottom:12px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+      <div style="background:var(--surface2);padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;justify-content:space-between">
+        <span>🌐 PORTAL YAZIŞMASI · <span id="edit-case-code" class="mono" style="color:var(--accent)"></span></span>
+        <span id="edit-case-reporter" style="font-size:10px;color:var(--text-muted);font-weight:400"></span>
+      </div>
+      <div style="display:flex;border-bottom:1px solid var(--border)">
+        <div class="case-tab" id="case-tab-internal" onclick="caseTab('internal')" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent">📝 İç Notlar</div>
+        <div class="case-tab active" id="case-tab-it" onclick="caseTab('it')" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">💬 Kullanıcıya Yanıt <span id="case-it-badge" style="font-size:9px"></span></div>
+      </div>
+      <div style="padding:12px">
+        <div id="case-thread" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <textarea id="case-msg-input" placeholder="Mesaj yazın…" style="flex:1;min-height:44px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:9px;font-size:12px;font-family:inherit;resize:vertical"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="sendCaseMessage()">Gönder</button>
+        </div>
+        <div id="case-tab-hint" style="font-size:9.5px;color:var(--text-muted);margin-top:6px"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-danger btn-sm" onclick="deleteTask()">Sil</button>
       <button class="btn btn-outline btn-sm" onclick="closeEditTaskModal()">İptal</button>

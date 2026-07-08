@@ -79,7 +79,16 @@ body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;mi
 .tl .st::before{content:'';position:absolute;top:6px;left:-50%;width:100%;height:2px;background:var(--bd);z-index:1}
 .tl .st:first-child::before{display:none}.tl .st.done::before,.tl .st.cur::before{background:#28b487}
 .desc-box{background:var(--pan2);border:1px solid var(--bd);border-radius:10px;padding:14px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;color:var(--tx)}
-.phaseb{font-size:11px;color:var(--mut);background:var(--soft);border:1px dashed var(--bd);border-radius:9px;padding:11px 13px;margin-top:14px}
+.thread{display:flex;flex-direction:column;gap:10px;margin:4px 0 14px;max-height:340px;overflow:auto}
+.thread .empty{font-size:11px;color:var(--mut);text-align:center;padding:12px}
+.msg{max-width:82%;padding:10px 13px;border-radius:12px;font-size:12.5px;line-height:1.55;white-space:pre-wrap}
+.msg .who{font-size:9px;font-family:'IBM Plex Mono',monospace;opacity:.7;margin-bottom:4px}
+.msg.reporter{align-self:flex-start;background:var(--pan2);border:1px solid var(--bd);border-bottom-left-radius:4px}
+.msg.it{align-self:flex-end;background:var(--ac);color:var(--acc);border-bottom-right-radius:4px}
+.msg.it .who{opacity:.8}
+.replybox{display:flex;gap:9px;align-items:flex-end}
+.replybox textarea{flex:1;min-height:52px;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:10px 12px;font-size:12.5px;font-family:'Syne',sans-serif;outline:none;resize:vertical}
+.replybox textarea:focus{border-color:var(--ac)}
 </style>
 </head>
 <body>
@@ -183,8 +192,14 @@ body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;mi
       </div>
       <div class="tl" id="c-tl"></div>
       <div class="card">
-        <div class="fg" style="margin:0"><label>Talep açıklamanız</label><div class="desc-box" id="c-desc"></div></div>
-        <div class="phaseb">💬 IT ekibiyle yazışma (yanıt akışı) yakında bu sayfaya eklenecek. Şu an talebinizin durumunu takip edebilirsiniz.</div>
+        <div class="fg"><label>Talep açıklamanız</label><div class="desc-box" id="c-desc"></div></div>
+        <div class="fg" style="margin-bottom:8px"><label>IT ekibiyle yazışma</label></div>
+        <div class="thread" id="c-thread"></div>
+        <div class="replybox" id="c-replybox">
+          <textarea id="c-reply" placeholder="IT ekibine yanıt yazın…"></textarea>
+          <button class="btn-b" onclick="sendReply()">Gönder</button>
+        </div>
+        <div class="formerr" id="c-reply-err"></div>
       </div>
     </div>
   </div>
@@ -250,6 +265,34 @@ function gotoLookupFromOk(){
 
 const STATUS_LABEL={received:'● ALINDI',in_progress:'● İŞLEMDE',resolved:'● ÇÖZÜLDÜ'};
 const STEPS=[['received','Alındı'],['in_progress','İşlemde'],['resolved','Çözüldü']];
+let _caseCode='', _caseEmail='';  // aktif case kimliği (yanıt POST'unda tekrar doğrulanır)
+
+function renderCase(d){
+  setBrand(d.firm==='assos'?'assos':'inventist');
+  document.getElementById('case-branded').setAttribute('data-brand',_brand);
+  document.getElementById('c-code').textContent=d.case_code;
+  document.getElementById('c-subject').textContent=d.subject;
+  document.getElementById('c-desc').textContent=d.description||'—';
+  const sb=document.getElementById('c-status');
+  sb.textContent=STATUS_LABEL[d.status]||d.status; sb.className='stbadge st-'+d.status;
+  const curIdx=STEPS.findIndex(s=>s[0]===d.status);
+  document.getElementById('c-tl').innerHTML=STEPS.map((s,i)=>{
+    const cls=i<curIdx?'done':(i===curIdx?'cur':'');
+    return `<div class="st ${cls}"><div class="b"></div><div class="lb">${s[1]}</div></div>`;
+  }).join('');
+  // mesaj akışı
+  const th=document.getElementById('c-thread');
+  const msgs=d.messages||[];
+  th.innerHTML = msgs.length ? msgs.map(m=>{
+    const t=m.created_at?new Date(m.created_at).toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const who=m.sender==='it'?(m.author_name||'IT Destek'):(m.author_name||'Siz');
+    return `<div class="msg ${m.sender==='it'?'it':'reporter'}"><div class="who">${esc(who)} · ${t}</div>${esc(m.body)}</div>`;
+  }).join('') : '<div class="empty">Henüz mesaj yok. Aşağıdan IT ekibine yazabilirsiniz.</div>';
+  th.scrollTop=th.scrollHeight;
+  // çözülmüş case'te yanıt kutusu gizli
+  document.getElementById('c-replybox').style.display = d.is_done ? 'none' : 'flex';
+}
+
 async function doLookup(){
   const err=document.getElementById('lk-err'); err.textContent='';
   const code=document.getElementById('lk-code').value.trim();
@@ -259,20 +302,21 @@ async function doLookup(){
     const r=await fetch('/portal/api/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_code:code,email})});
     const d=await r.json();
     if(!r.ok) throw new Error(d.error||'Bulunamadı');
-    setBrand(d.firm==='assos'?'assos':'inventist');
-    document.getElementById('case-branded').setAttribute('data-brand',_brand);
-    document.getElementById('c-code').textContent=d.case_code;
-    document.getElementById('c-subject').textContent=d.subject;
-    document.getElementById('c-desc').textContent=d.description||'—';
-    const sb=document.getElementById('c-status');
-    sb.textContent=STATUS_LABEL[d.status]||d.status; sb.className='stbadge st-'+d.status;
-    // timeline
-    const curIdx=STEPS.findIndex(s=>s[0]===d.status);
-    document.getElementById('c-tl').innerHTML=STEPS.map((s,i)=>{
-      const cls=i<curIdx?'done':(i===curIdx?'cur':'');
-      return `<div class="st ${cls}"><div class="b"></div><div class="lb">${s[1]}</div></div>`;
-    }).join('');
+    _caseCode=d.case_code; _caseEmail=email;
+    renderCase(d);
     show('s-case');
+  }catch(e){ err.textContent=e.message; }
+}
+
+async function sendReply(){
+  const err=document.getElementById('c-reply-err'); err.textContent='';
+  const ta=document.getElementById('c-reply'); const body=ta.value.trim();
+  if(body.length<2){err.textContent='Mesaj boş olamaz.';return;}
+  try{
+    const r=await fetch('/portal/api/case/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_code:_caseCode,email:_caseEmail,body})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Gönderilemedi');
+    ta.value=''; renderCase(d);
   }catch(e){ err.textContent=e.message; }
 }
 </script>
