@@ -924,7 +924,17 @@ def init_db():
 
     from sqlalchemy import inspect, text
 
-    db.create_all()
+    # YARIŞA DAYANIKLI create_all: deploy sırasında init_db İKİ process'te aynı anda
+    # çalışıyor (gunicorn import'u + `flask db upgrade` exec import'u). checkfirst=True
+    # olsa da ikisi de "tablo yok" görüp CREATE deneyince kaybeden, Postgres'te
+    # sequence (ör. case_messages_id_seq) UniqueViolation ile patlıyordu (v5.16
+    # case_messages tablosu eklenince staging deploy hatası). Retry: ikinci denemede
+    # tablo/sequence artık mevcut → checkfirst atlar → başarılı.
+    try:
+        db.create_all()
+    except Exception:
+        db.session.rollback()
+        db.create_all()
 
     # Migration: mevcut tasks tablosuna project_status sütunu ekle
     inspector = inspect(db.engine)
