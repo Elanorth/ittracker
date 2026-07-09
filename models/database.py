@@ -403,7 +403,8 @@ def _next_due_date(period: str, from_date=None) -> _date:
 class Task(db.Model):
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # v5.18 — nullable: atanmamış (havuzdaki) portal case'leri user_id=None ile durur.
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     title = db.Column(db.String(300), nullable=False)
     category = db.Column(db.String(50), default="other")
     priority = db.Column(db.String(10), default="orta")  # support talepleri için: düşük/orta/yüksek
@@ -424,6 +425,12 @@ class Task(db.Model):
     # v4.6 — Bildirim/alarm
     alarm_enabled = db.Column(db.Boolean, default=True)  # bu görev için bildirim/alarm aktif mi
     last_notified = db.Column(db.DateTime, nullable=True)  # son bildirim maili atılan zaman (anti-spam)
+    # v5.15 — İntranet portal (self-service) kaynaklı destek talepleri
+    source = db.Column(db.String(20), default="manual")  # manual | portal
+    case_code = db.Column(db.String(20), nullable=True, unique=True, index=True)  # INV-7K3M9Q (public takip)
+    reporter_email = db.Column(db.String(150), nullable=True)  # formdaki e-posta (ACK + sorgu doğrulama)
+    reporter_name = db.Column(db.String(100), nullable=True)  # formdaki ad-soyad
+    reporter_anydesk = db.Column(db.String(40), nullable=True)  # v5.17 — uzaktan bağlantı için AnyDesk ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
@@ -619,6 +626,12 @@ class Task(db.Model):
             "sla": sla,
             "alarm_enabled": bool(self.alarm_enabled) if self.alarm_enabled is not None else True,
             "last_notified": self.last_notified.isoformat() if self.last_notified else None,
+            # v5.15 — portal kaynaklı talepler
+            "source": self.source or "manual",
+            "case_code": self.case_code,
+            "reporter_email": self.reporter_email,
+            "reporter_name": self.reporter_name,
+            "reporter_anydesk": self.reporter_anydesk,
             # v5.1 — Rutin kanonik sinyaller (rutin değilse default değerler)
             "is_overdue": is_overdue,
             "overdue_periods": overdue_periods,
@@ -803,6 +816,48 @@ class BoardComment(db.Model):
         }
 
 
+class CaseMessage(db.Model):
+    """v5.15 Faz B — Portal destek talebi yazışması.
+
+    sender_type üç değer alır ve GÖRÜNÜRLÜK bununla belirlenir:
+      - "reporter" : talebi açan kullanıcı (portalda + IT'de görünür)
+      - "it"       : IT'nin KULLANICIYA yanıtı (portalda + IT'de görünür)
+      - "internal" : IT'nin özel iç notu (YALNIZCA IT görür, portalda ASLA)
+    Böylece IT'nin iç notları ile kullanıcıya yazdıkları tek thread'de ama net
+    ayrımlı tutulur. Portal tarafı yalnız reporter+it döndürür (bkz. app.py).
+    """
+
+    __tablename__ = "case_messages"
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_type = db.Column(db.String(10), nullable=False)  # reporter | it | internal
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # IT ise kim
+    author_name = db.Column(db.String(120), default="")  # snapshot (kullanıcı silinse de kalır)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_public_dict(self):
+        """Portal için — kimlik detayı yok, yalnız taraf + metin + zaman."""
+        return {
+            "sender": "it" if self.sender_type == "it" else "reporter",
+            "author_name": self.author_name or ("IT Destek" if self.sender_type == "it" else ""),
+            "body": self.body,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def to_dict(self):
+        """IT tarafı için — sender_type dahil (internal ayrımı görünür)."""
+        return {
+            "id": self.id,
+            "task_id": self.task_id,
+            "sender_type": self.sender_type,
+            "author_id": self.author_id,
+            "author_name": self.author_name or "",
+            "body": self.body,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class AuditLog(db.Model):
     """v4.4 — Denetim kaydı. Kim, ne zaman, ne yaptı."""
 
@@ -872,7 +927,17 @@ def init_db():
 
     from sqlalchemy import inspect, text
 
-    db.create_all()
+    # YARIŞA DAYANIKLI create_all: deploy sırasında init_db İKİ process'te aynı anda
+    # çalışıyor (gunicorn import'u + `flask db upgrade` exec import'u). checkfirst=True
+    # olsa da ikisi de "tablo yok" görüp CREATE deneyince kaybeden, Postgres'te
+    # sequence (ör. case_messages_id_seq) UniqueViolation ile patlıyordu (v5.16
+    # case_messages tablosu eklenince staging deploy hatası). Retry: ikinci denemede
+    # tablo/sequence artık mevcut → checkfirst atlar → başarılı.
+    try:
+        db.create_all()
+    except Exception:
+        db.session.rollback()
+        db.create_all()
 
     # Migration: mevcut tasks tablosuna project_status sütunu ekle
     inspector = inspect(db.engine)
@@ -965,23 +1030,26 @@ def init_db():
     # (2026-07 staging deploy hatası). ALTER başarısız olursa rollback + TAZE
     # inspector ile yeniden bak: kolon eklendiyse (yarışı diğeri kazandı) sorun yok;
     # hâlâ yoksa gerçek bir hata var → yükselt.
-    def _add_user_column_race_safe(col_name, col_sql):
+    def _add_column_race_safe(table, col_name, col_sql):
         from sqlalchemy import inspect as _inspect
 
-        cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+        cols = [c["name"] for c in _inspect(db.engine).get_columns(table)]
         if col_name in cols:
             return False
         try:
-            db.session.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_sql}"))
+            db.session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_sql}"))
             db.session.commit()
-            print(f"Migration: {col_name} sutunu eklendi")
+            print(f"Migration: {table}.{col_name} sutunu eklendi")
             return True
         except Exception:
             db.session.rollback()
-            cols = [c["name"] for c in _inspect(db.engine).get_columns("users")]
+            cols = [c["name"] for c in _inspect(db.engine).get_columns(table)]
             if col_name in cols:
                 return False  # eşzamanlı process ekledi — idempotent devam
             raise
+
+    def _add_user_column_race_safe(col_name, col_sql):
+        return _add_column_race_safe("users", col_name, col_sql)
 
     for col_name, col_sql in (
         ("notify_overdue_days", "INTEGER"),
@@ -997,6 +1065,29 @@ def init_db():
         if _add_user_column_race_safe(col_name, "BOOLEAN DEFAULT TRUE"):
             db.session.execute(text(f"UPDATE users SET {col_name} = TRUE WHERE {col_name} IS NULL"))
             db.session.commit()
+
+    # Migration: v5.15 — intranet portal kolonları (tasks).
+    # SQLite ALTER ile UNIQUE eklenemez → kolon düz TEXT, uniqueness ayrı index'le
+    # (CREATE UNIQUE INDEX IF NOT EXISTS iki backend'de de çalışır; NULL'lar serbest).
+    _add_column_race_safe("tasks", "source", "TEXT DEFAULT 'manual'")
+    _add_column_race_safe("tasks", "case_code", "TEXT")
+    _add_column_race_safe("tasks", "reporter_email", "TEXT")
+    _add_column_race_safe("tasks", "reporter_name", "TEXT")
+    _add_column_race_safe("tasks", "reporter_anydesk", "TEXT")  # v5.17
+    # v5.18 — tasks.user_id NOT NULL kısıtını kaldır (havuz: atanmamış case user_id=None).
+    # Yeni SQLite (tests) create_all zaten nullable üretir; bu ALTER mevcut Postgres
+    # prod/staging tablosu için. SQLite ALTER DROP NOT NULL desteklemez → yalnız PG.
+    if db.engine.dialect.name == "postgresql":
+        try:
+            db.session.execute(text("ALTER TABLE tasks ALTER COLUMN user_id DROP NOT NULL"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()  # zaten nullable veya eşzamanlı process → idempotent
+    try:
+        db.session.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_tasks_case_code ON tasks (case_code)"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()  # eşzamanlı process oluşturduysa idempotent devam
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")

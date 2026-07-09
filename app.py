@@ -11,6 +11,7 @@ load_dotenv()
 import csv as _csv
 import io as _io
 import json as _json
+import re as _re
 import secrets
 from datetime import date, datetime, timedelta
 from functools import wraps
@@ -22,6 +23,7 @@ from models.database import (
     AuditLog,
     BoardCard,
     BoardComment,
+    CaseMessage,
     ConfigBackup,
     Firm,
     Invitation,
@@ -2162,8 +2164,364 @@ def notifications_run_now():
 
 
 # ══════════════════════════════════════════════════════════
-#  ORTAK ALAN (BOARD) API
+#  v5.15 — İNTRANET PORTAL (self-service, LOGIN YOK)
 # ══════════════════════════════════════════════════════════
+# Son kullanıcı /portal üzerinden destek talebi açar; tahmin edilemez bir
+# Case No (INV-7K3M9Q) üretilir ve ACK maili gönderilir. Takip sorgusu
+# Case No + e-posta İKİSİ birlikte doğrulanarak yapılır (tek başına kod yetmez).
+# Faz A: form + ACK + temel durum görüntüleme. Faz B: CaseMessage yanıt akışı.
+
+# Karışabilen karakterler yok (0/O, 1/I/L) — telefonda okunabilir kod
+_CASE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # pragma: allowlist secret  (case-kodu alfabesi, sır değil)
+_CASE_PREFIX = {"inventist": "INV", "assos": "ASS"}
+_EMAIL_RE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Public form/lookup için IP bazlı basit rate-limit (login limiter kalıbı)
+_PORTAL_HITS: dict = {}
+_PORTAL_MAX = 10  # 10 dakikada 10 istek / IP
+_PORTAL_WINDOW = 600
+
+
+def _portal_rate_limited(ip):
+    import time as _t
+
+    stamps = _PORTAL_HITS.get(ip)
+    if not stamps:
+        return False
+    now = _t.time()
+    stamps[:] = [t for t in stamps if now - t < _PORTAL_WINDOW]
+    if not stamps:
+        _PORTAL_HITS.pop(ip, None)
+        return False
+    return len(stamps) >= _PORTAL_MAX
+
+
+def _portal_register_hit(ip):
+    import time as _t
+
+    if len(_PORTAL_HITS) > 2000:
+        _PORTAL_HITS.clear()
+    _PORTAL_HITS.setdefault(ip, []).append(_t.time())
+
+
+def _gen_case_code(firm_slug):
+    """Tahmin edilemez, marka önekli case kodu: INV-7K3M9Q (unique garantili)."""
+    prefix = _CASE_PREFIX.get((firm_slug or "").lower(), "GEN")
+    for _ in range(20):
+        body = "".join(secrets.choice(_CASE_ALPHABET) for _ in range(6))
+        code = f"{prefix}-{body}"
+        if not Task.query.filter_by(case_code=code).first():
+            return code
+    # Aşırı düşük olasılık: 8 haneye çık
+    body = "".join(secrets.choice(_CASE_ALPHABET) for _ in range(8))
+    return f"{prefix}-{body}"
+
+
+@app.route("/portal")
+def portal_home():
+    """Public intranet portal SPA — login gerektirmez."""
+    return render_template("portal.html", version=APP_VERSION)
+
+
+@app.route("/portal/api/cases", methods=["POST"])
+def portal_create_case():
+    """Portaldan yeni destek talebi — LOGIN YOK. Case No üretir + ACK mail."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    data = request.get_json(silent=True) or {}
+    firm = (data.get("firm") or "").strip().lower()
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    subject = (data.get("subject") or "").strip()
+    category = (data.get("category") or "other").strip()
+    description = (data.get("description") or "").strip()
+    # AnyDesk ID — opsiyonel; kontrol karakterleri temizlenir, 40 kr tavan
+    anydesk = " ".join((data.get("anydesk") or "").split())[:40]
+    # Doğrulama (form kuralları: ad+mail+konu zorunlu, açıklama ≥60)
+    if firm not in _CASE_PREFIX:
+        return jsonify({"error": "Geçersiz firma"}), 400
+    if not name or not subject:
+        return jsonify({"error": "Ad-soyad ve konu zorunludur"}), 400
+    if not _EMAIL_RE.match(email):
+        return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
+    if len(description) < 60:
+        return jsonify({"error": "Açıklama en az 60 karakter olmalı"}), 400
+    # v5.18 — HAVUZ modeli: portal case'i ATANMAMIŞ açılır (user_id=None). Firma
+    # havuzuna düşer; IT kullanıcıları /api/support/pool'dan görüp "Üstlen" ile çeker.
+    # (Eski davranış: firma admini yoksa case sessizce ilk admin'e atanıp kayboluyordu.)
+    case_code = _gen_case_code(firm)
+    task = Task(
+        user_id=None,
+        title=subject[:300],
+        category="support",
+        priority="orta",
+        period="Tek Seferlik",
+        firm=firm,
+        notes=description,
+        source="portal",
+        case_code=case_code,
+        reporter_email=email,
+        reporter_name=name[:100],
+        reporter_anydesk=anydesk or None,
+    )
+    db.session.add(task)
+    db.session.flush()
+    log_audit(
+        None,
+        "task.create",
+        entity_type="task",
+        entity_id=task.id,
+        firm=firm,
+        summary=f"Portal talebi {case_code} — {subject[:80]} (havuza düştü)",
+        details={"source": "portal", "case_code": case_code, "reporter": email, "category": category},
+    )
+    db.session.commit()
+    # ACK maili (best-effort — başarısızsa case yine açık)
+    try:
+        from services.mailer import send_case_ack
+
+        send_case_ack(email, name, case_code, subject, firm)
+    except Exception as e:
+        print(f"[portal] ACK mail hatası: {e}")
+    return jsonify({"ok": True, "case_code": case_code}), 201
+
+
+def _case_public_dict(task):
+    """Case takip sayfası için GÜVENLİ alanlar (iç notlar/atanan mail vb. YOK).
+
+    v5.15 Faz B — durum artık daha anlamlı: IT en az bir KULLANICIYA yanıt (it)
+    mesajı yazdıysa "in_progress"; yalnız kuyruğa atanmış ama yanıt yoksa "received".
+    (Eski: user_id varsa hep in_progress → oto-atama yüzünden yeni case hep işlemde
+    görünüyordu.) Mesaj akışı reporter+it (internal HARİÇ) döner.
+    """
+    has_it_reply = CaseMessage.query.filter_by(task_id=task.id, sender_type="it").first() is not None
+    status = "resolved" if task.is_done else ("in_progress" if has_it_reply else "received")
+    msgs = (
+        CaseMessage.query.filter(CaseMessage.task_id == task.id, CaseMessage.sender_type.in_(["reporter", "it"]))
+        .order_by(CaseMessage.created_at.asc())
+        .all()
+    )
+    return {
+        "case_code": task.case_code,
+        "subject": task.title,
+        "category": task.category,
+        "firm": task.firm,
+        "status": status,
+        "is_done": bool(task.is_done),
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "reporter_name": task.reporter_name,
+        "reporter_anydesk": task.reporter_anydesk,
+        "description": task.notes or "",
+        "messages": [m.to_public_dict() for m in msgs],
+    }
+
+
+def _portal_verify_case(data):
+    """Portal doğrulaması: Case No + e-posta → (task, error_response). Tek kaynak."""
+    code = (data.get("case_code") or "").strip().upper()
+    email = (data.get("email") or "").strip().lower()
+    task = Task.query.filter_by(case_code=code, source="portal").first()
+    if not task or (task.reporter_email or "").lower() != email:
+        return None, (jsonify({"error": "Case No veya e-posta hatalı"}), 404)
+    return task, None
+
+
+@app.route("/portal/api/lookup", methods=["POST"])
+def portal_lookup_case():
+    """Case takip — Case No + e-posta İKİSİ birlikte doğrulanır (tek başına kod yetmez)."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla deneme — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    task, err = _portal_verify_case(request.get_json(silent=True) or {})
+    if err:
+        return err
+    return jsonify(_case_public_dict(task))
+
+
+@app.route("/portal/api/case/reply", methods=["POST"])
+def portal_case_reply():
+    """Kullanıcı case'ine yanıt yazar (login yok — her istekte Case No + e-posta doğrulanır)."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    data = request.get_json(silent=True) or {}
+    task, err = _portal_verify_case(data)
+    if err:
+        return err
+    body = (data.get("body") or "").strip()
+    if len(body) < 2:
+        return jsonify({"error": "Mesaj boş olamaz"}), 400
+    if len(body) > 5000:
+        body = body[:5000]
+    msg = CaseMessage(
+        task_id=task.id,
+        sender_type="reporter",
+        author_id=None,
+        author_name=task.reporter_name or "Talep Sahibi",
+        body=body,
+    )
+    db.session.add(msg)
+    db.session.commit()
+    # Atanan IT'yi bilgilendir (best-effort; anlık — digest beklemez)
+    try:
+        owner = db.session.get(User, task.user_id) if task.user_id else None
+        if owner and owner.email:
+            from services.mailer import send_case_user_replied
+
+            send_case_user_replied(owner.email, task.case_code, task.title, task.reporter_name or "")
+    except Exception as e:
+        print(f"[portal] IT bildirim hatası: {e}")
+    return jsonify(_case_public_dict(task)), 201
+
+
+# ── IT tarafı: case mesajları (auth) — İç Notlar | Kullanıcıya Yanıt ──
+def _can_view_task(me, task):
+    if task.user_id == me.id:
+        return True
+    owner = db.session.get(User, task.user_id) if task.user_id else None
+    if _can_modify_owned_task(me, owner):
+        return True
+    # v5.18 — atanmamış (havuz) case: firma kapsamındaki IT inceleyebilir/yanıtlayabilir
+    if task.user_id is None:
+        scope = _user_firm_scope(me)
+        return scope is None or task.firm in scope
+    return False
+
+
+@app.route("/api/tasks/<int:task_id>/messages", methods=["GET"])
+@login_required
+def list_case_messages(task_id):
+    """IT: bir case'in TÜM mesajları (reporter + it + internal). Görünürlük IT'de."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if not _can_view_task(me, task):
+        return jsonify({"error": "Bu talebi görüntüleme yetkiniz yok"}), 403
+    msgs = CaseMessage.query.filter_by(task_id=task_id).order_by(CaseMessage.created_at.asc()).all()
+    return jsonify(
+        {"case_code": task.case_code, "reporter_email": task.reporter_email, "messages": [m.to_dict() for m in msgs]}
+    )
+
+
+@app.route("/api/tasks/<int:task_id>/messages", methods=["POST"])
+@login_required
+def add_case_message(task_id):
+    """IT mesaj ekler. sender_type: 'it' (kullanıcıya yanıt → mail) | 'internal' (iç not)."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if not _can_view_task(me, task):
+        return jsonify({"error": "Bu talebe yazma yetkiniz yok"}), 403
+    data = request.get_json() or {}
+    stype = data.get("sender_type")
+    if stype not in ("it", "internal"):
+        return jsonify({"error": "Geçersiz mesaj türü"}), 400
+    body = (data.get("body") or "").strip()
+    if not body:
+        return jsonify({"error": "Mesaj boş olamaz"}), 400
+    msg = CaseMessage(
+        task_id=task.id,
+        sender_type=stype,
+        author_id=me.id,
+        author_name=me.full_name or me.username,
+        body=body[:5000],
+    )
+    db.session.add(msg)
+    db.session.commit()
+    # "it" (kullanıcıya yanıt) → talep sahibine bildirim maili
+    if stype == "it" and task.reporter_email:
+        try:
+            from services.mailer import send_case_reply_notice
+
+            send_case_reply_notice(task.reporter_email, task.case_code, task.title)
+        except Exception as e:
+            print(f"[case] yanıt bildirimi hatası: {e}")
+    return jsonify(msg.to_dict()), 201
+
+
+# ══════════════════════════════════════════════════════════
+#  v5.18 — DESTEK HAVUZU (pool) + üstlenme/bırakma
+# ══════════════════════════════════════════════════════════
+def _user_firm_scope(me):
+    """Kullanıcının GÖREBİLECEĞİ firma slug'ları. None = tümü (super_admin)."""
+    if me.is_super_admin:
+        return None
+    scope = set(me.managed_firm_slugs)
+    if me.firm:
+        scope.add(me.firm)
+    return scope
+
+
+@app.route("/api/support/pool")
+@login_required
+def support_pool():
+    """Atanmamış (havuzdaki) açık destek talepleri — kullanıcının firma kapsamında.
+
+    user_id IS NULL & category=support & is_done=False. super_admin tümünü;
+    director+ yönettiği firmalar + kendi firma'sı; diğerleri kendi firma'sı.
+    """
+    me = _current_user()
+    q = Task.query.filter(Task.user_id.is_(None), Task.category == "support", Task.is_done == False)
+    scope = _user_firm_scope(me)
+    if scope is not None:
+        if not scope:
+            return jsonify([])
+        q = q.filter(Task.firm.in_(list(scope)))
+    tasks = q.order_by(Task.created_at.asc()).all()  # en eski (en acil) önce
+    return jsonify([t.to_dict() for t in tasks])
+
+
+@app.route("/api/tasks/<int:task_id>/claim", methods=["POST"])
+@login_required
+def claim_task(task_id):
+    """Havuzdaki case'i üstlen (kendine ata). Firma kapsamı kontrol edilir."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    scope = _user_firm_scope(me)
+    if scope is not None and task.firm not in scope:
+        return jsonify({"error": "Bu talep sizin firma kapsamınızda değil"}), 403
+    # Zaten başkasına atanmışsa yalnız director+ devralabilir
+    if task.user_id and task.user_id != me.id and not me.is_director_or_above:
+        return jsonify({"error": "Bu talep başka bir kullanıcıya atanmış"}), 409
+    task.user_id = me.id
+    log_audit(
+        me,
+        "task.assign",
+        entity_type="task",
+        entity_id=task.id,
+        target_user=me,
+        firm=task.firm,
+        summary=f"'{task.title}' talebi havuzdan üstlenildi",
+        details={"case_code": task.case_code},
+    )
+    db.session.commit()
+    return jsonify(task.to_dict())
+
+
+@app.route("/api/tasks/<int:task_id>/release", methods=["POST"])
+@login_required
+def release_task(task_id):
+    """Case'i havuza geri bırak (user_id=None). Sahibi veya director+ yapabilir."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if task.user_id != me.id and not _can_modify_owned_task(me, db.session.get(User, task.user_id)):
+        return jsonify({"error": "Bu talebi havuza bırakma yetkiniz yok"}), 403
+    task.user_id = None
+    log_audit(
+        me,
+        "task.update",
+        entity_type="task",
+        entity_id=task.id,
+        firm=task.firm,
+        summary=f"'{task.title}' talebi havuza geri bırakıldı",
+        details={"case_code": task.case_code},
+    )
+    db.session.commit()
+    return jsonify(task.to_dict())
+
+
 @app.route("/api/board/cards", methods=["GET"])
 @board_access_required
 def board_list_cards():

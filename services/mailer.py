@@ -235,6 +235,104 @@ def send_manager_digest(user, firm_summaries):
         return {"ok": False, "error": f"{type(e).__name__}: {str(e)}"}
 
 
+def send_case_ack(email, name, case_code, subject, firm):
+    """v5.15 — Portal talebi alındı bilgilendirmesi (Case No + takip linki)."""
+    host, port, smtp_user, smtp_pass = _smtp()
+    if not smtp_user or not smtp_pass:
+        return {"ok": False, "error": "SMTP ayarları eksik"}
+    base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
+    track = f"{base}/portal"
+    mail_subject = f"Destek talebiniz alındı — {case_code}"
+    body = f"""Merhaba{" " + name if name else ""},
+
+"{subject}" konulu destek talebiniz alınmıştır.
+
+Takip numaranız: {case_code}
+
+Talebinizin durumunu görmek ve IT ekibiyle yazışmak için portala gidip
+Case No'nuz ve bu e-posta adresinizle sorgulama yapabilirsiniz:
+
+{track}
+
+IT ekibimiz iş saatleri içinde en kısa sürede dönüş yapacaktır.
+
+IT Görev Takip Sistemi"""
+    msg = MIMEMultipart()
+    msg["From"] = smtp_user
+    msg["To"] = email
+    msg["Subject"] = mail_subject
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+    import ssl
+
+    ctx = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(host, port, timeout=15) as s:
+            s.ehlo()
+            s.starttls(context=ctx)
+            s.ehlo()
+            s.login(smtp_user, smtp_pass)
+            s.sendmail(smtp_user, [email], msg.as_string())
+        return {"ok": True}
+    except smtplib.SMTPAuthenticationError as e:
+        return {"ok": False, "error": f"Kimlik doğrulama hatası: {str(e)}"}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {str(e)}"}
+
+
+def _send_plain(to_email, subject, body):
+    """Ortak düz-metin mail gönderici (case bildirimleri)."""
+    host, port, smtp_user, smtp_pass = _smtp()
+    if not smtp_user or not smtp_pass:
+        return {"ok": False, "error": "SMTP ayarları eksik"}
+    msg = MIMEMultipart()
+    msg["From"] = smtp_user
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+    import ssl
+
+    ctx = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(host, port, timeout=15) as s:
+            s.ehlo()
+            s.starttls(context=ctx)
+            s.ehlo()
+            s.login(smtp_user, smtp_pass)
+            s.sendmail(smtp_user, [to_email], msg.as_string())
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {str(e)}"}
+
+
+def send_case_reply_notice(email, case_code, subject):
+    """v5.15 Faz B — IT kullanıcıya yanıt yazdı → talep sahibine bildirim."""
+    base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
+    body = f"""Merhaba,
+
+"{subject}" ({case_code}) konulu destek talebinize IT ekibinden yeni bir yanıt geldi.
+
+Yanıtı görmek ve devam etmek için portala gidip Case No'nuz ve e-posta adresinizle
+sorgulama yapın:
+
+{base}/portal
+
+IT Görev Takip Sistemi"""
+    return _send_plain(email, f"Talebinize yanıt geldi — {case_code}", body)
+
+
+def send_case_user_replied(it_email, case_code, subject, reporter_name):
+    """v5.15 Faz B — Kullanıcı portaldan yanıt yazdı → atanan IT'ye bildirim."""
+    who = reporter_name or "Talep sahibi"
+    body = f"""Merhaba,
+
+{who}, "{subject}" ({case_code}) destek talebine portaldan yeni bir yanıt yazdı.
+
+Görevin detayında "Kullanıcıya Yanıt" sekmesinden görüntüleyip cevaplayabilirsin.
+
+IT Görev Takip Sistemi"""
+    return _send_plain(it_email, f"Portal talebine kullanıcı yanıtı — {case_code}", body)
+
+
 def send_invite_email(email, name, invite_url, role):
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:

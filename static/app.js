@@ -103,7 +103,7 @@ function applyJuniorTaskRestrictions() {
 }
 
 const PERM_LABELS = {super_admin:'Super Admin', it_director:'IT Müdürü', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
-const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board'];
+const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board', 'pool'];
 
 // ══════════════════════════════════════════════════════════
 //  SABİT VERİLER
@@ -264,6 +264,7 @@ async function loadTasks(month, year) {
   } catch(e) { console.error('Görevler yüklenemedi:', e); tasks = []; }
   // v5.2 — destek talebi sayısını sidebar nav badge'ine yansıt
   try { updateSupportNavBadge(); } catch(_) {}
+  try { updatePoolBadge(); } catch(_) {}
 }
 
 // v4.2 — başka kullanıcının görevlerine yazma izni yok (yalnızca görüntüleme)
@@ -415,6 +416,7 @@ async function loadAuditLog() {
 function normalizeTask(t) {
   return {
     id:       t.id,
+    user_id:  t.user_id,       // v5.18 — havuz (null = atanmamış)
     title:    t.title,
     cat:      t.category,      // API: category → FE: cat
     priority: t.priority || 'orta',
@@ -439,6 +441,12 @@ function normalizeTask(t) {
     completed_at:        t.completed_at || null,
     from_previous_month: t.from_previous_month || false,
     sla:                 t.sla || null,
+    // v5.15 — portal kaynaklı destek talepleri
+    source:              t.source || 'manual',
+    case_code:           t.case_code || null,
+    reporter_email:      t.reporter_email || null,
+    reporter_name:       t.reporter_name || null,
+    reporter_anydesk:    t.reporter_anydesk || null,
     // v5.1 — Rutin kanonik sinyaller (deadline/next_due donmuş alanları yerine)
     is_overdue:          t.is_overdue || false,
     overdue_periods:     t.overdue_periods || 0,
@@ -573,6 +581,7 @@ function showPage(name, opts = {}) {
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
   if (name==='board')     renderBoard();
+  if (name==='pool')      loadPoolPage();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -715,6 +724,88 @@ function updateSupportNavBadge() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  v5.18 — DESTEK HAVUZU (atanmamış case'ler)
+// ══════════════════════════════════════════════════════════
+let _poolCases = [];
+
+async function updatePoolBadge() {
+  try {
+    const r = await fetch('/api/support/pool');
+    if (!r.ok) return;
+    _poolCases = (await r.json()).map(normalizeTask);
+    const badge = document.getElementById('pool-nav-badge');
+    if (badge) {
+      badge.textContent = String(_poolCases.length);
+      badge.style.display = _poolCases.length ? '' : 'none';
+    }
+  } catch (e) { /* sessiz */ }
+}
+
+async function loadPoolPage() {
+  const body = document.getElementById('pool-list-body');
+  const cnt = document.getElementById('pool-count-label');
+  if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted)">Yükleniyor…</div>';
+  try {
+    const r = await fetch('/api/support/pool');
+    _poolCases = r.ok ? (await r.json()).map(normalizeTask) : [];
+  } catch (e) { _poolCases = []; }
+  updatePoolBadge();
+  renderPool();
+}
+
+function renderPool() {
+  const body = document.getElementById('pool-list-body');
+  const cnt = document.getElementById('pool-count-label');
+  if (!body) return;
+  if (cnt) cnt.textContent = `${_poolCases.length} bekleyen`;
+  if (!_poolCases.length) {
+    body.innerHTML = '<div style="padding:28px;text-align:center;font-size:12px;color:var(--text-muted)">🫧 Havuz boş — bekleyen atanmamış talep yok.</div>';
+    return;
+  }
+  body.innerHTML = _poolCases.map(t => {
+    const age = t.startDate ? formatDateTR(t.startDate) : '';
+    const anydesk = t.reporter_anydesk ? ` · 🖥 ${escapeHtml(t.reporter_anydesk)}` : '';
+    return `
+    <div class="task-item" style="align-items:center">
+      <div style="font-size:16px">🫧</div>
+      <div>
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)} ${firmChip(t.firm)}
+          ${t.case_code ? `<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>` : ''}</div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email||'')}&gt;${anydesk} · ${age}</div>
+      </div>
+      <div></div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        <button class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px" onclick="claimCase(${t.id})">✋ Üstlen</button>
+        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; İncele</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function claimCase(id) {
+  try {
+    const r = await fetch(`/api/tasks/${id}/claim`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Üstlenilemedi');
+    showToast('ok', '✋ Talep üstlenildi — Destek Talepleri listenizde');
+    _poolCases = _poolCases.filter(t => t.id !== id);
+    renderPool(); updatePoolBadge();
+    await loadTasks();  // kendi listeme düşsün
+  } catch (e) { showToast('err', e.message); }
+}
+
+async function releaseCase(id) {
+  if (!confirm('Bu talebi havuza geri bırakmak istediğinize emin misiniz?')) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}/release`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Bırakılamadı');
+    showToast('ok', '🫧 Talep havuza geri bırakıldı');
+    closeEditTaskModal();
+    await loadTasks(); renderFullList(tasks); updatePoolBadge();
+  } catch (e) { showToast('err', e.message); }
 }
 
 // v4.7 — KATEGORİ DAĞILIMI: gerçek verilerden pie chart
@@ -1358,6 +1449,11 @@ function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${escapeHtml(firm)}</span>` : '';
   return `<span class="firm-chip ${firm}">${f.label}</span>`;
 }
+// v5.15 — portal kaynaklı destek talebi rozeti (case kodu ile)
+function portalBadge(t) {
+  if (!t || t.source !== 'portal' || !t.case_code) return '';
+  return ` <span class="prio-badge low" title="İntranet portalından açıldı" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>`;
+}
 // v5.0 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
 function _slaRemainingHuman(t) {
   if (t.cat !== 'support' || !t.sla) return null;
@@ -1412,7 +1508,8 @@ function taskRow(t) {
     <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      ${t.source==='portal' && t.reporter_email ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">🌐 Portal talebi · ${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email)}&gt;${t.reporter_anydesk ? ` · 🖥 AnyDesk: ${escapeHtml(t.reporter_anydesk)}` : ''}</div>` : ''}
       ${clProgress}${lcStr}${mnStr}
     </div>
     ${dl}
@@ -2571,6 +2668,24 @@ function openEditTask(id) {
     if (t.cat === 'backup') loadTaskBackups(id);
   }
 
+  // v5.15 Faz B — Portal yazışması (yalnız portal kaynaklı case'lerde)
+  const caseSec = document.getElementById('edit-case-section');
+  if (caseSec) {
+    const isPortal = t.source === 'portal' && t.case_code;
+    caseSec.classList.toggle('hidden', !isPortal);
+    if (isPortal) {
+      document.getElementById('edit-case-code').textContent = t.case_code;
+      document.getElementById('edit-case-reporter').textContent =
+        `${t.reporter_name || ''} <${t.reporter_email || ''}>` + (t.reporter_anydesk ? ` · 🖥 AnyDesk: ${t.reporter_anydesk}` : '');
+      // Havuza Bırak: yalnız atanmış (sahibi olan) case'te göster
+      const relBtn = document.getElementById('edit-case-release');
+      if (relBtn) relBtn.style.display = t.user_id ? '' : 'none';
+      _caseTab = 'it';
+      caseTab('it');
+      loadCaseMessages(id);
+    }
+  }
+
   // Tamamlandı butonunu duruma göre güncelle
   const completeBtn = document.getElementById('edit-complete-btn');
   if (completeBtn) {
@@ -2701,6 +2816,91 @@ async function deleteTask() {
   } catch(e) { showToast('err', e.message); }
 }
 function closeEditTaskModal() { document.getElementById('edit-task-modal').classList.add('hidden'); }
+
+// ══════════════════════════════════════════════════════════
+//  v5.15 Faz B — PORTAL CASE YAZIŞMASI (IT tarafı)
+// ══════════════════════════════════════════════════════════
+let _caseTab = 'it';        // 'it' (kullanıcıya yanıt) | 'internal' (iç not)
+let _caseMessages = [];     // son yüklenen tüm mesajlar (reporter+it+internal)
+
+function caseTab(which) {
+  _caseTab = which;
+  const ti = document.getElementById('case-tab-it');
+  const ii = document.getElementById('case-tab-internal');
+  ti.classList.toggle('active', which === 'it');
+  ii.classList.toggle('active', which === 'internal');
+  ti.style.color = which === 'it' ? 'var(--accent)' : 'var(--text-muted)';
+  ti.style.borderBottomColor = which === 'it' ? 'var(--accent)' : 'transparent';
+  ii.style.color = which === 'internal' ? 'var(--accent)' : 'var(--text-muted)';
+  ii.style.borderBottomColor = which === 'internal' ? 'var(--accent)' : 'transparent';
+  const hint = document.getElementById('case-tab-hint');
+  const inp = document.getElementById('case-msg-input');
+  if (which === 'it') {
+    hint.textContent = '📧 Gönderdiğinizde talep sahibine "yanıt var" e-postası iletilir · portalda görünür.';
+    if (inp) inp.placeholder = 'Kullanıcıya yanıt yazın…';
+  } else {
+    hint.textContent = '🔒 İç notlar yalnızca IT ekibince görülür — kullanıcıya ASLA gösterilmez.';
+    if (inp) inp.placeholder = 'İç not yazın (kullanıcı görmez)…';
+  }
+  renderCaseThread();
+}
+
+async function loadCaseMessages(taskId) {
+  try {
+    const r = await fetch(`/api/tasks/${taskId}/messages`);
+    if (!r.ok) return;
+    const d = await r.json();
+    _caseMessages = d.messages || [];
+    // "Kullanıcıya Yanıt" sekmesinde okunmamış reporter mesajı sayısı rozeti
+    const badge = document.getElementById('case-it-badge');
+    if (badge) {
+      const reporterCount = _caseMessages.filter(m => m.sender_type === 'reporter').length;
+      badge.textContent = reporterCount ? `(${reporterCount})` : '';
+    }
+    renderCaseThread();
+  } catch (e) { console.warn('[case] mesajlar yüklenemedi', e); }
+}
+
+function renderCaseThread() {
+  const el = document.getElementById('case-thread');
+  if (!el) return;
+  // İç Notlar sekmesi: yalnız internal · Kullanıcıya Yanıt sekmesi: reporter+it
+  const list = _caseTab === 'internal'
+    ? _caseMessages.filter(m => m.sender_type === 'internal')
+    : _caseMessages.filter(m => m.sender_type === 'reporter' || m.sender_type === 'it');
+  if (!list.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:10px">${_caseTab==='internal'?'Henüz iç not yok.':'Henüz yazışma yok.'}</div>`;
+    return;
+  }
+  el.innerHTML = list.map(m => {
+    const t = m.created_at ? new Date(m.created_at).toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    const mine = m.sender_type === 'it' || m.sender_type === 'internal';  // IT üretimi → sağ
+    const isInternal = m.sender_type === 'internal';
+    const bg = isInternal ? 'rgba(244,185,66,.12)' : (m.sender_type==='it' ? 'var(--accent)' : 'var(--surface2)');
+    const col = m.sender_type==='it' ? '#06231d' : 'var(--text)';
+    const bd = isInternal ? '1px solid rgba(244,185,66,.35)' : '1px solid var(--border)';
+    return `<div style="align-self:${mine?'flex-end':'flex-start'};max-width:82%;background:${bg};color:${col};border:${bd};border-radius:11px;padding:8px 11px;font-size:12px;line-height:1.5;white-space:pre-wrap">
+      <div style="font-size:9px;opacity:.7;margin-bottom:3px;font-family:'IBM Plex Mono',monospace">${escapeHtml(m.author_name||(m.sender_type==='reporter'?'Kullanıcı':'IT'))} · ${t}</div>${escapeHtml(m.body)}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendCaseMessage() {
+  const id = parseInt(document.getElementById('edit-task-id').value);
+  const inp = document.getElementById('case-msg-input');
+  const body = inp.value.trim();
+  if (!body) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}/messages`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sender_type: _caseTab, body })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Gönderilemedi');
+    inp.value = '';
+    await loadCaseMessages(id);
+    showToast('ok', _caseTab === 'it' ? '💬 Yanıt gönderildi (kullanıcıya mail iletildi)' : '📝 İç not kaydedildi');
+  } catch (e) { showToast('err', e.message); }
+}
 
 // ══════════════════════════════════════════════════════════
 //  BACKUP DOSYA YÖNETİMİ — Edit modal içi

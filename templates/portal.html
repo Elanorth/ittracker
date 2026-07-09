@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BT Destek Portalı · IT//TRACKER</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;min-height:100vh}
+.mono{font-family:'IBM Plex Mono',monospace}
+.screen{display:none;min-height:100vh}.screen.active{display:block}
+/* ── Landing split ── */
+.split{display:flex;height:100vh}
+.half{flex:1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:flex .5s cubic-bezier(.22,.9,.3,1),filter .5s}
+.split:hover .half{filter:brightness(.45) saturate(.5)}
+.split .half:hover{flex:2.1;filter:none}
+.half .inner{text-align:center;max-width:420px;padding:20px;position:relative;z-index:3;transition:transform .5s}
+.half:hover .inner{transform:scale(1.07)}
+.half .cta{display:inline-block;margin-top:26px;padding:13px 30px;border-radius:9px;font-weight:700;font-size:14px;opacity:.85;transform:translateY(4px);transition:.35s}
+.half:hover .cta{opacity:1;transform:translateY(0)}
+.half .bsub{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;opacity:.6;margin-bottom:14px;font-family:'IBM Plex Mono',monospace}
+.half h1{font-size:34px;font-weight:800;line-height:1.15}.half p{margin-top:12px;font-size:13px;opacity:.7;line-height:1.6}
+.half.inv{background:#0a0a0a;color:#f2f2f2}.half.inv .cta{background:#fff;color:#0a0a0a}
+.half.inv::before{content:'';position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.05),transparent 45%)}
+.half.assos{background:#eef5fb;color:#173a5a}.half.assos .cta{background:#1e73be;color:#fff}.half.assos .bsub{color:#1e73be;opacity:.85}
+.half.assos .bgvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.half.assos .veil{position:absolute;inset:0;z-index:2;background:linear-gradient(150deg,rgba(240,247,252,.90),rgba(255,255,255,.72) 55%,rgba(227,238,248,.85))}
+.center-mark{position:absolute;top:30px;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none}
+.center-mark .lg{font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:3px;color:#fff;background:rgba(8,10,14,.72);padding:8px 18px;border-radius:9px;border:1px solid rgba(255,255,255,.14)}
+.lookup{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:6;width:min(620px,92vw);background:rgba(10,13,18,.9);border:1px solid #2b3646;border-radius:14px;padding:16px 18px;backdrop-filter:blur(8px)}
+.lookup .t{font-size:12px;font-weight:700;margin-bottom:3px}.lookup .d{font-size:10px;color:#7d92a8;margin-bottom:11px}
+.lookup .row{display:flex;gap:8px;flex-wrap:wrap}
+.lookup input{flex:1;min-width:150px;background:#141a22;border:1px solid #2b3646;border-radius:8px;color:#dce6f0;padding:10px 12px;font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none}
+.lookup input:focus{border-color:#00e5c0}
+.lookup button{background:#00e5c0;color:#06231d;border:none;border-radius:8px;padding:10px 20px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
+.lookup .sec{font-size:9px;color:#5c7186;margin-top:8px}.lookup .err{color:#f4b942;font-size:11px;margin-top:8px;min-height:14px}
+@media(max-width:720px){.split{flex-direction:column}.half:hover{flex:1.35}.half h1{font-size:24px}.lookup{position:fixed}}
+/* ── Branded pages ── */
+.branded{min-height:100vh;padding:52px 18px 40px;background:var(--bg);color:var(--tx)}
+.branded[data-brand="inventist"]{--bg:#0b0b0d;--pan:#16161a;--pan2:#1e1e24;--bd:#2b2b33;--ac:#fff;--acc:#0a0a0a;--tx:#ececf1;--mut:#9aa0ad;--soft:rgba(255,255,255,.06)}
+.branded[data-brand="assos"]{--bg:#eff5fa;--pan:#fff;--pan2:#f4f9fd;--bd:#d5e3ef;--ac:#1e73be;--acc:#fff;--tx:#1d3a52;--mut:#5f7a90;--soft:rgba(30,115,190,.08)}
+.wrap{max-width:720px;margin:0 auto}
+.bhead{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.bhead .dot{width:34px;height:34px;border-radius:9px;background:var(--ac);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.bhead .nm{font-weight:800;font-size:16px}.bhead .sb{font-size:10px;color:var(--mut);font-family:'IBM Plex Mono',monospace;letter-spacing:1px}
+.card{background:var(--pan);border:1px solid var(--bd);border-radius:16px;padding:26px}
+.card h2{font-size:20px;font-weight:800;margin-bottom:4px}.card .sub{font-size:12px;color:var(--mut);margin-bottom:22px;line-height:1.55}
+.fg{margin-bottom:14px}.fg label{display:block;font-size:11px;font-weight:700;margin-bottom:6px}.fg label .req{color:#e5484d}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:11px 13px;font-size:13px;font-family:'Syne',sans-serif;outline:none}
+.fg textarea{min-height:118px;resize:vertical;line-height:1.55}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--ac)}
+.fg .hint{font-size:10px;color:var(--mut);margin-top:5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.counter{font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:5px;color:#e5484d}.counter.ok{color:#28b487}
+.btn-b{background:var(--ac);color:var(--acc);border:none;border-radius:9px;padding:13px 30px;font-weight:800;font-size:13px;cursor:pointer;font-family:'Syne',sans-serif}
+.btn-b[disabled]{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--tx);border:1px solid var(--bd);border-radius:9px;padding:12px 22px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600}
+.back{font-size:11px;color:var(--mut);cursor:pointer;margin-bottom:16px;display:inline-block}
+.formerr{color:#e5484d;font-size:12px;margin-top:10px;min-height:16px}
+.kvkk{font-size:9.5px;color:var(--mut);margin-top:14px;line-height:1.6}
+/* success */
+.okwrap{text-align:center;padding-top:3vh}
+.okmark{width:64px;height:64px;border-radius:50%;background:var(--soft);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px}
+.case-code{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;letter-spacing:3px;background:var(--pan2);border:1px dashed var(--bd);border-radius:12px;padding:15px 24px;display:inline-block;margin:12px 0 6px}
+.copy{font-size:10px;color:var(--mut);cursor:pointer;font-family:'IBM Plex Mono',monospace}
+.steps{text-align:left;margin:22px auto 0;max-width:460px;font-size:12px;color:var(--mut);line-height:2}.steps b{color:var(--tx)}
+/* case view */
+.case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.stbadge{font-size:10px;font-weight:700;padding:5px 13px;border-radius:20px}
+.st-received{background:#8ea3b822;color:#8ea3b8;border:1px solid #8ea3b855}
+.st-in_progress{background:#f4b94222;color:#c98f1b;border:1px solid #f4b94255}
+.st-resolved{background:#28b48722;color:#28b487;border:1px solid #28b48755}
+.tl{display:flex;align-items:center;margin:6px 0 22px}
+.tl .st{flex:1;text-align:center;position:relative}
+.tl .st .b{width:14px;height:14px;border-radius:50%;background:var(--bd);margin:0 auto 7px;position:relative;z-index:2}
+.tl .st.done .b{background:#28b487}.tl .st.cur .b{background:var(--ac)}
+.tl .st .lb{font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:var(--mut)}.tl .st.done .lb,.tl .st.cur .lb{color:var(--tx);font-weight:600}
+.tl .st::before{content:'';position:absolute;top:6px;left:-50%;width:100%;height:2px;background:var(--bd);z-index:1}
+.tl .st:first-child::before{display:none}.tl .st.done::before,.tl .st.cur::before{background:#28b487}
+.desc-box{background:var(--pan2);border:1px solid var(--bd);border-radius:10px;padding:14px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;color:var(--tx)}
+.thread{display:flex;flex-direction:column;gap:10px;margin:4px 0 14px;max-height:340px;overflow:auto}
+.thread .empty{font-size:11px;color:var(--mut);text-align:center;padding:12px}
+.msg{max-width:82%;padding:10px 13px;border-radius:12px;font-size:12.5px;line-height:1.55;white-space:pre-wrap}
+.msg .who{font-size:9px;font-family:'IBM Plex Mono',monospace;opacity:.7;margin-bottom:4px}
+.msg.reporter{align-self:flex-start;background:var(--pan2);border:1px solid var(--bd);border-bottom-left-radius:4px}
+.msg.it{align-self:flex-end;background:var(--ac);color:var(--acc);border-bottom-right-radius:4px}
+.msg.it .who{opacity:.8}
+.replybox{display:flex;gap:9px;align-items:flex-end}
+.replybox textarea{flex:1;min-height:52px;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:10px 12px;font-size:12.5px;font-family:'Syne',sans-serif;outline:none;resize:vertical}
+.replybox textarea:focus{border-color:var(--ac)}
+</style>
+</head>
+<body>
+
+<!-- 1 · LANDING -->
+<div class="screen active" id="s-landing">
+  <div class="center-mark"><div class="lg">IT//TRACKER · DESTEK</div></div>
+  <div class="split">
+    <section class="half inv" onclick="openForm('inventist')">
+      <div class="inner">
+        <div class="bsub">⬡ İNVENTİST</div>
+        <h1>İnventist<br>BT Destek</h1>
+        <p>İnventist lokasyonları için BT destek talebi oluşturun; talebiniz otomatik olarak doğru ekibe yönlendirilir.</p>
+        <span class="cta">Talep Oluştur →</span>
+      </div>
+    </section>
+    <section class="half assos" onclick="openForm('assos')">
+      <video class="bgvid" autoplay muted loop playsinline src="https://assospharma.com/wp-content/uploads/2021/03/assos_webbg_v8.mp4"></video>
+      <div class="veil"></div>
+      <div class="inner">
+        <div class="bsub">⬡ ASSOS PHARMA</div>
+        <h1>Assos<br>BT Destek</h1>
+        <p>Assos lokasyonları için BT destek talebi oluşturun; talebiniz otomatik olarak doğru ekibe yönlendirilir.</p>
+        <span class="cta">Talep Oluştur →</span>
+      </div>
+    </section>
+  </div>
+  <div class="lookup">
+    <div class="t">Mevcut talebiniz mi var?</div>
+    <div class="d">Case No ve talebi açarken kullandığınız e-posta adresiyle sorgulayın.</div>
+    <div class="row">
+      <input class="mono" id="lk-code" placeholder="INV-7K3M9Q">
+      <input class="mono" id="lk-email" placeholder="e-posta@firma.com">
+      <button onclick="doLookup()">Sorgula</button>
+    </div>
+    <div class="err" id="lk-err"></div>
+    <div class="sec">🔒 Case No tek başına yeterli değildir — e-posta adresiyle birlikte doğrulanır.</div>
+  </div>
+</div>
+
+<!-- 2 · FORM -->
+<div class="screen" id="s-form">
+  <div class="branded" data-brand="inventist" id="form-branded">
+    <div class="wrap">
+      <span class="back" onclick="show('s-landing')">← Marka seçimine dön</span>
+      <div class="bhead"><div class="dot" id="f-dot">İN</div><div><div class="nm" id="f-name">İnventist BT Destek</div><div class="sb">YENİ DESTEK TALEBİ</div></div></div>
+      <div class="card">
+        <h2>Talebinizi anlatın</h2>
+        <div class="sub">Talebiniz kaydedildiğinde size özel bir <b>Case No</b> üretilir ve onay e-postası gönderilir. IT ekibi iş saatleri içinde en kısa sürede dönüş yapar.</div>
+        <div class="grid2">
+          <div class="fg"><label>Ad Soyad <span class="req">*</span></label><input id="f-name-in" placeholder="Ahmet Yılmaz"></div>
+          <div class="fg"><label>E-posta <span class="req">*</span></label><input id="f-email" type="email" placeholder="ahmet@firma.com"><div class="hint">Onay ve yanıt bildirimleri bu adrese gönderilir.</div></div>
+        </div>
+        <div class="grid2">
+          <div class="fg"><label>Kategori</label><select id="f-cat"><option value="support">Genel Destek</option><option value="infra">Ağ / İnternet</option><option value="other">Diğer</option></select></div>
+          <div class="fg"><label>Konu <span class="req">*</span></label><input id="f-subject" placeholder="Kısa başlık"></div>
+        </div>
+        <div class="fg">
+          <label>AnyDesk ID <span style="color:var(--mut);font-weight:400">(opsiyonel)</span></label>
+          <input id="f-anydesk" class="mono" placeholder="örn. 123 456 789" inputmode="numeric">
+          <div class="hint">Uzaktan bağlantı gerekirse IT ekibi bu ID ile bağlanabilir. AnyDesk açıkken paylaşın.</div>
+        </div>
+        <div class="fg">
+          <label>Sorun Açıklaması <span class="req">*</span></label>
+          <textarea id="f-desc" placeholder="Sorunu mümkün olduğunca ayrıntılı anlatın — ne zaman başladı, hangi cihazda, hata mesajı var mı?"></textarea>
+          <div class="counter" id="f-cnt">0/60 — en az 60 karakter yazmalısınız</div>
+        </div>
+        <button class="btn-b" id="f-submit" disabled onclick="submitCase()">Talebi Gönder</button>
+        <div class="formerr" id="f-err"></div>
+        <div class="kvkk">Gönderdiğinizde ad-soyad ve e-posta adresiniz yalnızca bu destek talebinin yürütülmesi amacıyla işlenir (KVKK).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3 · SUCCESS -->
+<div class="screen" id="s-ok">
+  <div class="branded" data-brand="inventist" id="ok-branded">
+    <div class="wrap okwrap">
+      <div class="okmark">✓</div>
+      <h2 style="font-size:22px;font-weight:800">Talebiniz alındı</h2>
+      <div class="case-code" id="ok-code">—</div><br>
+      <span class="copy" onclick="copyCode(this)">⧉ kopyala</span>
+      <div class="steps">
+        <b>Sırada ne var?</b><br>
+        📧 Onay e-postası gönderildi — <span id="ok-email"></span> (Case No + takip bağlantısı)<br>
+        💬 IT ekibi yanıt yazdığında e-posta ile bilgilendirilirsiniz<br>
+        🔎 Durumu görmek için: Case No + e-posta ile portaldan sorgulayın
+      </div>
+      <div style="margin-top:24px;display:flex;gap:10px;justify-content:center">
+        <button class="btn-b" onclick="gotoLookupFromOk()">Talebini Görüntüle →</button>
+        <button class="btn-ghost" onclick="show('s-landing')">Ana sayfa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4 · CASE VIEW -->
+<div class="screen" id="s-case">
+  <div class="branded" data-brand="inventist" id="case-branded">
+    <div class="wrap">
+      <span class="back" onclick="show('s-landing')">← Portal ana sayfa</span>
+      <div class="case-top">
+        <div><div class="mono" id="c-code" style="font-size:20px;font-weight:700;letter-spacing:2px">—</div><div id="c-subject" style="font-size:13px;margin-top:5px;font-weight:600"></div></div>
+        <span class="stbadge" id="c-status">—</span>
+      </div>
+      <div class="tl" id="c-tl"></div>
+      <div class="card">
+        <div class="fg"><label>Talep açıklamanız</label><div class="desc-box" id="c-desc"></div></div>
+        <div class="fg" style="margin-bottom:8px"><label>IT ekibiyle yazışma</label></div>
+        <div class="thread" id="c-thread"></div>
+        <div class="replybox" id="c-replybox">
+          <textarea id="c-reply" placeholder="IT ekibine yanıt yazın…"></textarea>
+          <button class="btn-b" onclick="sendReply()">Gönder</button>
+        </div>
+        <div class="formerr" id="c-reply-err"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BRANDS = {
+  inventist: {name:'İnventist BT Destek', dot:'İN'},
+  assos:     {name:'Assos BT Destek',     dot:'AS'}
+};
+let _brand = 'inventist';
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function setBrand(b){_brand=b;['form-branded','ok-branded','case-branded'].forEach(id=>document.getElementById(id).setAttribute('data-brand',b));}
+
+function openForm(b){
+  setBrand(b);
+  document.getElementById('f-name').textContent = BRANDS[b].name;
+  document.getElementById('f-dot').textContent  = BRANDS[b].dot;
+  ['f-name-in','f-email','f-subject','f-desc','f-anydesk'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-err').textContent='';
+  updateCnt();
+  show('s-form');
+}
+
+const desc=document.getElementById('f-desc'), cnt=document.getElementById('f-cnt'), sub=document.getElementById('f-submit');
+function updateCnt(){
+  const n=desc.value.trim().length;
+  if(n>=60){cnt.textContent=`${n}/60 ✓`;cnt.classList.add('ok');sub.disabled=false;}
+  else{cnt.textContent=`${n}/60 — en az 60 karakter yazmalısınız`;cnt.classList.remove('ok');sub.disabled=true;}
+}
+desc.addEventListener('input',updateCnt);
+
+async function submitCase(){
+  const err=document.getElementById('f-err'); err.textContent='';
+  const body={
+    firm:_brand,
+    name:document.getElementById('f-name-in').value.trim(),
+    email:document.getElementById('f-email').value.trim(),
+    subject:document.getElementById('f-subject').value.trim(),
+    category:document.getElementById('f-cat').value,
+    description:document.getElementById('f-desc').value.trim(),
+    anydesk:document.getElementById('f-anydesk').value.trim()
+  };
+  if(!body.name||!body.subject){err.textContent='Ad-soyad ve konu zorunludur.';return;}
+  sub.disabled=true; sub.textContent='Gönderiliyor…';
+  try{
+    const r=await fetch('/portal/api/cases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Gönderilemedi');
+    document.getElementById('ok-branded').setAttribute('data-brand',_brand);
+    document.getElementById('ok-code').textContent=d.case_code;
+    document.getElementById('ok-email').textContent=body.email;
+    show('s-ok');
+  }catch(e){ err.textContent=e.message; }
+  finally{ sub.disabled=false; sub.textContent='Talebi Gönder'; updateCnt(); }
+}
+function copyCode(el){const c=document.getElementById('ok-code').textContent;navigator.clipboard?.writeText(c);el.textContent='✓ kopyalandı';}
+function gotoLookupFromOk(){
+  document.getElementById('lk-code').value=document.getElementById('ok-code').textContent;
+  document.getElementById('lk-email').value=document.getElementById('ok-email').textContent;
+  show('s-landing'); doLookup();
+}
+
+const STATUS_LABEL={received:'● ALINDI',in_progress:'● İŞLEMDE',resolved:'● ÇÖZÜLDÜ'};
+const STEPS=[['received','Alındı'],['in_progress','İşlemde'],['resolved','Çözüldü']];
+let _caseCode='', _caseEmail='';  // aktif case kimliği (yanıt POST'unda tekrar doğrulanır)
+
+function renderCase(d){
+  setBrand(d.firm==='assos'?'assos':'inventist');
+  document.getElementById('case-branded').setAttribute('data-brand',_brand);
+  document.getElementById('c-code').textContent=d.case_code;
+  document.getElementById('c-subject').textContent=d.subject;
+  document.getElementById('c-desc').textContent=d.description||'—';
+  const sb=document.getElementById('c-status');
+  sb.textContent=STATUS_LABEL[d.status]||d.status; sb.className='stbadge st-'+d.status;
+  const curIdx=STEPS.findIndex(s=>s[0]===d.status);
+  document.getElementById('c-tl').innerHTML=STEPS.map((s,i)=>{
+    const cls=i<curIdx?'done':(i===curIdx?'cur':'');
+    return `<div class="st ${cls}"><div class="b"></div><div class="lb">${s[1]}</div></div>`;
+  }).join('');
+  // mesaj akışı
+  const th=document.getElementById('c-thread');
+  const msgs=d.messages||[];
+  th.innerHTML = msgs.length ? msgs.map(m=>{
+    const t=m.created_at?new Date(m.created_at).toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const who=m.sender==='it'?(m.author_name||'IT Destek'):(m.author_name||'Siz');
+    return `<div class="msg ${m.sender==='it'?'it':'reporter'}"><div class="who">${esc(who)} · ${t}</div>${esc(m.body)}</div>`;
+  }).join('') : '<div class="empty">Henüz mesaj yok. Aşağıdan IT ekibine yazabilirsiniz.</div>';
+  th.scrollTop=th.scrollHeight;
+  // çözülmüş case'te yanıt kutusu gizli
+  document.getElementById('c-replybox').style.display = d.is_done ? 'none' : 'flex';
+}
+
+async function doLookup(){
+  const err=document.getElementById('lk-err'); err.textContent='';
+  const code=document.getElementById('lk-code').value.trim();
+  const email=document.getElementById('lk-email').value.trim();
+  if(!code||!email){err.textContent='Case No ve e-posta gerekli.';return;}
+  try{
+    const r=await fetch('/portal/api/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_code:code,email})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Bulunamadı');
+    _caseCode=d.case_code; _caseEmail=email;
+    renderCase(d);
+    show('s-case');
+  }catch(e){ err.textContent=e.message; }
+}
+
+async function sendReply(){
+  const err=document.getElementById('c-reply-err'); err.textContent='';
+  const ta=document.getElementById('c-reply'); const body=ta.value.trim();
+  if(body.length<2){err.textContent='Mesaj boş olamaz.';return;}
+  try{
+    const r=await fetch('/portal/api/case/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_code:_caseCode,email:_caseEmail,body})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Gönderilemedi');
+    ta.value=''; renderCase(d);
+  }catch(e){ err.textContent=e.message; }
+}
+</script>
+</body>
+</html>
