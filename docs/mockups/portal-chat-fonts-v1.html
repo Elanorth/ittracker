@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT//TRACKER · Chat Layout + Font Mockup</title>
+<!-- Aday fontlar (hepsi güçlü Türkçe desteği) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c10;--surface:#0f1419;--surface2:#161d26;--surface3:#1e2732;
+  --border:#242d38;--border2:#2e3a47;--accent:#00e5c0;--accent-c:#06231d;
+  --text:#dce6f0;--text-muted:#6b7e93;--gold:#f4b942;--danger:#f85149;
+  --ui-font:'Inter',system-ui,sans-serif;   /* JS ile değişir */
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--ui-font);padding:0 0 60px}
+.mono{font-family:'IBM Plex Mono',monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+
+/* ── Kontrol çubuğu ── */
+.bar{position:sticky;top:0;z-index:20;background:rgba(8,12,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:14px 0;margin-bottom:26px}
+.bar .wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.bar h1{font-size:15px;font-weight:800;letter-spacing:.3px}
+.bar .lbl{font-size:11px;color:var(--text-muted);margin-left:auto}
+.fontpick{display:flex;gap:6px;flex-wrap:wrap}
+.fontpick button{font-size:12px;padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text-muted);cursor:pointer}
+.fontpick button.on{background:var(--accent);color:var(--accent-c);border-color:var(--accent);font-weight:700}
+
+h2.sec{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin:38px 0 6px;font-family:'IBM Plex Mono',monospace}
+.sub{font-size:12.5px;color:var(--text-muted);margin-bottom:18px;line-height:1.6;max-width:760px}
+.pill{display:inline-block;font-size:10px;background:var(--surface3);border:1px solid var(--border2);border-radius:20px;padding:3px 11px;color:var(--text-muted);margin-right:6px}
+.pill.rec{background:rgba(0,229,192,.14);color:var(--accent);border-color:rgba(0,229,192,.35)}
+
+/* ══════════ FONT ÖRNEKLERİ ══════════ */
+.font-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.font-grid{grid-template-columns:1fr}}
+.font-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.font-card .fname{font-size:13px;font-weight:700;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center}
+.font-card .fnote{font-size:10.5px;color:var(--text-muted);margin-bottom:14px}
+.font-card .big{font-size:26px;font-weight:800;line-height:1.2;margin-bottom:8px}
+.font-card .glyph{font-size:18px;letter-spacing:2px;color:var(--accent);margin-bottom:10px}
+.font-card .para{font-size:13px;line-height:1.65;color:var(--text)}
+.font-card .try{margin-top:12px;font-size:10px;color:var(--accent);cursor:pointer;text-decoration:underline}
+.f-inter{font-family:'Inter',sans-serif}
+.f-plex{font-family:'IBM Plex Sans',sans-serif}
+.f-manrope{font-family:'Manrope',sans-serif}
+.f-source{font-family:'Source Sans 3',sans-serif}
+.f-syne{font-family:'Syne',sans-serif}
+
+/* ══════════ CHAT LAYOUT ══════════ */
+/* Ortak modal/kart parçaları */
+.demo{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:8px}
+.demo .dtop{background:var(--surface2);padding:11px 16px;font-size:11px;font-weight:700;letter-spacing:.4px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.tag{font-size:9px;background:rgba(0,229,192,.12);color:var(--accent);border:1px solid rgba(0,229,192,.3);border-radius:5px;padding:2px 7px}
+.tag.gold{background:rgba(244,185,66,.13);color:var(--gold);border-color:rgba(244,185,66,.3)}
+
+/* chat balonları */
+.thread{display:flex;flex-direction:column;gap:10px;padding:16px;overflow:auto}
+.msg{max-width:74%;padding:10px 14px;border-radius:13px;font-size:13px;line-height:1.55;white-space:pre-wrap}
+.msg .who{font-size:9px;font-family:'IBM Plex Mono',monospace;opacity:.7;margin-bottom:4px}
+.msg.user{align-self:flex-start;background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.it{align-self:flex-end;background:var(--accent);color:var(--accent-c);border-bottom-right-radius:4px}
+.msg.int{align-self:flex-end;background:rgba(244,185,66,.13);border:1px solid rgba(244,185,66,.35);border-bottom-right-radius:4px}
+.composer{display:flex;gap:9px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface)}
+.composer textarea{flex:1;min-height:46px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;color:var(--text);padding:10px 12px;font-size:13px;font-family:inherit;resize:none;outline:none}
+.composer textarea:focus{border-color:var(--accent)}
+.composer .send{background:var(--accent);color:var(--accent-c);border:none;border-radius:9px;padding:0 22px;font-weight:700;cursor:pointer;font-family:inherit}
+.tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.tab{font-size:11px;padding:10px 14px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;font-weight:600}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* A) MEVCUT — dar dikey (referans) */
+.cur{max-width:430px}
+.cur .thread{max-height:190px}
+
+/* B) GENİŞ 2-SÜTUN (önerilen) */
+.wide .body{display:grid;grid-template-columns:300px 1fr;min-height:420px}
+@media(max-width:760px){.wide .body{grid-template-columns:1fr}}
+.wide .left{border-right:1px solid var(--border);padding:16px;background:var(--surface)}
+.wide .left .fld{margin-bottom:12px}
+.wide .left label{font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;font-weight:600}
+.wide .left .val{font-size:12.5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px}
+.wide .right{display:flex;flex-direction:column}
+.wide .thread{flex:1;max-height:none}
+
+/* C) TAM SAYFA — 3 sütun (en ferah) */
+.full{border-radius:16px}
+.full .body{display:grid;grid-template-columns:230px 1fr 210px;min-height:440px}
+@media(max-width:900px){.full .body{grid-template-columns:1fr}}
+.full .col{padding:16px}
+.full .center{border-left:1px solid var(--border);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0}
+.full .center .thread{flex:1;max-height:none}
+.full .meta .m{font-size:11px;color:var(--text-muted);margin-bottom:12px}
+.full .meta .m b{color:var(--text);display:block;font-size:12.5px;margin-top:2px}
+.full .col label{font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px;font-weight:600}
+.full .col .val{font-size:12.5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:12px}
+.callout{font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px dashed var(--border2);border-radius:9px;padding:11px 13px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="wrap">
+  <h1>Chat Layout + Font Mockup</h1>
+  <div class="fontpick" id="fontpick">
+    <button data-f="'Inter',sans-serif" class="on">Inter</button>
+    <button data-f="'IBM Plex Sans',sans-serif">IBM Plex Sans</button>
+    <button data-f="'Manrope',sans-serif">Manrope</button>
+    <button data-f="'Source Sans 3',sans-serif">Source Sans 3</button>
+    <button data-f="'Syne',sans-serif">Syne (mevcut)</button>
+  </div>
+  <span class="lbl">Seçilen font tüm mockup'a uygulanır ↑</span>
+</div></div>
+
+<div class="wrap">
+
+  <!-- ════════ FONTLAR ════════ -->
+  <h2 class="sec">1 · Font Adayları — Türkçe Testi</h2>
+  <div class="sub">Mevcut arayüz <b>Syne + IBM Plex Mono</b> kullanıyor; Syne display-ağırlıklı ve bazı Türkçe glyph'lerde (İ, ı, ş, ğ) zayıf/iddialı duruyor. Aşağıdakiler gövde metni için daha nötr ve Türkçe'yi tam destekliyor. Her kartın altındaki <b>"Bu fontu dene"</b> ile üstteki seçiciyi değiştirmeden hızlı bakabilirsin.</div>
+  <div class="font-grid">
+    <div class="font-card">
+      <div class="fname"><span class="f-inter">Inter</span> <span class="pill rec">önerilen</span></div>
+      <div class="fnote">Nötr, modern, en yaygın ürün fontu. Mükemmel Türkçe.</div>
+      <div class="big f-inter">İnventist &amp; Assos</div>
+      <div class="glyph f-inter">İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü</div>
+      <div class="para f-inter">Toplantı odasında ışık çöğüş yapıyor; ağ bağlantısı düşük. Şirket içi destek talebiniz iş saatleri içinde çözülür.</div>
+      <div class="try" onclick="setFont(&quot;'Inter',sans-serif&quot;)">Bu fontu dene →</div>
+    </div>
+    <div class="font-card">
+      <div class="fname"><span class="f-plex">IBM Plex Sans</span> <span class="pill">Plex Mono ile uyumlu</span></div>
+      <div class="fnote">Mevcut Plex Mono ile aynı aileden; kurumsal, sağlam Türkçe.</div>
+      <div class="big f-plex">İnventist &amp; Assos</div>
+      <div class="glyph f-plex">İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü</div>
+      <div class="para f-plex">Toplantı odasında ışık çöğüş yapıyor; ağ bağlantısı düşük. Şirket içi destek talebiniz iş saatleri içinde çözülür.</div>
+      <div class="try" onclick="setFont(&quot;'IBM Plex Sans',sans-serif&quot;)">Bu fontu dene →</div>
+    </div>
+    <div class="font-card">
+      <div class="fname"><span class="f-manrope">Manrope</span> <span class="pill">geometrik / modern</span></div>
+      <div class="fnote">Yuvarlak-geometrik, ferah; başlıklar için hoş. İyi Türkçe.</div>
+      <div class="big f-manrope">İnventist &amp; Assos</div>
+      <div class="glyph f-manrope">İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü</div>
+      <div class="para f-manrope">Toplantı odasında ışık çöğüş yapıyor; ağ bağlantısı düşük. Şirket içi destek talebiniz iş saatleri içinde çözülür.</div>
+      <div class="try" onclick="setFont(&quot;'Manrope',sans-serif&quot;)">Bu fontu dene →</div>
+    </div>
+    <div class="font-card">
+      <div class="fname"><span class="f-source">Source Sans 3</span> <span class="pill">en nötr</span></div>
+      <div class="fnote">Çok sade, yüksek okunabilirlik; "iddiasız". Tam Türkçe.</div>
+      <div class="big f-source">İnventist &amp; Assos</div>
+      <div class="glyph f-source">İ ı Ş ş Ğ ğ Ç ç Ö ö Ü ü</div>
+      <div class="para f-source">Toplantı odasında ışık çöğüş yapıyor; ağ bağlantısı düşük. Şirket içi destek talebiniz iş saatleri içinde çözülür.</div>
+      <div class="try" onclick="setFont(&quot;'Source Sans 3',sans-serif&quot;)">Bu fontu dene →</div>
+    </div>
+  </div>
+  <div class="callout">💡 Öneri: Portal + IT arayüzünde <b>gövde/etiket için Inter</b> (veya IBM Plex Sans), <b>kod/Case No için IBM Plex Mono</b> (kalır). Syne yalnızca büyük marka logosunda kalabilir ya da tamamen kaldırılabilir.</div>
+
+  <!-- ════════ CHAT LAYOUT ════════ -->
+  <h2 class="sec">2 · IT Chat Yerleşimi — Yataya Büyüyen Alternatifler</h2>
+  <div class="sub">Şu an chat, düzenleme modalının içinde dar bir dikey şeritte sıkışıyor. Aşağıda yataya doğru genişleyen iki alternatif var. İkisi de dosya alanlarını ve sohbeti yan yana koyar.</div>
+
+  <div style="margin:6px 0 8px"><span class="pill">Referans</span> Mevcut — dar dikey (sıkışık)</div>
+  <div class="demo cur">
+    <div class="dtop"><span>🌐 PORTAL · INV-QWUAQJ <span class="tag">Kullanıcıya Yanıt</span></span><span style="color:var(--text-muted);font-weight:400">Levent CAN · AnyDesk 123321123</span></div>
+    <div class="thread">
+      <div class="msg user"><div class="who">LEVENT CAN · 11:07</div>Yazışma TEST — IT kısmının yazdığı yanıt.</div>
+      <div class="msg it"><div class="who">SİZ · 11:08</div>Kullanıcı perspektifinden chat düzgün görünüyor. IT tarafındakiler biraz sıkışık kalmış gibi.</div>
+    </div>
+    <div class="composer"><textarea placeholder="Kullanıcıya yanıt yazın…"></textarea><button class="send">Gönder</button></div>
+  </div>
+
+  <div style="margin:26px 0 8px"><span class="pill rec">Seçenek A · önerilen</span> Geniş 2-sütun modal — sol dosya bilgisi, sağ tam-boy sohbet</div>
+  <div class="demo wide">
+    <div class="dtop"><span>🌐 PORTAL · INV-QWUAQJ</span><span style="display:flex;gap:8px"><span class="tag">🖥 AnyDesk 123321123</span><button class="send" style="padding:3px 10px;font-size:10px;border-radius:6px">🫧 Havuza Bırak</button></span></div>
+    <div class="body">
+      <div class="left">
+        <div class="fld"><label>Başlık</label><div class="val">Internet Sorunu TEST CASE</div></div>
+        <div class="fld"><label>Firma / Ekip</label><div class="val">İnventist · —</div></div>
+        <div class="fld"><label>Öncelik / SLA</label><div class="val">Orta · 23s 58dk kaldı</div></div>
+        <div class="fld"><label>Talep sahibi</label><div class="val" style="font-size:11px">Levent CAN<br>levent.can@inventist.com.tr</div></div>
+        <div class="fld"><label>Durum</label><div class="val">İşlemde</div></div>
+      </div>
+      <div class="right">
+        <div class="tabs"><div class="tab">📝 İç Notlar</div><div class="tab on">💬 Kullanıcıya Yanıt (2)</div></div>
+        <div class="thread">
+          <div class="msg user"><div class="who">LEVENT CAN · 11:07</div>Toplantı odasında internet gelmiyor, kablo takılıyken "ağ kablosu takılı değil" diyor.</div>
+          <div class="msg it"><div class="who">SİZ · 11:08</div>Merhaba, kat switch'inde ilgili portu kontrol ediyoruz. 16:00'a kadar yerinde müdahale planlandı.</div>
+          <div class="msg user"><div class="who">LEVENT CAN · 11:12</div>Teşekkürler, 16:30'da odada toplantımız var, o saate kadar çözülürse harika olur.</div>
+        </div>
+        <div class="composer"><textarea placeholder="Kullanıcıya yanıt yazın…"></textarea><button class="send">Gönder</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="callout">Avantaj: Mevcut modal yapısını korur, yalnız <b>genişler</b> (≈880px) ve iki sütuna böler. Sohbet tam yükseklik alır → sıkışıklık biter. En az kod değişikliği.</div>
+
+  <div style="margin:30px 0 8px"><span class="pill">Seçenek B · en ferah</span> Tam sayfa case detayı — 3 sütun (bilgi · sohbet · meta)</div>
+  <div class="demo full">
+    <div class="dtop"><span>🌐 INV-QWUAQJ · Internet Sorunu TEST CASE</span><span class="tag gold">İŞLEMDE</span></div>
+    <div class="body">
+      <div class="col">
+        <label>Talep sahibi</label><div class="val" style="font-size:11px">Levent CAN<br>levent.can@inventist.com.tr</div>
+        <label>AnyDesk</label><div class="val mono">123 321 123</div>
+        <label>Açıklama</label><div class="val" style="font-size:11.5px">Toplantı odasında internet gelmiyor…</div>
+      </div>
+      <div class="col center">
+        <div class="tabs"><div class="tab">📝 İç Notlar</div><div class="tab on">💬 Kullanıcıya Yanıt</div></div>
+        <div class="thread">
+          <div class="msg user"><div class="who">LEVENT CAN · 11:07</div>Toplantı odasında internet gelmiyor, kablo takılıyken hata veriyor.</div>
+          <div class="msg it"><div class="who">SİZ · 11:08</div>Kat switch'indeki portu kontrol ediyoruz, kısa süre içinde döneceğiz.</div>
+          <div class="msg int"><div class="who">🔒 İÇ NOT · 11:09</div>SW-3F portu err-disable; yedek patch ile test edilecek. (kullanıcı görmez)</div>
+          <div class="msg user"><div class="who">LEVENT CAN · 11:12</div>Teşekkürler, 16:30 toplantısına yetişmesi önemli.</div>
+        </div>
+        <div class="composer"><textarea placeholder="Yanıt / iç not yazın…"></textarea><button class="send">Gönder</button></div>
+      </div>
+      <div class="meta">
+        <div class="m">Öncelik<b>Orta (24s)</b></div>
+        <div class="m">SLA<b style="color:var(--gold)">23s 58dk kaldı</b></div>
+        <div class="m">Firma<b>İnventist</b></div>
+        <div class="m">Açılış<b>09 Tem 11:01</b></div>
+        <div class="m">Durum<b>İşlemde</b></div>
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px">
+          <button class="send" style="padding:8px;border-radius:8px;font-size:11px">✓ Çözüldü</button>
+          <button class="send" style="padding:8px;border-radius:8px;font-size:11px;background:var(--surface3);color:var(--text)">🫧 Havuza Bırak</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="callout">Avantaj: En geniş çalışma alanı; iç notlar da aynı akışta (sarı balon). Dezavantaj: modal değil ayrı sayfa → biraz daha fazla iş. Klasik helpdesk (Zendesk/Freshservice) hissi.</div>
+
+</div>
+
+<script>
+function setFont(f){
+  document.documentElement.style.setProperty('--ui-font', f);
+  document.querySelectorAll('#fontpick button').forEach(b=>b.classList.toggle('on', b.dataset.f===f));
+}
+document.querySelectorAll('#fontpick button').forEach(b=>b.onclick=()=>setFont(b.dataset.f));
+</script>
+</body>
+</html>

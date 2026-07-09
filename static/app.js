@@ -2673,6 +2673,8 @@ function openEditTask(id) {
   if (caseSec) {
     const isPortal = t.source === 'portal' && t.case_code;
     caseSec.classList.toggle('hidden', !isPortal);
+    // v5.19 — portal case'te modalı yatay 2-sütun geniş moda al
+    document.getElementById('edit-task-modal-box')?.classList.toggle('case-wide', !!isPortal);
     if (isPortal) {
       document.getElementById('edit-case-code').textContent = t.case_code;
       document.getElementById('edit-case-reporter').textContent =
