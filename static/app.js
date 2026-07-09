@@ -103,7 +103,7 @@ function applyJuniorTaskRestrictions() {
 }
 
 const PERM_LABELS = {super_admin:'Super Admin', it_director:'IT Müdürü', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
-const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board'];
+const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board', 'pool'];
 
 // ══════════════════════════════════════════════════════════
 //  SABİT VERİLER
@@ -264,6 +264,7 @@ async function loadTasks(month, year) {
   } catch(e) { console.error('Görevler yüklenemedi:', e); tasks = []; }
   // v5.2 — destek talebi sayısını sidebar nav badge'ine yansıt
   try { updateSupportNavBadge(); } catch(_) {}
+  try { updatePoolBadge(); } catch(_) {}
 }
 
 // v4.2 — başka kullanıcının görevlerine yazma izni yok (yalnızca görüntüleme)
@@ -415,6 +416,7 @@ async function loadAuditLog() {
 function normalizeTask(t) {
   return {
     id:       t.id,
+    user_id:  t.user_id,       // v5.18 — havuz (null = atanmamış)
     title:    t.title,
     cat:      t.category,      // API: category → FE: cat
     priority: t.priority || 'orta',
@@ -579,6 +581,7 @@ function showPage(name, opts = {}) {
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
   if (name==='board')     renderBoard();
+  if (name==='pool')      loadPoolPage();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -721,6 +724,88 @@ function updateSupportNavBadge() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  v5.18 — DESTEK HAVUZU (atanmamış case'ler)
+// ══════════════════════════════════════════════════════════
+let _poolCases = [];
+
+async function updatePoolBadge() {
+  try {
+    const r = await fetch('/api/support/pool');
+    if (!r.ok) return;
+    _poolCases = (await r.json()).map(normalizeTask);
+    const badge = document.getElementById('pool-nav-badge');
+    if (badge) {
+      badge.textContent = String(_poolCases.length);
+      badge.style.display = _poolCases.length ? '' : 'none';
+    }
+  } catch (e) { /* sessiz */ }
+}
+
+async function loadPoolPage() {
+  const body = document.getElementById('pool-list-body');
+  const cnt = document.getElementById('pool-count-label');
+  if (body) body.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-muted)">Yükleniyor…</div>';
+  try {
+    const r = await fetch('/api/support/pool');
+    _poolCases = r.ok ? (await r.json()).map(normalizeTask) : [];
+  } catch (e) { _poolCases = []; }
+  updatePoolBadge();
+  renderPool();
+}
+
+function renderPool() {
+  const body = document.getElementById('pool-list-body');
+  const cnt = document.getElementById('pool-count-label');
+  if (!body) return;
+  if (cnt) cnt.textContent = `${_poolCases.length} bekleyen`;
+  if (!_poolCases.length) {
+    body.innerHTML = '<div style="padding:28px;text-align:center;font-size:12px;color:var(--text-muted)">🫧 Havuz boş — bekleyen atanmamış talep yok.</div>';
+    return;
+  }
+  body.innerHTML = _poolCases.map(t => {
+    const age = t.startDate ? formatDateTR(t.startDate) : '';
+    const anydesk = t.reporter_anydesk ? ` · 🖥 ${escapeHtml(t.reporter_anydesk)}` : '';
+    return `
+    <div class="task-item" style="align-items:center">
+      <div style="font-size:16px">🫧</div>
+      <div>
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)} ${firmChip(t.firm)}
+          ${t.case_code ? `<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>` : ''}</div>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email||'')}&gt;${anydesk} · ${age}</div>
+      </div>
+      <div></div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        <button class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px" onclick="claimCase(${t.id})">✋ Üstlen</button>
+        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; İncele</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function claimCase(id) {
+  try {
+    const r = await fetch(`/api/tasks/${id}/claim`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Üstlenilemedi');
+    showToast('ok', '✋ Talep üstlenildi — Destek Talepleri listenizde');
+    _poolCases = _poolCases.filter(t => t.id !== id);
+    renderPool(); updatePoolBadge();
+    await loadTasks();  // kendi listeme düşsün
+  } catch (e) { showToast('err', e.message); }
+}
+
+async function releaseCase(id) {
+  if (!confirm('Bu talebi havuza geri bırakmak istediğinize emin misiniz?')) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}/release`, { method:'POST' });
+    if (!r.ok) throw new Error((await r.json()).error || 'Bırakılamadı');
+    showToast('ok', '🫧 Talep havuza geri bırakıldı');
+    closeEditTaskModal();
+    await loadTasks(); renderFullList(tasks); updatePoolBadge();
+  } catch (e) { showToast('err', e.message); }
 }
 
 // v4.7 — KATEGORİ DAĞILIMI: gerçek verilerden pie chart
@@ -2592,6 +2677,9 @@ function openEditTask(id) {
       document.getElementById('edit-case-code').textContent = t.case_code;
       document.getElementById('edit-case-reporter').textContent =
         `${t.reporter_name || ''} <${t.reporter_email || ''}>` + (t.reporter_anydesk ? ` · 🖥 AnyDesk: ${t.reporter_anydesk}` : '');
+      // Havuza Bırak: yalnız atanmış (sahibi olan) case'te göster
+      const relBtn = document.getElementById('edit-case-release');
+      if (relBtn) relBtn.style.display = t.user_id ? '' : 'none';
       _caseTab = 'it';
       caseTab('it');
       loadCaseMessages(id);
