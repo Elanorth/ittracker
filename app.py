@@ -2248,15 +2248,12 @@ def portal_create_case():
         return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
     if len(description) < 60:
         return jsonify({"error": "Açıklama en az 60 karakter olmalı"}), 400
-    # Firma varsayılan kuyruk sahibi: o firmadaki ilk aktif super_admin/it_* (yoksa herhangi admin)
-    assignee = (
-        User.query.filter(User.firm == firm, User.active == True, User.is_admin == True).order_by(User.id).first()
-    )
-    if not assignee:
-        assignee = User.query.filter(User.is_admin == True, User.active == True).order_by(User.id).first()
+    # v5.18 — HAVUZ modeli: portal case'i ATANMAMIŞ açılır (user_id=None). Firma
+    # havuzuna düşer; IT kullanıcıları /api/support/pool'dan görüp "Üstlen" ile çeker.
+    # (Eski davranış: firma admini yoksa case sessizce ilk admin'e atanıp kayboluyordu.)
     case_code = _gen_case_code(firm)
     task = Task(
-        user_id=assignee.id if assignee else None,
+        user_id=None,
         title=subject[:300],
         category="support",
         priority="orta",
@@ -2272,12 +2269,12 @@ def portal_create_case():
     db.session.add(task)
     db.session.flush()
     log_audit(
-        assignee,
+        None,
         "task.create",
         entity_type="task",
         entity_id=task.id,
         firm=firm,
-        summary=f"Portal talebi {case_code} — {subject[:80]}",
+        summary=f"Portal talebi {case_code} — {subject[:80]} (havuza düştü)",
         details={"source": "portal", "case_code": case_code, "reporter": email, "category": category},
     )
     db.session.commit()
@@ -2383,8 +2380,16 @@ def portal_case_reply():
 
 # ── IT tarafı: case mesajları (auth) — İç Notlar | Kullanıcıya Yanıt ──
 def _can_view_task(me, task):
+    if task.user_id == me.id:
+        return True
     owner = db.session.get(User, task.user_id) if task.user_id else None
-    return task.user_id == me.id or _can_modify_owned_task(me, owner)
+    if _can_modify_owned_task(me, owner):
+        return True
+    # v5.18 — atanmamış (havuz) case: firma kapsamındaki IT inceleyebilir/yanıtlayabilir
+    if task.user_id is None:
+        scope = _user_firm_scope(me)
+        return scope is None or task.firm in scope
+    return False
 
 
 @app.route("/api/tasks/<int:task_id>/messages", methods=["GET"])
@@ -2434,6 +2439,87 @@ def add_case_message(task_id):
         except Exception as e:
             print(f"[case] yanıt bildirimi hatası: {e}")
     return jsonify(msg.to_dict()), 201
+
+
+# ══════════════════════════════════════════════════════════
+#  v5.18 — DESTEK HAVUZU (pool) + üstlenme/bırakma
+# ══════════════════════════════════════════════════════════
+def _user_firm_scope(me):
+    """Kullanıcının GÖREBİLECEĞİ firma slug'ları. None = tümü (super_admin)."""
+    if me.is_super_admin:
+        return None
+    scope = set(me.managed_firm_slugs)
+    if me.firm:
+        scope.add(me.firm)
+    return scope
+
+
+@app.route("/api/support/pool")
+@login_required
+def support_pool():
+    """Atanmamış (havuzdaki) açık destek talepleri — kullanıcının firma kapsamında.
+
+    user_id IS NULL & category=support & is_done=False. super_admin tümünü;
+    director+ yönettiği firmalar + kendi firma'sı; diğerleri kendi firma'sı.
+    """
+    me = _current_user()
+    q = Task.query.filter(Task.user_id.is_(None), Task.category == "support", Task.is_done == False)
+    scope = _user_firm_scope(me)
+    if scope is not None:
+        if not scope:
+            return jsonify([])
+        q = q.filter(Task.firm.in_(list(scope)))
+    tasks = q.order_by(Task.created_at.asc()).all()  # en eski (en acil) önce
+    return jsonify([t.to_dict() for t in tasks])
+
+
+@app.route("/api/tasks/<int:task_id>/claim", methods=["POST"])
+@login_required
+def claim_task(task_id):
+    """Havuzdaki case'i üstlen (kendine ata). Firma kapsamı kontrol edilir."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    scope = _user_firm_scope(me)
+    if scope is not None and task.firm not in scope:
+        return jsonify({"error": "Bu talep sizin firma kapsamınızda değil"}), 403
+    # Zaten başkasına atanmışsa yalnız director+ devralabilir
+    if task.user_id and task.user_id != me.id and not me.is_director_or_above:
+        return jsonify({"error": "Bu talep başka bir kullanıcıya atanmış"}), 409
+    task.user_id = me.id
+    log_audit(
+        me,
+        "task.assign",
+        entity_type="task",
+        entity_id=task.id,
+        target_user=me,
+        firm=task.firm,
+        summary=f"'{task.title}' talebi havuzdan üstlenildi",
+        details={"case_code": task.case_code},
+    )
+    db.session.commit()
+    return jsonify(task.to_dict())
+
+
+@app.route("/api/tasks/<int:task_id>/release", methods=["POST"])
+@login_required
+def release_task(task_id):
+    """Case'i havuza geri bırak (user_id=None). Sahibi veya director+ yapabilir."""
+    me = _current_user()
+    task = Task.query.get_or_404(task_id)
+    if task.user_id != me.id and not _can_modify_owned_task(me, db.session.get(User, task.user_id)):
+        return jsonify({"error": "Bu talebi havuza bırakma yetkiniz yok"}), 403
+    task.user_id = None
+    log_audit(
+        me,
+        "task.update",
+        entity_type="task",
+        entity_id=task.id,
+        firm=task.firm,
+        summary=f"'{task.title}' talebi havuza geri bırakıldı",
+        details={"case_code": task.case_code},
+    )
+    db.session.commit()
+    return jsonify(task.to_dict())
 
 
 @app.route("/api/board/cards", methods=["GET"])
