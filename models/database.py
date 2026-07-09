@@ -403,7 +403,8 @@ def _next_due_date(period: str, from_date=None) -> _date:
 class Task(db.Model):
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # v5.18 — nullable: atanmamış (havuzdaki) portal case'leri user_id=None ile durur.
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     title = db.Column(db.String(300), nullable=False)
     category = db.Column(db.String(50), default="other")
     priority = db.Column(db.String(10), default="orta")  # support talepleri için: düşük/orta/yüksek
@@ -1073,6 +1074,15 @@ def init_db():
     _add_column_race_safe("tasks", "reporter_email", "TEXT")
     _add_column_race_safe("tasks", "reporter_name", "TEXT")
     _add_column_race_safe("tasks", "reporter_anydesk", "TEXT")  # v5.17
+    # v5.18 — tasks.user_id NOT NULL kısıtını kaldır (havuz: atanmamış case user_id=None).
+    # Yeni SQLite (tests) create_all zaten nullable üretir; bu ALTER mevcut Postgres
+    # prod/staging tablosu için. SQLite ALTER DROP NOT NULL desteklemez → yalnız PG.
+    if db.engine.dialect.name == "postgresql":
+        try:
+            db.session.execute(text("ALTER TABLE tasks ALTER COLUMN user_id DROP NOT NULL"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()  # zaten nullable veya eşzamanlı process → idempotent
     try:
         db.session.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_tasks_case_code ON tasks (case_code)"))
         db.session.commit()
