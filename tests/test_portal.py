@@ -54,6 +54,19 @@ class TestPortalCreate:
         assert r.status_code == 201
         assert r.get_json()["case_code"].startswith("ASS-")
 
+    def test_anydesk_kaydedilir_ve_lookup_doner(self, db, client):
+        """v5.17 — opsiyonel AnyDesk ID kaydedilir ve case sorgusunda döner."""
+        code = client.post("/portal/api/cases", json=_valid_case(anydesk="123 456 789")).get_json()["case_code"]
+        t = Task.query.filter_by(case_code=code).first()
+        assert t.reporter_anydesk == "123 456 789"
+        d = client.post("/portal/api/lookup", json={"case_code": code, "email": "ahmet@inventist.com.tr"}).get_json()
+        assert d["reporter_anydesk"] == "123 456 789"
+
+    def test_anydesk_opsiyonel(self, db, client):
+        """AnyDesk verilmezse case yine açılır (None)."""
+        code = client.post("/portal/api/cases", json=_valid_case()).get_json()["case_code"]
+        assert Task.query.filter_by(case_code=code).first().reporter_anydesk is None
+
     def test_kisa_aciklama_400(self, db, client):
         r = client.post("/portal/api/cases", json=_valid_case(description="çok kısa"))
         assert r.status_code == 400

@@ -429,6 +429,7 @@ class Task(db.Model):
     case_code = db.Column(db.String(20), nullable=True, unique=True, index=True)  # INV-7K3M9Q (public takip)
     reporter_email = db.Column(db.String(150), nullable=True)  # formdaki e-posta (ACK + sorgu doğrulama)
     reporter_name = db.Column(db.String(100), nullable=True)  # formdaki ad-soyad
+    reporter_anydesk = db.Column(db.String(40), nullable=True)  # v5.17 — uzaktan bağlantı için AnyDesk ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
@@ -629,6 +630,7 @@ class Task(db.Model):
             "case_code": self.case_code,
             "reporter_email": self.reporter_email,
             "reporter_name": self.reporter_name,
+            "reporter_anydesk": self.reporter_anydesk,
             # v5.1 — Rutin kanonik sinyaller (rutin değilse default değerler)
             "is_overdue": is_overdue,
             "overdue_periods": overdue_periods,
@@ -1070,6 +1072,7 @@ def init_db():
     _add_column_race_safe("tasks", "case_code", "TEXT")
     _add_column_race_safe("tasks", "reporter_email", "TEXT")
     _add_column_race_safe("tasks", "reporter_name", "TEXT")
+    _add_column_race_safe("tasks", "reporter_anydesk", "TEXT")  # v5.17
     try:
         db.session.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_tasks_case_code ON tasks (case_code)"))
         db.session.commit()

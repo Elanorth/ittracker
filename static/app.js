@@ -444,6 +444,7 @@ function normalizeTask(t) {
     case_code:           t.case_code || null,
     reporter_email:      t.reporter_email || null,
     reporter_name:       t.reporter_name || null,
+    reporter_anydesk:    t.reporter_anydesk || null,
     // v5.1 — Rutin kanonik sinyaller (deadline/next_due donmuş alanları yerine)
     is_overdue:          t.is_overdue || false,
     overdue_periods:     t.overdue_periods || 0,
@@ -1423,7 +1424,7 @@ function taskRow(t) {
     <div>
       <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
       <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
-      ${t.source==='portal' && t.reporter_email ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">🌐 Portal talebi · ${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email)}&gt;</div>` : ''}
+      ${t.source==='portal' && t.reporter_email ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">🌐 Portal talebi · ${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email)}&gt;${t.reporter_anydesk ? ` · 🖥 AnyDesk: ${escapeHtml(t.reporter_anydesk)}` : ''}</div>` : ''}
       ${clProgress}${lcStr}${mnStr}
     </div>
     ${dl}
@@ -2590,7 +2591,7 @@ function openEditTask(id) {
     if (isPortal) {
       document.getElementById('edit-case-code').textContent = t.case_code;
       document.getElementById('edit-case-reporter').textContent =
-        `${t.reporter_name || ''} <${t.reporter_email || ''}>`;
+        `${t.reporter_name || ''} <${t.reporter_email || ''}>` + (t.reporter_anydesk ? ` · 🖥 AnyDesk: ${t.reporter_anydesk}` : '');
       _caseTab = 'it';
       caseTab('it');
       loadCaseMessages(id);
