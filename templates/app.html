@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ITTracker">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #080c10;
@@ -94,7 +94,7 @@
 [data-theme="inventist"] .cal-cell.today .cal-day-num { background: #ffffff; color: #0a0a0a; }
 [data-theme="inventist"] .avatar { background: linear-gradient(135deg, #555, #fff); }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
 
 /* ═══════ BACKGROUND NOISE ═══════ */
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4;}
@@ -148,7 +148,7 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .nav-badge{margin-left:auto;background:var(--accent2);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;font-family:'IBM Plex Mono',monospace;}
 
 .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
-.o365-login-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text-muted);font-size:12px;cursor:pointer;transition:.15s;font-family:'Inter',sans-serif;}
+.o365-login-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text-muted);font-size:12px;cursor:pointer;transition:.15s;font-family:'IBM Plex Sans',sans-serif;}
 .o365-login-btn:hover{border-color:var(--accent3);color:var(--accent3);}
 .o365-icon{width:16px;height:16px;display:grid;grid-template-columns:1fr 1fr;gap:1px;}
 .o365-icon div{border-radius:1px;}
@@ -228,7 +228,7 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .alarm-switch::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;background:#fff;border-radius:50%;transition:.2s;}
 .alarm-switch.on::after{left:14px;}
 
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.12s;font-family:'Inter',sans-serif;letter-spacing:.2px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.12s;font-family:'IBM Plex Sans',sans-serif;letter-spacing:.2px;}
 .btn-primary{background:var(--accent);color:#080c10;}
 .btn-primary:hover{background:#00cfad;}
 .btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text-muted);}
@@ -332,7 +332,7 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .form-group label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;font-family:'IBM Plex Mono',monospace;}
 .form-control{
   background:var(--surface2);border:1px solid var(--border2);border-radius:7px;
-  color:var(--text);padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;
+  color:var(--text);padding:9px 12px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;
   outline:none;transition:.12s;width:100%;
 }
 .form-control:focus{border-color:var(--accent);background:var(--surface3);}
@@ -409,7 +409,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
   display:flex;align-items:center;justify-content:center;gap:12px;
   width:100%;background:var(--surface2);border:1px solid var(--border2);
   border-radius:10px;padding:14px 20px;font-size:14px;font-weight:600;
-  cursor:pointer;transition:.15s;color:var(--text);font-family:'Inter',sans-serif;
+  cursor:pointer;transition:.15s;color:var(--text);font-family:'IBM Plex Sans',sans-serif;
   margin-bottom:12px;
 }
 .o365-btn:hover{border-color:var(--accent3);color:var(--accent3);}
@@ -746,6 +746,30 @@ textarea.form-control{resize:vertical;min-height:64px;}
   /* topbar mobilde dik dizilim — date-chip + + Yeni Görev sığsın */
   .topbar { flex-direction:column; gap:12px; align-items:stretch; }
   .topbar-right { flex-wrap:wrap; gap:8px; }
+}
+/* v5.19 — Portal Otomatik Atama (Havuz D2) toggle + kural satırı */
+.aa-switch{position:relative;display:inline-block;width:42px;height:24px;flex:none}
+.aa-switch input{opacity:0;width:0;height:0}
+.aa-switch span{position:absolute;inset:0;cursor:pointer;background:var(--border2);border-radius:24px;transition:.2s}
+.aa-switch span::before{content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.aa-switch input:checked+span{background:var(--accent)}
+.aa-switch input:checked+span::before{transform:translateX(18px)}
+.aa-rule{display:flex;align-items:center;gap:8px;font-size:11px;border:1px solid var(--border);border-radius:7px;padding:7px 10px}
+.aa-rule.off{opacity:.5}
+.aa-rule .aa-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 6px;color:var(--text-muted)}
+.aa-rule .aa-arrow{color:var(--accent);font-weight:700}
+.aa-rule .aa-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.aa-rule .aa-x{cursor:pointer;color:var(--danger);font-size:14px;background:none;border:none;line-height:1}
+/* v5.19 — Edit modal portal case'te YATAY 2-sütun (sol form, sağ tam-boy sohbet) */
+#edit-cols { display:block; }
+.modal.case-wide { width:900px !important; max-width:94vw; }
+.modal.case-wide #edit-cols { display:grid; grid-template-columns:1fr 380px; gap:18px; align-items:start; }
+.modal.case-wide #edit-case-section { margin-bottom:0 !important; display:flex; flex-direction:column; max-height:72vh; position:sticky; top:0; }
+.modal.case-wide #case-thread { max-height:none !important; flex:1; }
+@media(max-width:820px){
+  .modal.case-wide { width:560px !important; }
+  .modal.case-wide #edit-cols { grid-template-columns:1fr; }
+  .modal.case-wide #edit-case-section { max-height:300px; }
 }
 </style>
 </head>
@@ -1706,6 +1730,34 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </div>
     </div>
 
+    <!-- Portal Otomatik Atama (v5.19 — Havuz D2) -->
+    <div class="card" id="settings-card-autoassign">
+      <div class="card-header"><div class="card-title">PORTAL OTOMATİK ATAMA</div></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:4px">
+          <div>
+            <div style="font-weight:600;font-size:13px">Otomatik atamayı etkinleştir</div>
+            <div style="font-size:9px;color:var(--text-muted);margin-top:2px;max-width:340px">Açıkken portaldan gelen talepler aşağıdaki kurallara göre kişilere atanır. Eşleşme yoksa talep firma havuzuna düşer.</div>
+          </div>
+          <label class="aa-switch"><input type="checkbox" id="aa-toggle" onchange="toggleAutoAssign(this.checked)"><span></span></label>
+        </div>
+        <div id="aa-toggle-hint" style="font-size:9px;color:var(--text-muted);margin-top:4px"></div>
+
+        <div style="border-top:1px solid var(--border);margin:14px 0 10px"></div>
+        <div class="card-title" style="font-size:11px;margin-bottom:8px">KURALLAR <span style="color:var(--text-muted);font-weight:400">— sırayla değerlendirilir, ilk eşleşen atar</span></div>
+        <div id="aa-rules-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div class="form-group" style="margin:0"><label>Firma</label><select class="form-control" id="aa-firm"></select></div>
+          <div class="form-group" style="margin:0"><label>Kategori</label><select class="form-control" id="aa-cat"><option value="">Tümü</option><option value="support">Genel Destek</option><option value="infra">Ağ / İnternet</option><option value="other">Diğer</option></select></div>
+          <div class="form-group" style="margin:0"><label>Anahtar Kelime (opsiyonel)</label><input class="form-control" id="aa-kw" placeholder="ör. yazıcı, vpn"></div>
+          <div class="form-group" style="margin:0"><label>Atanacak Kişi</label><select class="form-control" id="aa-target"></select></div>
+          <div class="form-group" style="margin:0"><label>Sıra</label><input class="form-control" id="aa-prio" type="number" value="100"></div>
+          <div style="display:flex;align-items:end"><button class="btn btn-primary btn-sm" onclick="addAssignRule()" style="width:100%">＋ Kural Ekle</button></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Config Backup -->
     <div class="card" id="settings-card-backup">
       <div class="card-header"><div class="card-title">CONFIG BACKUP AYARLARI</div></div>
@@ -1941,9 +1993,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 <!-- ─── EDIT TASK MODAL ─── -->
 <div id="edit-task-modal" class="modal-overlay hidden">
-  <div class="modal" style="width:560px" role="dialog" aria-modal="true" aria-label="Görevi düzenle">
+  <div class="modal" id="edit-task-modal-box" style="width:560px" role="dialog" aria-modal="true" aria-label="Görevi düzenle">
     <div class="modal-title">&#9998; Görevi Düzenle</div>
     <input type="hidden" id="edit-task-id">
+    <!-- v5.19 — portal case'te 2-sütun: sol form (#edit-main), sağ sohbet (#edit-case-section) -->
+    <div id="edit-cols"><div id="edit-main">
     <div class="form-group" style="margin-bottom:12px">
       <label>Görev Başlığı</label>
       <input class="form-control" id="edit-task-title">
@@ -2042,6 +2096,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         onkeydown="if(event.key==='Enter'){event.preventDefault();addEditChecklistItem()}">
     </div>
     <!-- v5.15 Faz B — Portal yazışması (yalnız portal kaynaklı case'lerde) -->
+    </div><!-- /#edit-main -->
     <div id="edit-case-section" class="hidden" style="margin-bottom:12px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
       <div style="background:var(--surface2);padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span>🌐 PORTAL · <span id="edit-case-code" class="mono" style="color:var(--accent)"></span></span>
@@ -2063,6 +2118,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div id="case-tab-hint" style="font-size:9.5px;color:var(--text-muted);margin-top:6px"></div>
       </div>
     </div>
+    </div><!-- /#edit-cols -->
     <div class="modal-actions">
       <button class="btn btn-danger btn-sm" onclick="deleteTask()">Sil</button>
       <button class="btn btn-outline btn-sm" onclick="closeEditTaskModal()">İptal</button>

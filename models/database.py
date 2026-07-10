@@ -922,6 +922,70 @@ def _auto_link_director_to_own_firm(mapper, connection, target):
     connection.execute(user_managed_firms.insert().values(user_id=target.id, firm_id=firm_row[0]))
 
 
+class SystemSetting(db.Model):
+    """v5.19 — Uygulama geneli anahtar-değer ayarları (Havuz D2 otomatik atama toggle'ı).
+
+    Gizli / ortam-bağımlı değerler (SMTP, SECRET_KEY) .env'de kalır; bu tablo
+    yapılandırılmış uygulama durumu içindir (toggle'lar, kural motoru anahtarları).
+    """
+
+    __tablename__ = "system_settings"
+    key = db.Column(db.String(80), primary_key=True)
+    value = db.Column(db.Text, default="")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+def get_setting(key, default=None):
+    """Ayar değerini döndürür (string) ya da yoksa default."""
+    row = db.session.get(SystemSetting, key)
+    return row.value if row is not None else default
+
+
+def set_setting(key, value):
+    """Ayarı upsert eder. Commit ÇAĞIRAN tarafın sorumluluğu."""
+    row = db.session.get(SystemSetting, key)
+    if row is None:
+        row = SystemSetting(key=key, value=str(value))
+        db.session.add(row)
+    else:
+        row.value = str(value)
+    return row
+
+
+class AssignRule(db.Model):
+    """v5.19 — Portal case otomatik-atama kuralı (Havuz D2).
+
+    Portal'dan case açıldığında (portal_create_case) master toggle açıksa kurallar
+    `priority` (küçük=önce) sırasıyla değerlendirilir; ilk eşleşen kuralın
+    `target_user`'ına case atanır. Eşleşme yoksa case havuza düşer (user_id=None) —
+    D1 davranışı korunur. Hedef kullanıcı firma kapsamı dışındaysa kural atlanır.
+    """
+
+    __tablename__ = "assign_rules"
+    id = db.Column(db.Integer, primary_key=True)
+    firm = db.Column(db.String(50), default="", index=True)  # "" = tüm firmalar
+    category = db.Column(db.String(30), default="")  # "" = tüm kategoriler (portal hep 'support')
+    keyword = db.Column(db.String(120), default="")  # konu+açıklamada aranan; "" = filtre yok
+    target_user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    priority = db.Column(db.Integer, default=100, index=True)  # küçük = önce değerlendirilir
+    enabled = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    target = db.relationship("User", foreign_keys=[target_user_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "firm": self.firm or "",
+            "category": self.category or "",
+            "keyword": self.keyword or "",
+            "target_user_id": self.target_user_id,
+            "target_name": (self.target.full_name or self.target.username) if self.target else "",
+            "priority": self.priority if self.priority is not None else 100,
+            "enabled": bool(self.enabled),
+        }
+
+
 def init_db():
     import os
 

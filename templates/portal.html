@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BT Destek Portalı · IT//TRACKER</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;min-height:100vh}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;min-height:100vh}
 .mono{font-family:'IBM Plex Mono',monospace}
 .screen{display:none;min-height:100vh}.screen.active{display:block}
 /* ── Landing split ── */
@@ -33,7 +33,7 @@ body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;mi
 .lookup .row{display:flex;gap:8px;flex-wrap:wrap}
 .lookup input{flex:1;min-width:150px;background:#141a22;border:1px solid #2b3646;border-radius:8px;color:#dce6f0;padding:10px 12px;font-size:12px;font-family:'IBM Plex Mono',monospace;outline:none}
 .lookup input:focus{border-color:#00e5c0}
-.lookup button{background:#00e5c0;color:#06231d;border:none;border-radius:8px;padding:10px 20px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
+.lookup button{background:#00e5c0;color:#06231d;border:none;border-radius:8px;padding:10px 20px;font-weight:700;font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
 .lookup .sec{font-size:9px;color:#5c7186;margin-top:8px}.lookup .err{color:#f4b942;font-size:11px;margin-top:8px;min-height:14px}
 @media(max-width:720px){.split{flex-direction:column}.half:hover{flex:1.35}.half h1{font-size:24px}.lookup{position:fixed}}
 /* ── Branded pages ── */
@@ -47,15 +47,15 @@ body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;mi
 .card{background:var(--pan);border:1px solid var(--bd);border-radius:16px;padding:26px}
 .card h2{font-size:20px;font-weight:800;margin-bottom:4px}.card .sub{font-size:12px;color:var(--mut);margin-bottom:22px;line-height:1.55}
 .fg{margin-bottom:14px}.fg label{display:block;font-size:11px;font-weight:700;margin-bottom:6px}.fg label .req{color:#e5484d}
-.fg input,.fg select,.fg textarea{width:100%;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:11px 13px;font-size:13px;font-family:'Syne',sans-serif;outline:none}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:11px 13px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;outline:none}
 .fg textarea{min-height:118px;resize:vertical;line-height:1.55}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--ac)}
 .fg .hint{font-size:10px;color:var(--mut);margin-top:5px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:640px){.grid2{grid-template-columns:1fr}}
 .counter{font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:5px;color:#e5484d}.counter.ok{color:#28b487}
-.btn-b{background:var(--ac);color:var(--acc);border:none;border-radius:9px;padding:13px 30px;font-weight:800;font-size:13px;cursor:pointer;font-family:'Syne',sans-serif}
+.btn-b{background:var(--ac);color:var(--acc);border:none;border-radius:9px;padding:13px 30px;font-weight:800;font-size:13px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
 .btn-b[disabled]{opacity:.4;cursor:not-allowed}
-.btn-ghost{background:transparent;color:var(--tx);border:1px solid var(--bd);border-radius:9px;padding:12px 22px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600}
+.btn-ghost{background:transparent;color:var(--tx);border:1px solid var(--bd);border-radius:9px;padding:12px 22px;font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
 .back{font-size:11px;color:var(--mut);cursor:pointer;margin-bottom:16px;display:inline-block}
 .formerr{color:#e5484d;font-size:12px;margin-top:10px;min-height:16px}
 .kvkk{font-size:9.5px;color:var(--mut);margin-top:14px;line-height:1.6}
@@ -87,7 +87,7 @@ body{font-family:'Syne',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;mi
 .msg.it{align-self:flex-end;background:var(--ac);color:var(--acc);border-bottom-right-radius:4px}
 .msg.it .who{opacity:.8}
 .replybox{display:flex;gap:9px;align-items:flex-end}
-.replybox textarea{flex:1;min-height:52px;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:10px 12px;font-size:12.5px;font-family:'Syne',sans-serif;outline:none;resize:vertical}
+.replybox textarea{flex:1;min-height:52px;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:10px 12px;font-size:12.5px;font-family:'IBM Plex Sans',sans-serif;outline:none;resize:vertical}
 .replybox textarea:focus{border-color:var(--ac)}
 </style>
 </head>

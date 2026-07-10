@@ -60,9 +60,17 @@ docs/
 
 ## Geliştirme Akışı
 
-**Mac lokal geliştirme ortamı YOKTUR.** Tüm test ve geliştirme staging sunucusunda yapılır:
+**Deploy Mac'te YOKTUR** — tüm deploy staging/prod sunucusuna GitHub Actions ile yapılır:
 - **Staging:** https://ittracker-staging.inventist.com.tr (branch: `develop`)
 - **Prod:** https://ittracker.inventist.com.tr (branch: `main`, onay gerektirir)
+
+**Yerel test opsiyonu (2026-07):** Mac'te artık pytest lokal koşulabiliyor. Sistem Python 3.9'a dokunmadan `uv` ile standalone CPython 3.12 (prod/CI ile aynı sürüm) + proje `.venv` kuruldu. Kullanım:
+```bash
+export PATH="$HOME/.local/bin:$PATH"      # uv PATH
+.venv/bin/python -m pytest -q             # tüm paket (~3 dk, 335 test)
+.venv/bin/python -m pytest tests/test_x.py -q   # tek dosya
+```
+`.venv` gitignore'da. Kurulum yoksa: `uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt -r requirements-dev.txt`. Deploy yine staging→prod akışıyla; yerel test yalnızca push öncesi hızlı doğrulama içindir.
 
 ```bash
 # Yeni feature
@@ -101,5 +109,5 @@ Detay: [docs/cicd-setup.md](docs/cicd-setup.md), [docs/staging-setup.md](docs/st
 - Tüm API route'ları `/api/` prefix'i ile başlar
 - Admin işlemleri `@admin_required` decorator gerektirir
 - Config backup dosyaları `BACKUP_DIR` (varsayılan: `/srv/it_tracker/backups`) altına kaydedilir
-- **Test:** Mac'te lokal pytest çalıştırılmaz. Test'ler GitHub Actions CI'da otomatik çalışır (her push + PR). 187+ test, `requirements-dev.txt` (pytest, flask, cov, bs4, freezegun, responses). `tests/conftest.py` `db` fixture her test sonrası `init_db()` ile seed datayı yeniden kurar.
+- **Test:** GitHub Actions CI'da otomatik çalışır (her push + PR, Python 3.12). Mac'te de lokal koşulabilir (`.venv/bin/python -m pytest`, bkz. Geliştirme Akışı → Yerel test opsiyonu). 335+ test, `requirements-dev.txt` (pytest, flask, cov, bs4, freezegun, responses). `tests/conftest.py` `db` fixture her test sonrası `init_db()` ile seed datayı yeniden kurar. NOT: `models/database.py` `from datetime import UTC` kullanır → Python 3.11+ şart (sistem 3.9 ile çalışmaz).
 - **Deploy:** Tüm deploy GitHub Actions üzerinden. `deploy.bat` emekli. Detay: [docs/cicd-setup.md](docs/cicd-setup.md).

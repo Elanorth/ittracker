@@ -71,6 +71,17 @@ function applySettingsPermissions() {
   const backupCard = document.getElementById('settings-card-backup');
   if (smtpCard) smtpCard.style.display = (level === 'super_admin') ? '' : 'none';
   if (backupCard) backupCard.style.display = (level === 'super_admin') ? '' : 'none';
+  // v5.19 — Otomatik atama kartı: director+ kural yönetir; master toggle super_admin.
+  const aaCard = document.getElementById('settings-card-autoassign');
+  const isDirPlus = (level === 'super_admin' || level === 'it_director');
+  if (aaCard) aaCard.style.display = isDirPlus ? '' : 'none';
+  const aaToggle = document.getElementById('aa-toggle');
+  const aaHint = document.getElementById('aa-toggle-hint');
+  if (aaToggle) {
+    aaToggle.disabled = (level !== 'super_admin');
+    if (aaHint) aaHint.textContent = (level !== 'super_admin')
+      ? 'Ana anahtarı yalnızca süper yönetici açıp kapatabilir; kuralları düzenleyebilirsiniz.' : '';
+  }
 }
 
 function applyJuniorTaskRestrictions() {
@@ -576,7 +587,7 @@ function showPage(name, opts = {}) {
   if (name==='managed-firms') { loadManagedFirmsPage(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
-  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); }
+  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); loadAutoAssign(); }
   if (name==='notifications') loadNotificationsPage();
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
@@ -2673,6 +2684,8 @@ function openEditTask(id) {
   if (caseSec) {
     const isPortal = t.source === 'portal' && t.case_code;
     caseSec.classList.toggle('hidden', !isPortal);
+    // v5.19 — portal case'te modalı yatay 2-sütun geniş moda al
+    document.getElementById('edit-task-modal-box')?.classList.toggle('case-wide', !!isPortal);
     if (isPortal) {
       document.getElementById('edit-case-code').textContent = t.case_code;
       document.getElementById('edit-case-reporter').textContent =
@@ -3117,6 +3130,147 @@ function downloadBackup(backupId) {
 
 // ══════════════════════════════════════════════════════════
 //  SETTINGS SAVE — Backend'e bağlı
+// ══════════════════════════════════════════════════════════
+//  PORTAL OTOMATİK ATAMA (v5.19 — Havuz D2)
+// ══════════════════════════════════════════════════════════
+const AA_CAT_LABELS = { '': 'Tümü', support: 'Genel Destek', infra: 'Ağ/İnternet', other: 'Diğer' };
+
+async function loadAutoAssign() {
+  const card = document.getElementById('settings-card-autoassign');
+  if (!card || card.style.display === 'none') return;
+  try {
+    // Hedef kişi listesi (kapsamdaki kullanıcılar) — firmUsers'ı tazele
+    try {
+      const uRes = await fetch('/api/firm/users');
+      if (uRes.ok) firmUsers = await uRes.json();
+    } catch (e) { /* firmUsers eski haliyle kalır */ }
+    // Master toggle durumu
+    const tRes = await fetch('/api/settings/auto-assign');
+    if (tRes.ok) {
+      const t = await tRes.json();
+      const cb = document.getElementById('aa-toggle');
+      if (cb) cb.checked = !!t.enabled;
+    }
+    populateAaSelects();
+    // Kurallar
+    const rRes = await fetch('/api/assign-rules');
+    renderAssignRules(rRes.ok ? await rRes.json() : []);
+  } catch (e) {
+    console.warn('Otomatik atama yüklenemedi:', e);
+  }
+}
+
+function populateAaSelects() {
+  const isSA = (currentUser.permission_level === 'super_admin');
+  // Firma seçenekleri — super_admin: tüm firmalar + global; director: kapsamı
+  const firmSel = document.getElementById('aa-firm');
+  if (firmSel) {
+    const opts = [];
+    if (isSA) {
+      opts.push('<option value="">Tüm firmalar</option>');
+      Object.entries(FIRMS).forEach(([slug, f]) => opts.push(`<option value="${slug}">${escapeHtml(f.label || slug)}</option>`));
+    } else {
+      const scope = [...new Set(firmUsers.map(u => u.firm).filter(Boolean))];
+      scope.forEach(slug => opts.push(`<option value="${slug}">${escapeHtml((FIRMS[slug] && FIRMS[slug].label) || slug)}</option>`));
+    }
+    firmSel.innerHTML = opts.join('');
+  }
+  // Hedef kişi seçenekleri
+  const tgtSel = document.getElementById('aa-target');
+  if (tgtSel) {
+    tgtSel.innerHTML = firmUsers.length
+      ? firmUsers.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}${u.firm ? ' · ' + escapeHtml(u.firm) : ''}</option>`).join('')
+      : '<option value="">(kullanıcı yok)</option>';
+  }
+}
+
+function renderAssignRules(rules) {
+  const box = document.getElementById('aa-rules-list');
+  if (!box) return;
+  if (!rules.length) {
+    box.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 2px">Henüz kural yok. Aşağıdan ekleyin.</div>';
+    return;
+  }
+  box.innerHTML = rules.map(r => {
+    const firm = r.firm ? escapeHtml((FIRMS[r.firm] && FIRMS[r.firm].label) || r.firm) : 'Tüm firmalar';
+    const cat = AA_CAT_LABELS[r.category] || r.category || 'Tümü';
+    const kw = r.keyword ? `“${escapeHtml(r.keyword)}”` : '<span style="color:var(--text-muted)">anahtar yok</span>';
+    return `<div class="aa-rule${r.enabled ? '' : ' off'}">
+      <span class="aa-tag">#${r.priority}</span>
+      <span class="aa-tag">${firm}</span>
+      <span class="aa-tag">${escapeHtml(cat)}</span>
+      <span>${kw}</span>
+      <span class="aa-arrow">→</span>
+      <span>${escapeHtml(r.target_name || '?')}</span>
+      <div class="aa-actions">
+        <label class="aa-switch" style="width:36px;height:20px"><input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="patchAssignRule(${r.id}, { enabled: this.checked })"><span></span></label>
+        <button class="aa-x" title="Sil" onclick="deleteAssignRule(${r.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleAutoAssign(checked) {
+  try {
+    const res = await fetch('/api/settings/auto-assign', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: checked }),
+    });
+    if (!res.ok) throw new Error();
+    showToast('ok', checked ? 'Otomatik atama açıldı' : 'Otomatik atama kapatıldı');
+  } catch (e) {
+    showToast('err', 'Ayar değiştirilemedi');
+    const cb = document.getElementById('aa-toggle'); if (cb) cb.checked = !checked;
+  }
+}
+
+async function addAssignRule() {
+  const target = document.getElementById('aa-target').value;
+  if (!target) { showToast('err', 'Atanacak kişi seçin'); return; }
+  const body = {
+    firm: document.getElementById('aa-firm').value,
+    category: document.getElementById('aa-cat').value,
+    keyword: document.getElementById('aa-kw').value.trim(),
+    target_user_id: parseInt(target, 10),
+    priority: parseInt(document.getElementById('aa-prio').value, 10) || 100,
+  };
+  try {
+    const res = await fetch('/api/assign-rules', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'hata');
+    document.getElementById('aa-kw').value = '';
+    showToast('ok', 'Kural eklendi');
+    loadAutoAssign();
+  } catch (e) {
+    showToast('err', e.message || 'Kural eklenemedi');
+  }
+}
+
+async function patchAssignRule(id, patch) {
+  try {
+    const res = await fetch(`/api/assign-rules/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error();
+  } catch (e) {
+    showToast('err', 'Kural güncellenemedi'); loadAutoAssign();
+  }
+}
+
+async function deleteAssignRule(id) {
+  if (!confirm('Bu kuralı silmek istediğinize emin misiniz?')) return;
+  try {
+    const res = await fetch(`/api/assign-rules/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    showToast('ok', 'Kural silindi');
+    loadAutoAssign();
+  } catch (e) {
+    showToast('err', 'Kural silinemedi');
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 
 // Ayarlar sayfası açılınca sunucudan gerçek verileri yükle
