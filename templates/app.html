@@ -747,6 +747,19 @@ textarea.form-control{resize:vertical;min-height:64px;}
   .topbar { flex-direction:column; gap:12px; align-items:stretch; }
   .topbar-right { flex-wrap:wrap; gap:8px; }
 }
+/* v5.19 — Portal Otomatik Atama (Havuz D2) toggle + kural satırı */
+.aa-switch{position:relative;display:inline-block;width:42px;height:24px;flex:none}
+.aa-switch input{opacity:0;width:0;height:0}
+.aa-switch span{position:absolute;inset:0;cursor:pointer;background:var(--border2);border-radius:24px;transition:.2s}
+.aa-switch span::before{content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.aa-switch input:checked+span{background:var(--accent)}
+.aa-switch input:checked+span::before{transform:translateX(18px)}
+.aa-rule{display:flex;align-items:center;gap:8px;font-size:11px;border:1px solid var(--border);border-radius:7px;padding:7px 10px}
+.aa-rule.off{opacity:.5}
+.aa-rule .aa-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 6px;color:var(--text-muted)}
+.aa-rule .aa-arrow{color:var(--accent);font-weight:700}
+.aa-rule .aa-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.aa-rule .aa-x{cursor:pointer;color:var(--danger);font-size:14px;background:none;border:none;line-height:1}
 /* v5.19 — Edit modal portal case'te YATAY 2-sütun (sol form, sağ tam-boy sohbet) */
 #edit-cols { display:block; }
 .modal.case-wide { width:900px !important; max-width:94vw; }
@@ -1713,6 +1726,34 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div style="display:flex;gap:8px;margin-top:14px">
           <button class="btn btn-primary btn-sm" onclick="saveSmtpSettings()">Kaydet</button>
           <button class="btn btn-outline btn-sm" onclick="testSmtp()">Bağlantıyı Test Et</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Portal Otomatik Atama (v5.19 — Havuz D2) -->
+    <div class="card" id="settings-card-autoassign">
+      <div class="card-header"><div class="card-title">PORTAL OTOMATİK ATAMA</div></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:4px">
+          <div>
+            <div style="font-weight:600;font-size:13px">Otomatik atamayı etkinleştir</div>
+            <div style="font-size:9px;color:var(--text-muted);margin-top:2px;max-width:340px">Açıkken portaldan gelen talepler aşağıdaki kurallara göre kişilere atanır. Eşleşme yoksa talep firma havuzuna düşer.</div>
+          </div>
+          <label class="aa-switch"><input type="checkbox" id="aa-toggle" onchange="toggleAutoAssign(this.checked)"><span></span></label>
+        </div>
+        <div id="aa-toggle-hint" style="font-size:9px;color:var(--text-muted);margin-top:4px"></div>
+
+        <div style="border-top:1px solid var(--border);margin:14px 0 10px"></div>
+        <div class="card-title" style="font-size:11px;margin-bottom:8px">KURALLAR <span style="color:var(--text-muted);font-weight:400">— sırayla değerlendirilir, ilk eşleşen atar</span></div>
+        <div id="aa-rules-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div class="form-group" style="margin:0"><label>Firma</label><select class="form-control" id="aa-firm"></select></div>
+          <div class="form-group" style="margin:0"><label>Kategori</label><select class="form-control" id="aa-cat"><option value="">Tümü</option><option value="support">Genel Destek</option><option value="infra">Ağ / İnternet</option><option value="other">Diğer</option></select></div>
+          <div class="form-group" style="margin:0"><label>Anahtar Kelime (opsiyonel)</label><input class="form-control" id="aa-kw" placeholder="ör. yazıcı, vpn"></div>
+          <div class="form-group" style="margin:0"><label>Atanacak Kişi</label><select class="form-control" id="aa-target"></select></div>
+          <div class="form-group" style="margin:0"><label>Sıra</label><input class="form-control" id="aa-prio" type="number" value="100"></div>
+          <div style="display:flex;align-items:end"><button class="btn btn-primary btn-sm" onclick="addAssignRule()" style="width:100%">＋ Kural Ekle</button></div>
         </div>
       </div>
     </div>

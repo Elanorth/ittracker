@@ -20,6 +20,7 @@ from flask import Flask, jsonify, redirect, render_template, request, send_file,
 
 from models.database import (
     SLA_HOURS,
+    AssignRule,
     AuditLog,
     BoardCard,
     BoardComment,
@@ -34,7 +35,9 @@ from models.database import (
     _sla_target_hours,
     business_hours_between,
     db,
+    get_setting,
     init_db,
+    set_setting,
     sla_deadline,
 )
 from services.mailer import send_invite_email, send_report_email
@@ -2248,12 +2251,16 @@ def portal_create_case():
         return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
     if len(description) < 60:
         return jsonify({"error": "Açıklama en az 60 karakter olmalı"}), 400
-    # v5.18 — HAVUZ modeli: portal case'i ATANMAMIŞ açılır (user_id=None). Firma
-    # havuzuna düşer; IT kullanıcıları /api/support/pool'dan görüp "Üstlen" ile çeker.
-    # (Eski davranış: firma admini yoksa case sessizce ilk admin'e atanıp kayboluyordu.)
+    # v5.18 — HAVUZ modeli: portal case'i varsayılan olarak ATANMAMIŞ açılır
+    # (user_id=None) → firma havuzuna düşer; IT kullanıcıları /api/support/pool'dan
+    # görüp "Üstlen" ile çeker. (Eski D1 davranışı: firma admini yoksa case sessizce
+    # ilk admin'e atanıp kayboluyordu.)
+    # v5.19 — HAVUZ D2: master toggle açıksa kural motoru ilk eşleşen kuralın
+    # hedefine atar; eşleşme yoksa yine havuza düşer.
+    assignee = _match_assign_rule(firm, category, subject, description)
     case_code = _gen_case_code(firm)
     task = Task(
-        user_id=None,
+        user_id=assignee.id if assignee else None,
         title=subject[:300],
         category="support",
         priority="orta",
@@ -2268,14 +2275,21 @@ def portal_create_case():
     )
     db.session.add(task)
     db.session.flush()
+    _dest = f"otomatik atandı → {assignee.full_name or assignee.username}" if assignee else "havuza düştü"
     log_audit(
         None,
         "task.create",
         entity_type="task",
         entity_id=task.id,
         firm=firm,
-        summary=f"Portal talebi {case_code} — {subject[:80]} (havuza düştü)",
-        details={"source": "portal", "case_code": case_code, "reporter": email, "category": category},
+        summary=f"Portal talebi {case_code} — {subject[:80]} ({_dest})",
+        details={
+            "source": "portal",
+            "case_code": case_code,
+            "reporter": email,
+            "category": category,
+            "auto_assigned_to": assignee.id if assignee else None,
+        },
     )
     db.session.commit()
     # ACK maili (best-effort — başarısızsa case yine açık)
@@ -2520,6 +2534,183 @@ def release_task(task_id):
     )
     db.session.commit()
     return jsonify(task.to_dict())
+
+
+# ══════════════════════════════════════════════════════════
+# Havuz D2 — Portal case OTOMATİK ATAMA kural motoru
+# ══════════════════════════════════════════════════════════
+def _tr_lower(s):
+    """Türkçe-duyarlı küçük harf (İ→i, I→ı) — saf .lower() U+0307 hayaleti bırakır."""
+    return (s or "").replace("İ", "i").replace("I", "ı").lower()
+
+
+def _match_assign_rule(firm, category, subject, notes):
+    """Portal case için ilk eşleşen kuralın hedef User'ını döndürür ya da None.
+
+    Master toggle (portal_auto_assign) kapalıysa daima None → case havuza düşer.
+    Kurallar priority (küçük=önce), sonra id sırasıyla değerlendirilir. Eşleşme:
+      - firm: kural.firm boş (tüm firmalar) VEYA case firma'sıyla eşit
+      - category: kural.category boş VEYA case kategorisiyle eşit
+      - keyword: kural.keyword boş VEYA konu+açıklamada geçiyor (TR-lower substring)
+    Ek olarak hedef kullanıcı AKTİF olmalı ve case firma'sını görebilmeli
+    (has_firm_scope) — aksi halde kural atlanır (case havuzda kalır).
+    """
+    if get_setting("portal_auto_assign", "0") != "1":
+        return None
+    hay = _tr_lower(f"{subject or ''} {notes or ''}")
+    rules = (
+        AssignRule.query.filter(AssignRule.enabled.is_(True))
+        .order_by(AssignRule.priority.asc(), AssignRule.id.asc())
+        .all()
+    )
+    for r in rules:
+        if r.firm and r.firm != firm:
+            continue
+        if r.category and r.category != category:
+            continue
+        if r.keyword and _tr_lower(r.keyword) not in hay:
+            continue
+        tgt = r.target
+        if not tgt or not tgt.active or not tgt.has_firm_scope(firm):
+            continue
+        return tgt
+    return None
+
+
+@app.route("/api/settings/auto-assign", methods=["GET", "POST"])
+@super_admin_required
+def auto_assign_setting():
+    """Portal otomatik-atama master toggle'ı (global). GET durum, POST değiştir."""
+    if request.method == "GET":
+        return jsonify({"enabled": get_setting("portal_auto_assign", "0") == "1"})
+    data = request.get_json() or {}
+    enabled = bool(data.get("enabled"))
+    set_setting("portal_auto_assign", "1" if enabled else "0")
+    me = _current_user()
+    log_audit(
+        me,
+        "settings.auto_assign",
+        entity_type="settings",
+        summary=f"Portal otomatik atama {'AÇILDI' if enabled else 'KAPATILDI'}",
+    )
+    db.session.commit()
+    return jsonify({"enabled": enabled})
+
+
+def _rule_scope_ok(me, firm):
+    """me bu firma için kural yönetebilir mi? Global (firm='') kurallar yalnız super_admin."""
+    if me.is_super_admin:
+        return True
+    if not firm:
+        return False
+    return me.has_firm_scope(firm)
+
+
+@app.route("/api/assign-rules", methods=["GET"])
+@director_required
+def list_assign_rules():
+    """Kapsamdaki otomatik-atama kuralları. Director yalnız yönettiği firmaların +
+    global (salt-okunur) kurallarını görür; super_admin hepsini."""
+    me = _current_user()
+    rules = AssignRule.query.order_by(AssignRule.priority.asc(), AssignRule.id.asc()).all()
+    scope = _user_firm_scope(me)
+    if scope is not None:
+        rules = [r for r in rules if (not r.firm) or r.firm in scope]
+    return jsonify([r.to_dict() for r in rules])
+
+
+@app.route("/api/assign-rules", methods=["POST"])
+@director_required
+def create_assign_rule():
+    me = _current_user()
+    data = request.get_json() or {}
+    firm = (data.get("firm") or "").strip().lower()
+    category = (data.get("category") or "").strip()
+    keyword = (data.get("keyword") or "").strip()[:120]
+    target_user_id = data.get("target_user_id")
+    if not target_user_id or not str(target_user_id).isdigit():
+        return jsonify({"error": "Hedef kullanıcı zorunludur"}), 400
+    tgt = db.session.get(User, int(target_user_id))
+    if not tgt:
+        return jsonify({"error": "Hedef kullanıcı bulunamadı"}), 404
+    if not _rule_scope_ok(me, firm):
+        return jsonify({"error": "Bu firma için kural tanımlama yetkiniz yok"}), 403
+    # Hedef kullanıcı, kuralın firmasını (global ise kendi firmasını) görebilmeli
+    if not tgt.has_firm_scope(firm or tgt.firm):
+        return jsonify({"error": "Hedef kullanıcı bu firmanın kapsamında değil"}), 400
+    try:
+        priority = int(data.get("priority", 100))
+    except (ValueError, TypeError):
+        priority = 100
+    rule = AssignRule(
+        firm=firm,
+        category=category,
+        keyword=keyword,
+        target_user_id=tgt.id,
+        priority=priority,
+        enabled=bool(data.get("enabled", True)),
+    )
+    db.session.add(rule)
+    db.session.flush()
+    log_audit(
+        me,
+        "settings.assign_rule",
+        entity_type="assign_rule",
+        entity_id=rule.id,
+        firm=firm,
+        summary=f"Otomatik atama kuralı eklendi → {tgt.full_name or tgt.username}",
+        details=rule.to_dict(),
+    )
+    db.session.commit()
+    return jsonify(rule.to_dict()), 201
+
+
+@app.route("/api/assign-rules/<int:rule_id>", methods=["PATCH", "DELETE"])
+@director_required
+def modify_assign_rule(rule_id):
+    me = _current_user()
+    rule = AssignRule.query.get_or_404(rule_id)
+    if not _rule_scope_ok(me, rule.firm):
+        return jsonify({"error": "Bu kuralı düzenleme yetkiniz yok"}), 403
+    if request.method == "DELETE":
+        log_audit(
+            me,
+            "settings.assign_rule",
+            entity_type="assign_rule",
+            entity_id=rule.id,
+            firm=rule.firm,
+            summary="Otomatik atama kuralı silindi",
+        )
+        db.session.delete(rule)
+        db.session.commit()
+        return jsonify({"ok": True})
+    data = request.get_json() or {}
+    if "enabled" in data:
+        rule.enabled = bool(data["enabled"])
+    if "priority" in data:
+        try:
+            rule.priority = int(data["priority"])
+        except (ValueError, TypeError):
+            pass
+    if "keyword" in data:
+        rule.keyword = (data["keyword"] or "").strip()[:120]
+    if "category" in data:
+        rule.category = (data["category"] or "").strip()
+    if "target_user_id" in data and str(data["target_user_id"]).isdigit():
+        tgt = db.session.get(User, int(data["target_user_id"]))
+        if tgt and tgt.has_firm_scope(rule.firm or tgt.firm):
+            rule.target_user_id = tgt.id
+    log_audit(
+        me,
+        "settings.assign_rule",
+        entity_type="assign_rule",
+        entity_id=rule.id,
+        firm=rule.firm,
+        summary="Otomatik atama kuralı güncellendi",
+        details=rule.to_dict(),
+    )
+    db.session.commit()
+    return jsonify(rule.to_dict())
 
 
 @app.route("/api/board/cards", methods=["GET"])
