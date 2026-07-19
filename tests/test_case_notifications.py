@@ -82,6 +82,32 @@ class TestUnreadLifecycle:
         assert db.session.get(Task, task.id).it_unread is False
 
 
+class TestCaseClosure:
+    def test_kapat_resolved_ve_temizler(self, db, client, user_factory, login_as):
+        code = _open(client, "inventist")
+        task = _task(code)
+        admin = user_factory(username="cl_a", firm="inventist", permission_level="super_admin", is_admin=True)
+        login_as(admin)
+        r = client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
+        assert r.status_code == 200
+        t2 = db.session.get(Task, task.id)
+        assert t2.is_done is True
+        assert t2.it_unread is False  # kapanınca ilgi bayrağı düşer
+        # Portal takip: status resolved
+        pub = client.post("/portal/api/lookup", json={"case_code": code, "email": "ali@x.com"}).get_json()
+        assert pub["status"] == "resolved"
+
+    def test_yeniden_ac(self, db, client, user_factory, login_as):
+        code = _open(client, "inventist")
+        task = _task(code)
+        admin = user_factory(username="cl_b", firm="inventist", permission_level="super_admin", is_admin=True)
+        login_as(admin)
+        client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
+        client.patch(f"/api/tasks/{task.id}", json={"is_done": False})
+        pub = client.post("/portal/api/lookup", json={"case_code": code, "email": "ali@x.com"}).get_json()
+        assert pub["status"] in ("received", "in_progress")  # resolved değil
+
+
 class TestNotificationPreview:
     def test_havuz_kapsam_ici_gorunur(self, db, client, user_factory, login_as):
         _open(client, "inventist")

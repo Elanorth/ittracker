@@ -830,6 +830,27 @@ async function releaseCase(id) {
   } catch (e) { showToast('err', e.message); }
 }
 
+// v5.23 — Portal case'i çözüldü olarak kapat (is_done=true → 'resolved' + kapanış maili)
+// veya zaten çözülmüşse yeniden aç. Buton etiketi openEditTask'ta t.done'a göre ayarlanır.
+async function resolveCase(id) {
+  const t = tasks.find(x => x.id === id);
+  const wasDone = t && t.done;
+  const msg = wasDone
+    ? 'Bu talebi yeniden açmak istediğinize emin misiniz?'
+    : 'Bu talebi ÇÖZÜLDÜ olarak kapatmak istiyor musunuz? Talep sahibine kapanış maili gönderilir.';
+  if (!confirm(msg)) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ is_done: !wasDone }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'İşlem başarısız');
+    showToast('ok', wasDone ? '↩ Talep yeniden açıldı' : '✓ Talep çözüldü — kullanıcıya bilgi verildi');
+    closeEditTaskModal();
+    await loadTasks(); renderFullList(tasks); updatePoolBadge();
+  } catch (e) { showToast('err', e.message); }
+}
+
 // v4.7 — KATEGORİ DAĞILIMI: gerçek verilerden pie chart
 function renderCategoryPie() {
   const wrap = document.getElementById('dash-pie-wrap');
@@ -2720,6 +2741,12 @@ function openEditTask(id) {
       // Havuza Bırak: yalnız atanmış (sahibi olan) case'te göster
       const relBtn = document.getElementById('edit-case-release');
       if (relBtn) relBtn.style.display = t.user_id ? '' : 'none';
+      // v5.23 — Çöz/Kapat butonu etiketi duruma göre
+      const resBtn = document.getElementById('edit-case-resolve');
+      if (resBtn) {
+        resBtn.innerHTML = t.done ? '↩ Yeniden Aç' : '✓ Çözüldü &amp; Kapat';
+        resBtn.className = t.done ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm';
+      }
       _caseTab = 'it';
       caseTab('it');
       loadCaseMessages(id);
