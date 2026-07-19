@@ -21,3 +21,25 @@ def test_login_response_sets_hardened_cookie(client, db):
     set_cookie = resp.headers.get("Set-Cookie", "")
     assert "HttpOnly" in set_cookie
     assert "SameSite=Lax" in set_cookie
+
+
+def test_csp_header_present(client, db):
+    """v5.23 — CSP header'ı temel direktiflerle her yanıtta bulunmalı."""
+    csp = client.get("/portal").headers.get("Content-Security-Policy", "")
+    assert "default-src 'self'" in csp
+    assert "object-src 'none'" in csp
+    assert "base-uri 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "form-action 'self'" in csp
+    # inline onclick/style için 'unsafe-inline' zorunlu (Faz 2'ye kadar)
+    assert "script-src 'self' 'unsafe-inline'" in csp
+    # dış kaynak whitelist
+    assert "https://fonts.gstatic.com" in csp
+    assert "https://assospharma.com" in csp
+
+
+def test_other_security_headers(client, db):
+    h = client.get("/portal").headers
+    assert h.get("X-Content-Type-Options") == "nosniff"
+    assert h.get("X-Frame-Options") == "DENY"
+    assert h.get("Referrer-Policy") == "same-origin"

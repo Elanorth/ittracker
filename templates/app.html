@@ -2107,6 +2107,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <span style="display:flex;align-items:center;gap:10px">
           <span id="edit-case-reporter" style="font-size:10px;color:var(--text-muted);font-weight:400"></span>
           <button id="edit-case-release" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px;display:none" onclick="releaseCase(parseInt(document.getElementById('edit-task-id').value))">🫧 Havuza Bırak</button>
+          <button id="edit-case-resolve" class="btn btn-primary btn-sm" style="padding:2px 10px;font-size:9px" onclick="resolveCase(parseInt(document.getElementById('edit-task-id').value))">✓ Çözüldü &amp; Kapat</button>
         </span>
       </div>
       <div style="display:flex;border-bottom:1px solid var(--border)">

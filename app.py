@@ -392,14 +392,33 @@ def _register_login_fail(ip, username):
     _LOGIN_FAILS.setdefault((ip, username), []).append(_time.time())
 
 
+# v5.23 — CSP: arayüz hâlâ inline onclick/style kullandığı için script/style'da
+# 'unsafe-inline' ZORUNLU (tam kaldırma app.js event-listener refactor'ına bağlı,
+# Faz 2). Ama diğer direktifler ANLAMLI koruma verir: object-src/base-uri kilidi,
+# frame-ancestors (clickjacking), form-action, dış kaynak whitelist (yalnız Google
+# Fonts + Assos landing videosu). eval/blob YOK → 'unsafe-eval' gerekmez.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "media-src 'self' https://assospharma.com; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'none'; "
+    "form-action 'self'"
+)
+
+
 @app.after_request
 def _security_headers(resp):
-    """Temel güvenlik başlıkları. CSP bilinçli olarak YOK — arayüz inline
-    onclick/style kullanıyor; CSP ancak app.js event-listener refactor'ından
-    sonra eklenebilir."""
+    """Temel güvenlik başlıkları + CSP (inline-uyumlu; bkz. _CSP notu)."""
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("X-Frame-Options", "DENY")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
+    resp.headers.setdefault("Content-Security-Policy", _CSP)
     return resp
 
 
@@ -1101,6 +1120,7 @@ def update_task(task_id):
         if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi düzenleme yetkiniz yok"}), 403
     data = request.get_json()
+    _prev_done = bool(task.is_done)  # v5.23 — portal case kapanış maili için önceki durum
     if "is_done" in data:
         if task.category == "routine" and task.period != "Tek Seferlik":
             # v5.0 — Rutin görevler: TaskOccurrence (period_key) kaydı oluştur/sil
@@ -1194,7 +1214,18 @@ def update_task(task_id):
             firm=task.firm,
             summary=f"'{task.title}' görevi güncellendi",
         )
+    # v5.23 — Portal case YENİ kapandıysa: talep sahibine kapanış maili + it_unread temizle
+    newly_closed = bool(data.get("is_done")) and not _prev_done and task.source == "portal"
+    if newly_closed and task.it_unread:
+        task.it_unread = False
     db.session.commit()
+    if newly_closed and task.reporter_email:
+        try:
+            from services.mailer import send_case_closed
+
+            send_case_closed(task.reporter_email, task.case_code, task.title)
+        except Exception as e:
+            print(f"[case] kapanış maili hatası: {e}")
     month_val = data.get("month", date.today().month)
     year_val = data.get("year", date.today().year)
     return jsonify(task.to_dict(month=month_val, year=year_val))

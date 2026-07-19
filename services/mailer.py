@@ -333,6 +333,23 @@ IT Görev Takip Sistemi"""
     return _send_plain(it_email, f"Portal talebine kullanıcı yanıtı — {case_code}", body)
 
 
+def send_case_closed(email, case_code, subject):
+    """v5.23 — Case çözüldü/kapandı → talep sahibine kapanış bildirimi."""
+    base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
+    body = f"""Merhaba,
+
+"{subject}" ({case_code}) konulu destek talebiniz ÇÖZÜLDÜ olarak kapatıldı.
+
+Sorun devam ediyorsa ya da yeni bir gelişme varsa, portaldan Case No'nuz ve
+e-posta adresinizle talebi açıp yeni bir yanıt yazabilirsiniz:
+
+{base}/portal
+
+İlginiz için teşekkür ederiz.
+IT Görev Takip Sistemi"""
+    return _send_plain(email, f"Talebiniz çözüldü — {case_code}", body)
+
+
 def send_case_new_to_it(it_email, case_code, subject, firm, reporter_name, assigned):
     """v5.22 — Portaldan YENİ case açıldı → IT'ye anlık bildirim.
 
