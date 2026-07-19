@@ -431,6 +431,10 @@ class Task(db.Model):
     reporter_email = db.Column(db.String(150), nullable=True)  # formdaki e-posta (ACK + sorgu doğrulama)
     reporter_name = db.Column(db.String(100), nullable=True)  # formdaki ad-soyad
     reporter_anydesk = db.Column(db.String(40), nullable=True)  # v5.17 — uzaktan bağlantı için AnyDesk ID
+    # v5.22 — IT ilgisi bekleyen portal case bayrağı: yeni case açılınca / reporter
+    # yanıt yazınca True; IT case'i açınca (görüntüleyince) ya da yanıtlayınca False.
+    # Hem IT listesindeki 'yeni yanıt' rozetini hem bildirim zilini besler.
+    it_unread = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
@@ -632,6 +636,7 @@ class Task(db.Model):
             "reporter_email": self.reporter_email,
             "reporter_name": self.reporter_name,
             "reporter_anydesk": self.reporter_anydesk,
+            "it_unread": bool(self.it_unread),  # v5.22 — 'yeni yanıt/yeni case' rozeti
             # v5.1 — Rutin kanonik sinyaller (rutin değilse default değerler)
             "is_overdue": is_overdue,
             "overdue_periods": overdue_periods,
@@ -1138,6 +1143,7 @@ def init_db():
     _add_column_race_safe("tasks", "reporter_email", "TEXT")
     _add_column_race_safe("tasks", "reporter_name", "TEXT")
     _add_column_race_safe("tasks", "reporter_anydesk", "TEXT")  # v5.17
+    _add_column_race_safe("tasks", "it_unread", "BOOLEAN DEFAULT FALSE")  # v5.22
     # v5.18 — tasks.user_id NOT NULL kısıtını kaldır (havuz: atanmamış case user_id=None).
     # Yeni SQLite (tests) create_all zaten nullable üretir; bu ALTER mevcut Postgres
     # prod/staging tablosu için. SQLite ALTER DROP NOT NULL desteklemez → yalnız PG.

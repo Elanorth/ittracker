@@ -333,6 +333,27 @@ IT Görev Takip Sistemi"""
     return _send_plain(it_email, f"Portal talebine kullanıcı yanıtı — {case_code}", body)
 
 
+def send_case_new_to_it(it_email, case_code, subject, firm, reporter_name, assigned):
+    """v5.22 — Portaldan YENİ case açıldı → IT'ye anlık bildirim.
+
+    assigned=True: case sana otomatik atandı. assigned=False: firma havuzuna düştü,
+    üstlenilmeyi bekliyor."""
+    who = reporter_name or "Bir kullanıcı"
+    firm_lbl = (firm or "").capitalize()
+    if assigned:
+        line = f'{who} tarafından açılan "{subject}" ({case_code}) talebi SANA atandı.'
+    else:
+        line = f'{who} "{subject}" ({case_code}) talebini açtı — {firm_lbl} havuzunda üstlenilmeyi bekliyor.'
+    body = f"""Merhaba,
+
+{line}
+
+Görevi IT Görev Takip Sistemi'nde açıp inceleyebilirsin.
+
+IT Görev Takip Sistemi"""
+    return _send_plain(it_email, f"Yeni portal talebi — {case_code}", body)
+
+
 def send_invite_email(email, name, invite_url, role):
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
