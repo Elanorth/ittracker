@@ -152,6 +152,7 @@ let USERS = [];       // API'den yüklenir
 let currentUser = {}; // /api/me
 let selectedUserId = null; // v4.2 — director+ tarafından görüntülenen kullanıcı (null = kendim)
 let firmUsers = [];   // v4.2 — director+'in firmasındaki kullanıcılar
+let _addReturnPage = 'tasks';  // v5.21 — 'Yeni Görev'e girmeden önceki sayfa; kayıt sonrası buraya dön
 
 // ══════════════════════════════════════════════════════════
 //  AUTH
@@ -509,6 +510,14 @@ function showPage(name, opts = {}) {
   if (name === 'board' && !currentUser.can_access_board && level !== 'super_admin') return;
   // v4.4 — Denetim sayfası yalnızca director+
   if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
+
+  // v5.21 — 'Yeni Görev' sayfasına geçerken, GELDİĞİMİZ sayfayı hatırla ki kayıt
+  // sonrası kullanıcı hep 'Anlık Görevler'e değil, açtığı menüye geri dönsün.
+  if (name === 'add') {
+    const curEl = document.querySelector('.page-section.active');
+    const cur = curEl ? curEl.id.replace('page-', '') : '';
+    if (cur && cur !== 'add') _addReturnPage = cur;
+  }
 
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
@@ -1859,7 +1868,10 @@ async function addTask() {
       okMsg = `✓ ${u ? u.full_name : 'Kullanıcı'} kişisine görev atandı`;
     } else okMsg = 'Görev eklendi ✓';
     showToast('ok', okMsg);
-    showPage(cat === 'backup' ? 'backups' : 'tasks');
+    // v5.21 — Kullanıcının 'Yeni Görev'e girmeden önce olduğu menüye geri dön
+    // (eskiden kategori ne olursa olsun hep 'Anlık Görevler'e atıyordu). Config
+    // backup yeni eklendiyse dosya listesini görmek mantıklı → 'backups'.
+    showPage(cat === 'backup' ? 'backups' : (_addReturnPage || 'tasks'));
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
   } finally {
