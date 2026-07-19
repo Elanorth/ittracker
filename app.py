@@ -2135,12 +2135,44 @@ def notifications_preview():
     """Kendi uyarı listesini dry-run olarak döner (mail atmaz)."""
     me = _current_user()
     groups = collect_user_alerts(me)
+    # v5.22 — IT ilgisi bekleyen portal case'leri (yeni case + reporter yanıtı).
+    # Kapsam: bana atanmış VEYA (havuzda & firmam kapsamında). super_admin tüm havuz.
+    from sqlalchemy import or_
+
+    scope = _user_firm_scope(me)
+    conds = [Task.user_id == me.id]
+    if scope is None:
+        conds.append(Task.user_id.is_(None))
+    elif scope:
+        conds.append(db.and_(Task.user_id.is_(None), Task.firm.in_(list(scope))))
+    new_cases = []
+    nc_q = (
+        Task.query.filter(Task.it_unread == True, Task.is_done == False)  # noqa: E712
+        .filter(or_(*conds))
+        .order_by(Task.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    for t in nc_q:
+        has_reply = CaseMessage.query.filter_by(task_id=t.id, sender_type="reporter").first() is not None
+        new_cases.append(
+            {
+                "id": t.id,
+                "title": t.title,
+                "case_code": t.case_code,
+                "firm": t.firm,
+                "reporter_name": t.reporter_name,
+                "kind": "reply" if has_reply else "new",  # yeni yanıt mı yeni case mi
+                "pooled": t.user_id is None,
+            }
+        )
     return jsonify(
         {
+            "new_cases": new_cases,
             "overdue": groups["overdue"],
             "sla_warning": groups["sla_warning"],
             "sla_breached": groups["sla_breached"],
-            "total": sum(len(v) for v in groups.values()),
+            "total": len(new_cases) + sum(len(v) for v in groups.values()),
         }
     )
 
@@ -2272,6 +2304,7 @@ def portal_create_case():
         reporter_email=email,
         reporter_name=name[:100],
         reporter_anydesk=anydesk or None,
+        it_unread=True,  # v5.22 — yeni case IT ilgisi bekliyor (rozet + zil)
     )
     db.session.add(task)
     db.session.flush()
@@ -2299,6 +2332,24 @@ def portal_create_case():
         send_case_ack(email, name, case_code, subject, firm)
     except Exception as e:
         print(f"[portal] ACK mail hatası: {e}")
+    # v5.22 — IT'ye ANLIK bildirim: atanmışsa atanana, havuzdaysa firma
+    # triaj sorumlularına (it_director + super_admin, kapsam içi).
+    try:
+        from services.mailer import send_case_new_to_it
+
+        recipients = []
+        if assignee and assignee.email:
+            recipients = [assignee.email]
+        else:
+            triagers = User.query.filter(
+                User.active == True,  # noqa: E712
+                User.permission_level.in_(["it_director", "super_admin"]),
+            ).all()
+            recipients = [u.email for u in triagers if u.email and u.has_firm_scope(firm)]
+        for rcpt in dict.fromkeys(recipients):  # tekilleştir, sıra korunur
+            send_case_new_to_it(rcpt, case_code, subject, firm, name, bool(assignee))
+    except Exception as e:
+        print(f"[portal] IT yeni-case bildirim hatası: {e}")
     return jsonify({"ok": True, "case_code": case_code}), 201
 
 
@@ -2379,6 +2430,7 @@ def portal_case_reply():
         body=body,
     )
     db.session.add(msg)
+    task.it_unread = True  # v5.22 — reporter yanıtı → IT ilgisi bekliyor (rozet + zil)
     db.session.commit()
     # Atanan IT'yi bilgilendir (best-effort; anlık — digest beklemez)
     try:
@@ -2414,6 +2466,10 @@ def list_case_messages(task_id):
     task = Task.query.get_or_404(task_id)
     if not _can_view_task(me, task):
         return jsonify({"error": "Bu talebi görüntüleme yetkiniz yok"}), 403
+    # v5.22 — IT case'i açtı → 'yeni' işareti temizlensin (rozet + zil düşsün)
+    if task.it_unread:
+        task.it_unread = False
+        db.session.commit()
     msgs = CaseMessage.query.filter_by(task_id=task_id).order_by(CaseMessage.created_at.asc()).all()
     return jsonify(
         {"case_code": task.case_code, "reporter_email": task.reporter_email, "messages": [m.to_dict() for m in msgs]}
@@ -2443,6 +2499,7 @@ def add_case_message(task_id):
         body=body[:5000],
     )
     db.session.add(msg)
+    task.it_unread = False  # v5.22 — IT yanıt/işlem yaptı → 'yeni' işareti düşer
     db.session.commit()
     # "it" (kullanıcıya yanıt) → talep sahibine bildirim maili
     if stype == "it" and task.reporter_email:

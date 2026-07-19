@@ -152,6 +152,7 @@ let USERS = [];       // API'den yüklenir
 let currentUser = {}; // /api/me
 let selectedUserId = null; // v4.2 — director+ tarafından görüntülenen kullanıcı (null = kendim)
 let firmUsers = [];   // v4.2 — director+'in firmasındaki kullanıcılar
+let _addReturnPage = 'tasks';  // v5.21 — 'Yeni Görev'e girmeden önceki sayfa; kayıt sonrası buraya dön
 
 // ══════════════════════════════════════════════════════════
 //  AUTH
@@ -458,6 +459,7 @@ function normalizeTask(t) {
     reporter_email:      t.reporter_email || null,
     reporter_name:       t.reporter_name || null,
     reporter_anydesk:    t.reporter_anydesk || null,
+    it_unread:           t.it_unread || false,   // v5.22 — yeni case / yeni yanıt rozeti
     // v5.1 — Rutin kanonik sinyaller (deadline/next_due donmuş alanları yerine)
     is_overdue:          t.is_overdue || false,
     overdue_periods:     t.overdue_periods || 0,
@@ -509,6 +511,14 @@ function showPage(name, opts = {}) {
   if (name === 'board' && !currentUser.can_access_board && level !== 'super_admin') return;
   // v4.4 — Denetim sayfası yalnızca director+
   if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
+
+  // v5.21 — 'Yeni Görev' sayfasına geçerken, GELDİĞİMİZ sayfayı hatırla ki kayıt
+  // sonrası kullanıcı hep 'Anlık Görevler'e değil, açtığı menüye geri dönsün.
+  if (name === 'add') {
+    const curEl = document.querySelector('.page-section.active');
+    const cur = curEl ? curEl.id.replace('page-', '') : '';
+    if (cur && cur !== 'add') _addReturnPage = cur;
+  }
 
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
@@ -785,7 +795,8 @@ function renderPool() {
       <div>
         <div class="task-title">${escapeHtml(t.title)}</div>
         <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)} ${firmChip(t.firm)}
-          ${t.case_code ? `<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>` : ''}</div>
+          ${t.case_code ? `<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>` : ''}
+          ${unreadBadge(t)}</div>
         <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email||'')}&gt;${anydesk} · ${age}</div>
       </div>
       <div></div>
@@ -1423,6 +1434,12 @@ function taskTiming(t) {
 function catLabel(cat) {
   return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
 }
+// v5.22 — IT ilgisi bekleyen portal case rozeti (yeni case / yeni yanıt)
+function unreadBadge(t) {
+  if (!t || !t.it_unread || t.source !== 'portal') return '';
+  const assigned = t.user_id != null;  // atanmışsa muhtemelen kullanıcı yanıtı
+  return ` <span class="unread-badge" title="IT ilgisi bekliyor">${assigned ? '💬 yeni yanıt' : '🆕 yeni'}</span>`;
+}
 function priorityBadge(t) {
   if (!t || t.cat !== 'support') return '';
   const p = (t.priority || 'orta').toLowerCase();
@@ -1519,7 +1536,7 @@ function taskRow(t) {
     <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
-      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${unreadBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
       ${t.source==='portal' && t.reporter_email ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">🌐 Portal talebi · ${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email)}&gt;${t.reporter_anydesk ? ` · 🖥 AnyDesk: ${escapeHtml(t.reporter_anydesk)}` : ''}</div>` : ''}
       ${clProgress}${lcStr}${mnStr}
     </div>
@@ -1859,7 +1876,10 @@ async function addTask() {
       okMsg = `✓ ${u ? u.full_name : 'Kullanıcı'} kişisine görev atandı`;
     } else okMsg = 'Görev eklendi ✓';
     showToast('ok', okMsg);
-    showPage(cat === 'backup' ? 'backups' : 'tasks');
+    // v5.21 — Kullanıcının 'Yeni Görev'e girmeden önce olduğu menüye geri dön
+    // (eskiden kategori ne olursa olsun hep 'Anlık Görevler'e atıyordu). Config
+    // backup yeni eklendiyse dosya listesini görmek mantıklı → 'backups'.
+    showPage(cat === 'backup' ? 'backups' : (_addReturnPage || 'tasks'));
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
   } finally {
@@ -2147,7 +2167,14 @@ async function buildNotifications() {
     if (r.ok) {
       const data = await r.json();
       backendOk = true;
-      // Sıralama: breached → overdue → warning
+      // v5.22 — Yeni portal case / kullanıcı yanıtı (en üstte)
+      (data.new_cases || []).forEach(t => notifications.push({
+        id:'nc'+t.id, type:'info', title:t.title,
+        meta:`${t.kind==='reply'?'Kullanıcı yanıtı':'Yeni talep'} · ${t.case_code||''} · ${(FIRMS[t.firm]||{}).label||t.firm||''}${t.pooled?' · havuz':''}`,
+        tag:'new', tagLabel:t.kind==='reply'?'YENİ YANIT':'YENİ TALEP', taskId:t.id,
+        read: readIds.has('nc'+t.id), mailSent:false, _sortKey:-1
+      }));
+      // Sıralama: yeni case → breached → overdue → warning
       (data.sla_breached || []).forEach(t => notifications.push({
         id:'sb'+t.id, type:'danger', title:t.title,
         meta:`SLA AŞILDI · ${t.firm||''} ${t.team?'· '+t.team:''}`,
@@ -2208,7 +2235,7 @@ function renderNotifList() {
   if (!notifications.length) { el.innerHTML = '<div class="notif-empty">🎉 Tüm rutin görevler zamanında!<br>Gecikme veya uyarı yok.</div>'; return; }
   el.innerHTML = notifications.map(n => `
     <div class="notif-item ${n.read?'':'unread'}" onclick="notifClick('${n.id}',${n.taskId})">
-      <div class="notif-icon ${n.type==='danger'?'ndanger':n.type==='warn'?'nwarn':'ninfo'}">${n.type==='danger'?'🔴':n.type==='warn'?'⚠️':'🔔'}</div>
+      <div class="notif-icon ${n.type==='danger'?'ndanger':n.type==='warn'?'nwarn':'ninfo'}">${n.tag==='new'?(n.tagLabel==='YENİ YANIT'?'💬':'🆕'):n.type==='danger'?'🔴':n.type==='warn'?'⚠️':'🔔'}</div>
       <div style="flex:1">
         <div class="notif-body-title">${escapeHtml(n.title)}</div>
         <div class="notif-body-meta">${escapeHtml(n.meta)}</div>
