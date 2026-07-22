@@ -10,6 +10,7 @@
 body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#dce6f0;min-height:100vh}
 .mono{font-family:'IBM Plex Mono',monospace}
 .screen{display:none;min-height:100vh}.screen.active{display:block}
+.hidden{display:none!important}
 /* ── Landing split ── */
 .split{display:flex;height:100vh}
 .half{flex:1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:flex .5s cubic-bezier(.22,.9,.3,1),filter .5s}
@@ -93,6 +94,29 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .replybox{display:flex;gap:9px;align-items:flex-end}
 .replybox textarea{flex:1;min-height:52px;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:10px 12px;font-size:12.5px;font-family:'IBM Plex Sans',sans-serif;outline:none;resize:vertical}
 .replybox textarea:focus{border-color:var(--ac)}
+/* ── v5.24 Bilgi Bankası ── */
+.kb-entry{font-size:10px;color:#7d92a8;margin-top:10px;text-align:center;border-top:1px solid #1c2530;padding-top:10px}
+.kb-entry a{color:#00e5c0;cursor:pointer;font-weight:600;text-decoration:none}
+.kb-entry a:hover{text-decoration:underline}
+.kb-firmtabs{display:flex;gap:8px;margin-bottom:16px}
+.kb-firmtab{background:var(--pan2);border:1px solid var(--bd);color:var(--mut);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.kb-firmtab.active{background:var(--ac);color:var(--acc);border-color:var(--ac)}
+.kb-search{width:100%;background:var(--pan2);border:1px solid var(--bd);border-radius:10px;color:var(--tx);padding:13px 15px;font-size:14px;font-family:'IBM Plex Sans',sans-serif;outline:none;margin-bottom:12px}
+.kb-search:focus{border-color:var(--ac)}
+.kb-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.kb-chip{background:var(--pan2);border:1px solid var(--bd);color:var(--mut);border-radius:20px;padding:5px 13px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.kb-chip.active{background:var(--soft);color:var(--ac);border-color:var(--ac)}
+.kb-results{display:flex;flex-direction:column;gap:10px}
+.kb-item{border:1px solid var(--bd);border-radius:11px;padding:15px 16px;cursor:pointer;transition:border-color .15s,transform .15s;background:var(--pan2)}
+.kb-item:hover{border-color:var(--ac);transform:translateX(2px)}
+.kb-item .t{font-size:14px;font-weight:700;margin-bottom:5px}
+.kb-item .s{font-size:11.5px;color:var(--mut);line-height:1.55}
+.kb-item .c{display:inline-block;font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--ac);background:var(--soft);border-radius:5px;padding:2px 7px;margin-top:8px;text-transform:uppercase;letter-spacing:.5px}
+.kb-empty{text-align:center;color:var(--mut);font-size:12.5px;padding:30px 10px;line-height:1.7}
+.kb-a-cat{font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:var(--ac);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.kb-helpful{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--bd);font-size:12px;color:var(--mut)}
+.kb-still{margin-top:14px;font-size:12px;color:var(--mut)}
+.kb-still a{color:var(--ac);cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
@@ -132,6 +156,42 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
     </div>
     <div class="err" id="lk-err"></div>
     <div class="sec">🔒 Case No tek başına yeterli değildir — e-posta adresiyle birlikte doğrulanır.</div>
+    <div class="kb-entry">📚 Talep açmadan önce <a onclick="openKb()">Bilgi Bankası</a>'na göz atın — sorununuzun çözümü hazır olabilir.</div>
+  </div>
+</div>
+
+<!-- 1b · BİLGİ BANKASI -->
+<div class="screen" id="s-kb">
+  <div class="branded" data-brand="inventist" id="kb-branded">
+    <div class="wrap">
+      <span class="back" onclick="show('s-landing')">← Portal ana sayfa</span>
+      <div class="bhead"><div class="dot">📚</div><div><div class="nm">Bilgi Bankası</div><div class="sb">SIK SORULAN SORULAR · ÇÖZÜM ADIMLARI</div></div></div>
+      <div class="kb-firmtabs" id="kb-firmtabs">
+        <button class="kb-firmtab active" data-firm="inventist" onclick="kbSetFirm('inventist')">İnventist</button>
+        <button class="kb-firmtab" data-firm="assos" onclick="kbSetFirm('assos')">Assos</button>
+      </div>
+      <div class="card">
+        <div id="kb-list-view">
+          <input class="kb-search" id="kb-q" placeholder="🔍 Sorununuzu yazın (ör. yazıcı, vpn, şifre)…" oninput="kbSearchDebounced()">
+          <div class="kb-chips" id="kb-chips"></div>
+          <div id="kb-results" class="kb-results"></div>
+        </div>
+        <div id="kb-article-view" class="hidden">
+          <span class="back" onclick="kbBackToList()">← Sonuçlara dön</span>
+          <h2 id="kb-a-title" style="margin-top:10px"></h2>
+          <div class="kb-a-cat" id="kb-a-cat"></div>
+          <div class="desc-box" id="kb-a-body" style="margin-top:14px"></div>
+          <div class="kb-helpful" id="kb-helpful">
+            <span>Bu makale sorununuzu çözdü mü?</span>
+            <button class="btn-ghost" onclick="kbFeedback(true)">👍 Evet</button>
+            <button class="btn-ghost" onclick="kbFeedback(false)">👎 Hayır</button>
+          </div>
+          <div class="kb-still" id="kb-still">
+            Çözemediniz mi? <a onclick="kbToForm()">Destek talebi oluşturun →</a>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -331,6 +391,66 @@ async function sendReply(){
     ta.value=''; renderCase(d);
   }catch(e){ err.textContent=e.message; }
 }
+
+/* ── v5.24 Bilgi Bankası ── */
+const KB_CATS=[['','Tümü'],['genel','Genel'],['ağ','Ağ/İnternet'],['donanım','Donanım'],['yazılım','Yazılım'],['hesap','Hesap/Erişim'],['diğer','Diğer']];
+let _kbFirm='inventist', _kbCat='', _kbArtId=null, _kbT=null;
+function openKb(){
+  document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
+  renderKbChips(); kbBackToList(); kbSearch(); show('s-kb');
+}
+function kbSetFirm(f){
+  _kbFirm=f;
+  document.querySelectorAll('.kb-firmtab').forEach(b=>b.classList.toggle('active',b.dataset.firm===f));
+  document.getElementById('kb-branded').setAttribute('data-brand',f);
+  kbSearch();
+}
+function renderKbChips(){
+  document.getElementById('kb-chips').innerHTML=KB_CATS.map(c=>
+    `<div class="kb-chip ${c[0]===_kbCat?'active':''}" onclick="kbSetCat('${c[0]}')">${c[1]}</div>`).join('');
+}
+function kbSetCat(c){ _kbCat=c; renderKbChips(); kbSearch(); }
+function kbSearchDebounced(){ clearTimeout(_kbT); _kbT=setTimeout(kbSearch,250); }
+async function kbSearch(){
+  const q=document.getElementById('kb-q').value.trim();
+  const box=document.getElementById('kb-results');
+  const params=new URLSearchParams({firm:_kbFirm}); if(q)params.set('q',q); if(_kbCat)params.set('category',_kbCat);
+  try{
+    const r=await fetch('/portal/api/kb?'+params.toString());
+    const arts=await r.json();
+    if(!arts.length){ box.innerHTML='<div class="kb-empty">Eşleşen makale bulunamadı.<br>Farklı bir kelime deneyin ya da destek talebi oluşturun.</div>'; return; }
+    box.innerHTML=arts.map(a=>{
+      const cl=(KB_CATS.find(c=>c[0]===a.category)||['','Genel'])[1];
+      return `<div class="kb-item" onclick="openKbArticle(${a.id})"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.snippet||'')}</div><span class="c">${esc(cl)}</span></div>`;
+    }).join('');
+  }catch(e){ box.innerHTML='<div class="kb-empty">Bilgi bankası yüklenemedi.</div>'; }
+}
+async function openKbArticle(id){
+  try{
+    const r=await fetch('/portal/api/kb/'+id);
+    const a=await r.json();
+    if(!r.ok) throw new Error();
+    _kbArtId=id;
+    document.getElementById('kb-a-title').textContent=a.title;
+    const cl=(KB_CATS.find(c=>c[0]===a.category)||['','Genel'])[1];
+    document.getElementById('kb-a-cat').textContent=cl;
+    document.getElementById('kb-a-body').textContent=a.body||'';
+    document.getElementById('kb-helpful').style.display='flex';
+    document.getElementById('kb-list-view').classList.add('hidden');
+    document.getElementById('kb-article-view').classList.remove('hidden');
+    window.scrollTo(0,0);
+  }catch(e){}
+}
+function kbBackToList(){
+  document.getElementById('kb-article-view').classList.add('hidden');
+  document.getElementById('kb-list-view').classList.remove('hidden');
+}
+async function kbFeedback(helpful){
+  if(!_kbArtId) return;
+  try{ await fetch('/portal/api/kb/'+_kbArtId+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({helpful})}); }catch(e){}
+  document.getElementById('kb-helpful').innerHTML='<span>Geri bildiriminiz için teşekkürler.</span>';
+}
+function kbToForm(){ openForm(_kbFirm); }
 </script>
 </body>
 </html>
