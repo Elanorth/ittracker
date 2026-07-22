@@ -3137,6 +3137,19 @@ def start_scheduler():
     )
 
 
+def _log_startup_mail_config():
+    """v5.26 — Başlangıçta AKTİF mail gönderenini logla (docker logs'ta görünür).
+
+    Şifre ASLA loglanmaz. Amaç: 'mail hangi adresten gidiyor?' belirsizliğini
+    anında görünür kılmak — SMTP_USER env'i (dosyadan gelen gerçek değer) + host +
+    MAIL_SUPPRESS. Ayarlar UI'ı os.environ'ı canlı değiştirebildiği için asıl
+    kaynak env/.env dosyasıdır; bu log o değeri gösterir."""
+    sender = os.environ.get("SMTP_USER") or "(SMTP_USER YOK — mail gönderilmez)"
+    host = os.environ.get("SMTP_HOST", "smtp.office365.com")
+    suppress = os.environ.get("MAIL_SUPPRESS", "0")
+    print(f"[mail] Aktif gönderen (SMTP_USER)={sender} | host={host} | MAIL_SUPPRESS={suppress}")
+
+
 if __name__ == "__main__":
     # Debug modunda reloader iki process çalıştırır — sadece ikinci (main) process
     # init_db + scheduler çalıştırmalı. WERKZEUG_RUN_MAIN sadece reloader child'ında set olur.
@@ -3148,10 +3161,12 @@ if __name__ == "__main__":
     if not (debug_mode and is_reloader_parent):
         with app.app_context():
             init_db()
+        _log_startup_mail_config()
         start_scheduler()
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)
 else:
     # WSGI (gunicorn vb.) import yolu: init_db + scheduler tek seferlik
     with app.app_context():
         init_db()
+    _log_startup_mail_config()
     start_scheduler()
