@@ -856,6 +856,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
     <a class="nav-item admin-item" data-perm="manager" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
     <a class="nav-item admin-item" data-perm="director" onclick="showPage('audit')"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
+    <a class="nav-item" data-perm="director" onclick="showPage('kb')"><span class="nav-icon">📚</span>Bilgi Bankası</a>
     <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
     <a class="nav-item" data-perm="manager" onclick="showPage('notifications')"><span class="nav-icon">🔔</span>Bildirim Ayarları</a>
@@ -1864,6 +1865,47 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- v5.24 — BİLGİ BANKASI (director+) -->
+<div id="page-kb" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Bilgi <span>Bankası</span></div>
+      <div class="page-sub">Portal self-service çözüm makaleleri — yayınlananlar kullanıcıya görünür, talep sayısını azaltır</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="openKbEditor()">＋ Yeni Makale</button>
+    </div>
+  </div>
+  <div id="kb-admin-list" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px"></div>
+</div>
+
+<!-- KB Editör modalı -->
+<div id="kb-editor-modal" class="modal-overlay hidden">
+  <div class="modal" style="width:640px" role="dialog" aria-modal="true" aria-label="Makale düzenle">
+    <div class="modal-title">📚 <span id="kb-editor-title">Yeni Makale</span></div>
+    <input type="hidden" id="kb-edit-id">
+    <div class="form-row">
+      <div class="form-group"><label>Firma</label><select class="form-control" id="kb-edit-firm"></select></div>
+      <div class="form-group"><label>Kategori</label><select class="form-control" id="kb-edit-cat">
+        <option value="genel">Genel</option><option value="ağ">Ağ/İnternet</option><option value="donanım">Donanım</option>
+        <option value="yazılım">Yazılım</option><option value="hesap">Hesap/Erişim</option><option value="diğer">Diğer</option>
+      </select></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px"><label>Başlık</label><input class="form-control" id="kb-edit-title" placeholder="Ör. VPN (AnyConnect) nasıl kurulur?"></div>
+    <div class="form-group" style="margin-bottom:12px"><label>Anahtar Kelimeler (arama için, virgülle)</label><input class="form-control" id="kb-edit-keywords" placeholder="vpn, uzak erişim, anyconnect"></div>
+    <div class="form-group" style="margin-bottom:12px"><label>İçerik (çözüm adımları)</label><textarea class="form-control" id="kb-edit-body" style="min-height:180px;resize:vertical" placeholder="Adım adım çözüm…"></textarea></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer">
+      <input type="checkbox" id="kb-edit-published"> <span>Yayınla (portalda kullanıcıya görünür olsun)</span>
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="kb-edit-delete" onclick="deleteKbArticle()" style="display:none">Sil</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('kb-editor-modal').classList.add('hidden')">İptal</button>
+      <button class="btn btn-primary btn-sm" onclick="saveKbArticle()">Kaydet</button>
+    </div>
   </div>
 </div>
 
