@@ -31,7 +31,20 @@ def _smtp():
     return host, port, user, pw
 
 
+def _mail_suppressed(to, subject):
+    """v5.25 — MAIL_SUPPRESS=1 ise (test/staging ortamı) GERÇEK gönderim yapılmaz;
+    yalnız log'a yazılır. Böylece staging gerçek adreslere mail atıp bounce üretmez.
+    Gönderim fonksiyonlarının EN BAŞINDA çağrılır; bastırıldıysa {"ok"..} döndürülür."""
+    if os.environ.get("MAIL_SUPPRESS", "0") == "1":
+        print(f"[mail:SUPPRESSED] → {to} | konu: {subject}")
+        return {"ok": True, "suppressed": True}
+    return None
+
+
 def send_report_email(user, pdf_path, month, year, cc=None, o365_token=None):
+    sup = _mail_suppressed(getattr(user, "email", "?"), "aylık rapor")
+    if sup:
+        return sup
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
         return {"ok": False, "error": "SMTP ayarları eksik — Ayarlar > SMTP bölümünden kullanıcı adı ve şifre girin"}
@@ -89,6 +102,9 @@ def send_alarm_digest(user, groups):
     groups: dict — {"overdue": [task_dict,...], "sla_warning": [...], "sla_breached": [...]}
     task_dict minimum: {id, title, firm, team, days_late, priority, sla_remaining_hours}
     """
+    sup = _mail_suppressed(getattr(user, "email", "?"), "bildirim özeti")
+    if sup:
+        return sup
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
         return {"ok": False, "error": "SMTP ayarları eksik"}
@@ -169,6 +185,9 @@ def send_manager_digest(user, firm_summaries):
     overdue item: {id, title, owner, days_late? | overdue_periods?+period?}
     breached item: {id, title, owner, sla_target_hours}
     """
+    sup = _mail_suppressed(getattr(user, "email", "?"), "müdür digesti")
+    if sup:
+        return sup
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
         return {"ok": False, "error": "SMTP ayarları eksik"}
@@ -237,6 +256,9 @@ def send_manager_digest(user, firm_summaries):
 
 def send_case_ack(email, name, case_code, subject, firm):
     """v5.15 — Portal talebi alındı bilgilendirmesi (Case No + takip linki)."""
+    sup = _mail_suppressed(email, f"case ACK {case_code}")
+    if sup:
+        return sup
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
         return {"ok": False, "error": "SMTP ayarları eksik"}
@@ -281,6 +303,9 @@ IT Görev Takip Sistemi"""
 
 def _send_plain(to_email, subject, body):
     """Ortak düz-metin mail gönderici (case bildirimleri)."""
+    sup = _mail_suppressed(to_email, subject)
+    if sup:
+        return sup
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
         return {"ok": False, "error": "SMTP ayarları eksik"}
@@ -333,6 +358,23 @@ IT Görev Takip Sistemi"""
     return _send_plain(it_email, f"Portal talebine kullanıcı yanıtı — {case_code}", body)
 
 
+def send_case_closed(email, case_code, subject):
+    """v5.23 — Case çözüldü/kapandı → talep sahibine kapanış bildirimi."""
+    base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
+    body = f"""Merhaba,
+
+"{subject}" ({case_code}) konulu destek talebiniz ÇÖZÜLDÜ olarak kapatıldı.
+
+Sorun devam ediyorsa ya da yeni bir gelişme varsa, portaldan Case No'nuz ve
+e-posta adresinizle talebi açıp yeni bir yanıt yazabilirsiniz:
+
+{base}/portal
+
+İlginiz için teşekkür ederiz.
+IT Görev Takip Sistemi"""
+    return _send_plain(email, f"Talebiniz çözüldü — {case_code}", body)
+
+
 def send_case_new_to_it(it_email, case_code, subject, firm, reporter_name, assigned):
     """v5.22 — Portaldan YENİ case açıldı → IT'ye anlık bildirim.
 
@@ -355,6 +397,9 @@ IT Görev Takip Sistemi"""
 
 
 def send_invite_email(email, name, invite_url, role):
+    sup = _mail_suppressed(email, "kullanıcı daveti")
+    if sup:
+        return sup
     host, port, smtp_user, smtp_pass = _smtp()
     if not smtp_user or not smtp_pass:
         return {"ok": False, "error": "SMTP ayarları eksik"}

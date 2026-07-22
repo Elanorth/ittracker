@@ -991,6 +991,66 @@ class AssignRule(db.Model):
         }
 
 
+class KbArticle(db.Model):
+    """v5.24 — Bilgi Bankası (portal self-service FAQ) makalesi.
+
+    Portalda (login yok) yayınlanmış makaleler firma kapsamına göre gösterilir;
+    kullanıcı case açmadan çözüm bulur → talep sayısı azalır. IT tarafı (director+)
+    yönetir. firm='' = tüm firmalar (global). published=False taslak (portalda gizli).
+    """
+
+    __tablename__ = "kb_articles"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, default="")  # düz metin / basit markdown
+    category = db.Column(db.String(30), default="genel")  # genel|ağ|donanım|yazılım|hesap|diğer
+    firm = db.Column(db.String(50), default="", index=True)  # "" = tüm firmalar
+    keywords = db.Column(db.String(300), default="")  # arama için ek anahtar kelimeler
+    published = db.Column(db.Boolean, default=False, index=True)
+    view_count = db.Column(db.Integer, default=0)
+    helpful_yes = db.Column(db.Integer, default=0)
+    helpful_no = db.Column(db.Integer, default=0)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def _snippet(self, n=160):
+        b = (self.body or "").strip().replace("\n", " ")
+        return b[:n] + ("…" if len(b) > n else "")
+
+    def to_public_dict(self, full=False):
+        """Portal — sayaç/taslak/yazar YOK; full=False liste snippet'i, True tam gövde."""
+        d = {
+            "id": self.id,
+            "title": self.title,
+            "category": self.category or "genel",
+            "firm": self.firm or "",
+        }
+        if full:
+            d["body"] = self.body or ""
+        else:
+            d["snippet"] = self._snippet()
+        return d
+
+    def to_dict(self):
+        """IT tarafı — istatistikler + taslak durumu dahil."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "body": self.body or "",
+            "category": self.category or "genel",
+            "firm": self.firm or "",
+            "keywords": self.keywords or "",
+            "published": bool(self.published),
+            "view_count": self.view_count or 0,
+            "helpful_yes": self.helpful_yes or 0,
+            "helpful_no": self.helpful_no or 0,
+            "author_id": self.author_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 def init_db():
     import os
 

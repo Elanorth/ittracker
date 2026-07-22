@@ -511,6 +511,8 @@ function showPage(name, opts = {}) {
   if (name === 'board' && !currentUser.can_access_board && level !== 'super_admin') return;
   // v4.4 — Denetim sayfası yalnızca director+
   if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
+  // v5.24 — Bilgi Bankası yönetimi yalnızca director+
+  if (name === 'kb' && !(level === 'super_admin' || level === 'it_director')) return;
 
   // v5.21 — 'Yeni Görev' sayfasına geçerken, GELDİĞİMİZ sayfayı hatırla ki kayıt
   // sonrası kullanıcı hep 'Anlık Görevler'e değil, açtığı menüye geri dönsün.
@@ -598,6 +600,7 @@ function showPage(name, opts = {}) {
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
   if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); loadAutoAssign(); }
+  if (name==='kb')        loadKb();
   if (name==='notifications') loadNotificationsPage();
   if (name==='scheduled') { loadTasks().then(() => renderScheduledPage()); }
   if (name==='report')    initReportPage();
@@ -825,6 +828,27 @@ async function releaseCase(id) {
     const r = await fetch(`/api/tasks/${id}/release`, { method:'POST' });
     if (!r.ok) throw new Error((await r.json()).error || 'Bırakılamadı');
     showToast('ok', '🫧 Talep havuza geri bırakıldı');
+    closeEditTaskModal();
+    await loadTasks(); renderFullList(tasks); updatePoolBadge();
+  } catch (e) { showToast('err', e.message); }
+}
+
+// v5.23 — Portal case'i çözüldü olarak kapat (is_done=true → 'resolved' + kapanış maili)
+// veya zaten çözülmüşse yeniden aç. Buton etiketi openEditTask'ta t.done'a göre ayarlanır.
+async function resolveCase(id) {
+  const t = tasks.find(x => x.id === id);
+  const wasDone = t && t.done;
+  const msg = wasDone
+    ? 'Bu talebi yeniden açmak istediğinize emin misiniz?'
+    : 'Bu talebi ÇÖZÜLDÜ olarak kapatmak istiyor musunuz? Talep sahibine kapanış maili gönderilir.';
+  if (!confirm(msg)) return;
+  try {
+    const r = await fetch(`/api/tasks/${id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ is_done: !wasDone }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'İşlem başarısız');
+    showToast('ok', wasDone ? '↩ Talep yeniden açıldı' : '✓ Talep çözüldü — kullanıcıya bilgi verildi');
     closeEditTaskModal();
     await loadTasks(); renderFullList(tasks); updatePoolBadge();
   } catch (e) { showToast('err', e.message); }
@@ -2720,6 +2744,12 @@ function openEditTask(id) {
       // Havuza Bırak: yalnız atanmış (sahibi olan) case'te göster
       const relBtn = document.getElementById('edit-case-release');
       if (relBtn) relBtn.style.display = t.user_id ? '' : 'none';
+      // v5.23 — Çöz/Kapat butonu etiketi duruma göre
+      const resBtn = document.getElementById('edit-case-resolve');
+      if (resBtn) {
+        resBtn.innerHTML = t.done ? '↩ Yeniden Aç' : '✓ Çözüldü &amp; Kapat';
+        resBtn.className = t.done ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm';
+      }
       _caseTab = 'it';
       caseTab('it');
       loadCaseMessages(id);
@@ -3296,6 +3326,115 @@ async function deleteAssignRule(id) {
   } catch (e) {
     showToast('err', 'Kural silinemedi');
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BİLGİ BANKASI — IT yönetimi (v5.24)
+// ══════════════════════════════════════════════════════════
+const KB_CAT_LABELS = { genel:'Genel', 'ağ':'Ağ/İnternet', 'donanım':'Donanım', 'yazılım':'Yazılım', hesap:'Hesap/Erişim', 'diğer':'Diğer' };
+let _kbArticles = [];
+
+async function loadKb() {
+  try {
+    const r = await fetch('/api/kb');
+    _kbArticles = r.ok ? await r.json() : [];
+    renderKbAdminList();
+  } catch (e) { console.warn('KB yüklenemedi:', e); }
+}
+
+function renderKbAdminList() {
+  const box = document.getElementById('kb-admin-list');
+  if (!box) return;
+  if (!_kbArticles.length) {
+    box.innerHTML = '<div style="padding:26px;text-align:center;color:var(--text-muted);font-size:12.5px">Henüz makale yok. “＋ Yeni Makale” ile ekleyin.</div>';
+    return;
+  }
+  box.innerHTML = _kbArticles.map(a => {
+    const firm = a.firm ? ((FIRMS[a.firm] && FIRMS[a.firm].label) || a.firm) : 'Tüm firmalar';
+    const pub = a.published
+      ? '<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">✓ Yayında</span>'
+      : '<span class="prio-badge" style="background:var(--surface2);color:var(--text-muted);border-color:var(--border2)">Taslak</span>';
+    return `<div class="task-item" style="align-items:center;cursor:pointer" onclick="openKbEditor(${a.id})">
+      <div style="font-size:16px">📄</div>
+      <div>
+        <div class="task-title">${escapeHtml(a.title)}</div>
+        <div class="task-meta">${escapeHtml(KB_CAT_LABELS[a.category]||a.category)} · ${escapeHtml(firm)} ${pub}
+          <span style="color:var(--text-muted);font-size:10px">· 👁 ${a.view_count} · 👍 ${a.helpful_yes} 👎 ${a.helpful_no}</span></div>
+      </div>
+      <div></div>
+      <div><button class="btn btn-outline btn-sm" style="padding:2px 10px;font-size:10px" onclick="event.stopPropagation();openKbEditor(${a.id})">&#9998; Düzenle</button></div>
+    </div>`;
+  }).join('');
+}
+
+function _kbPopulateFirmSelect(selected) {
+  const sel = document.getElementById('kb-edit-firm');
+  if (!sel) return;
+  const isSA = currentUser.permission_level === 'super_admin';
+  const opts = [];
+  if (isSA) {
+    opts.push('<option value="">Tüm firmalar (global)</option>');
+    Object.entries(FIRMS).forEach(([slug, f]) => opts.push(`<option value="${slug}">${escapeHtml(f.label || slug)}</option>`));
+  } else {
+    // director: yönettiği firmalar (mevcut makalelerden + kendi firması)
+    const scope = new Set(_kbArticles.map(a => a.firm).filter(Boolean));
+    if (currentUser.firm) scope.add(currentUser.firm);
+    (currentUser.managed_firm_slugs || []).forEach(s => scope.add(s));
+    [...scope].forEach(slug => opts.push(`<option value="${slug}">${escapeHtml((FIRMS[slug] && FIRMS[slug].label) || slug)}</option>`));
+  }
+  sel.innerHTML = opts.join('');
+  if (selected != null) sel.value = selected;
+}
+
+function openKbEditor(id) {
+  const editing = id != null;
+  const a = editing ? _kbArticles.find(x => x.id === id) : null;
+  document.getElementById('kb-editor-title').textContent = editing ? 'Makaleyi Düzenle' : 'Yeni Makale';
+  document.getElementById('kb-edit-id').value = editing ? id : '';
+  _kbPopulateFirmSelect(a ? a.firm : null);
+  document.getElementById('kb-edit-cat').value = a ? a.category : 'genel';
+  document.getElementById('kb-edit-title').value = a ? a.title : '';
+  document.getElementById('kb-edit-keywords').value = a ? a.keywords : '';
+  document.getElementById('kb-edit-body').value = a ? a.body : '';
+  document.getElementById('kb-edit-published').checked = a ? a.published : false;
+  document.getElementById('kb-edit-delete').style.display = editing ? '' : 'none';
+  document.getElementById('kb-editor-modal').classList.remove('hidden');
+}
+
+async function saveKbArticle() {
+  const id = document.getElementById('kb-edit-id').value;
+  const title = document.getElementById('kb-edit-title').value.trim();
+  if (!title) { showToast('err', 'Başlık boş olamaz'); return; }
+  const body = {
+    title,
+    firm: document.getElementById('kb-edit-firm').value,
+    category: document.getElementById('kb-edit-cat').value,
+    keywords: document.getElementById('kb-edit-keywords').value.trim(),
+    body: document.getElementById('kb-edit-body').value,
+    published: document.getElementById('kb-edit-published').checked,
+  };
+  try {
+    const url = id ? `/api/kb/${id}` : '/api/kb';
+    const method = id ? 'PATCH' : 'POST';
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Kaydedilemedi');
+    showToast('ok', id ? 'Makale güncellendi' : 'Makale eklendi');
+    document.getElementById('kb-editor-modal').classList.add('hidden');
+    loadKb();
+  } catch (e) { showToast('err', e.message); }
+}
+
+async function deleteKbArticle() {
+  const id = document.getElementById('kb-edit-id').value;
+  if (!id || !confirm('Bu makaleyi silmek istediğinize emin misiniz?')) return;
+  try {
+    const res = await fetch(`/api/kb/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    showToast('ok', 'Makale silindi');
+    document.getElementById('kb-editor-modal').classList.add('hidden');
+    loadKb();
+  } catch (e) { showToast('err', 'Silinemedi'); }
 }
 
 // ══════════════════════════════════════════════════════════

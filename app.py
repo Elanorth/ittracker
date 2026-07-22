@@ -28,6 +28,7 @@ from models.database import (
     ConfigBackup,
     Firm,
     Invitation,
+    KbArticle,
     Task,
     TaskOccurrence,
     Team,
@@ -392,14 +393,33 @@ def _register_login_fail(ip, username):
     _LOGIN_FAILS.setdefault((ip, username), []).append(_time.time())
 
 
+# v5.23 — CSP: arayüz hâlâ inline onclick/style kullandığı için script/style'da
+# 'unsafe-inline' ZORUNLU (tam kaldırma app.js event-listener refactor'ına bağlı,
+# Faz 2). Ama diğer direktifler ANLAMLI koruma verir: object-src/base-uri kilidi,
+# frame-ancestors (clickjacking), form-action, dış kaynak whitelist (yalnız Google
+# Fonts + Assos landing videosu). eval/blob YOK → 'unsafe-eval' gerekmez.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "media-src 'self' https://assospharma.com; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'none'; "
+    "form-action 'self'"
+)
+
+
 @app.after_request
 def _security_headers(resp):
-    """Temel güvenlik başlıkları. CSP bilinçli olarak YOK — arayüz inline
-    onclick/style kullanıyor; CSP ancak app.js event-listener refactor'ından
-    sonra eklenebilir."""
+    """Temel güvenlik başlıkları + CSP (inline-uyumlu; bkz. _CSP notu)."""
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("X-Frame-Options", "DENY")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
+    resp.headers.setdefault("Content-Security-Policy", _CSP)
     return resp
 
 
@@ -1101,6 +1121,7 @@ def update_task(task_id):
         if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi düzenleme yetkiniz yok"}), 403
     data = request.get_json()
+    _prev_done = bool(task.is_done)  # v5.23 — portal case kapanış maili için önceki durum
     if "is_done" in data:
         if task.category == "routine" and task.period != "Tek Seferlik":
             # v5.0 — Rutin görevler: TaskOccurrence (period_key) kaydı oluştur/sil
@@ -1194,7 +1215,18 @@ def update_task(task_id):
             firm=task.firm,
             summary=f"'{task.title}' görevi güncellendi",
         )
+    # v5.23 — Portal case YENİ kapandıysa: talep sahibine kapanış maili + it_unread temizle
+    newly_closed = bool(data.get("is_done")) and not _prev_done and task.source == "portal"
+    if newly_closed and task.it_unread:
+        task.it_unread = False
     db.session.commit()
+    if newly_closed and task.reporter_email:
+        try:
+            from services.mailer import send_case_closed
+
+            send_case_closed(task.reporter_email, task.case_code, task.title)
+        except Exception as e:
+            print(f"[case] kapanış maili hatası: {e}")
     month_val = data.get("month", date.today().month)
     year_val = data.get("year", date.today().year)
     return jsonify(task.to_dict(month=month_val, year=year_val))
@@ -2768,6 +2800,172 @@ def modify_assign_rule(rule_id):
     )
     db.session.commit()
     return jsonify(rule.to_dict())
+
+
+# ══════════════════════════════════════════════════════════
+#  v5.24 — BİLGİ BANKASI (portal self-service FAQ + IT yönetimi)
+# ══════════════════════════════════════════════════════════
+_KB_CATEGORIES = {"genel", "ağ", "donanım", "yazılım", "hesap", "diğer"}
+
+
+@app.route("/portal/api/kb")
+def portal_kb_list():
+    """Portal (login yok): yayınlanmış makaleler (firma + global), arama/kategori."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    firm = (request.args.get("firm") or "").strip().lower()
+    q = (request.args.get("q") or "").strip()
+    category = (request.args.get("category") or "").strip()
+    query = KbArticle.query.filter(KbArticle.published == True)  # noqa: E712
+    if firm:
+        query = query.filter(KbArticle.firm.in_([firm, ""]))
+    if category and category in _KB_CATEGORIES:
+        query = query.filter(KbArticle.category == category)
+    arts = query.order_by(KbArticle.view_count.desc(), KbArticle.updated_at.desc()).all()
+    if q:
+        ql = _tr_lower(q)
+        arts = [a for a in arts if ql in _tr_lower(f"{a.title} {a.body} {a.keywords}")]
+    return jsonify([a.to_public_dict() for a in arts[:50]])
+
+
+@app.route("/portal/api/kb/<int:art_id>")
+def portal_kb_detail(art_id):
+    """Portal: tam makale + görüntülenme sayacı (yalnız yayınlanmış)."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    art = KbArticle.query.filter_by(id=art_id, published=True).first()
+    if not art:
+        return jsonify({"error": "Makale bulunamadı"}), 404
+    art.view_count = (art.view_count or 0) + 1
+    db.session.commit()
+    return jsonify(art.to_public_dict(full=True))
+
+
+@app.route("/portal/api/kb/<int:art_id>/feedback", methods=["POST"])
+def portal_kb_feedback(art_id):
+    """Portal: 'faydalı oldu mu?' oyu (deflection ölçümü)."""
+    ip = request.remote_addr or "?"
+    if _portal_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _portal_register_hit(ip)
+    art = KbArticle.query.filter_by(id=art_id, published=True).first()
+    if not art:
+        return jsonify({"error": "Makale bulunamadı"}), 404
+    helpful = bool((request.get_json(silent=True) or {}).get("helpful"))
+    if helpful:
+        art.helpful_yes = (art.helpful_yes or 0) + 1
+    else:
+        art.helpful_no = (art.helpful_no or 0) + 1
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+def _kb_scope_ok(me, firm):
+    """me bu firma için makale yönetebilir mi? Global (firm='') yalnız super_admin."""
+    if me.is_super_admin:
+        return True
+    if not firm:
+        return False
+    return me.has_firm_scope(firm)
+
+
+@app.route("/api/kb", methods=["GET"])
+@director_required
+def kb_list():
+    """IT: kapsamdaki tüm makaleler (taslak dahil). Director yönettiği firma + global."""
+    me = _current_user()
+    arts = KbArticle.query.order_by(KbArticle.updated_at.desc()).all()
+    scope = _user_firm_scope(me)
+    if scope is not None:
+        arts = [a for a in arts if (not a.firm) or a.firm in scope]
+    return jsonify([a.to_dict() for a in arts])
+
+
+@app.route("/api/kb", methods=["POST"])
+@director_required
+def kb_create():
+    me = _current_user()
+    data = request.get_json() or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "Başlık zorunludur"}), 400
+    firm = (data.get("firm") or "").strip().lower()
+    if not _kb_scope_ok(me, firm):
+        return jsonify({"error": "Bu firma için makale ekleme yetkiniz yok"}), 403
+    category = (data.get("category") or "genel").strip()
+    if category not in _KB_CATEGORIES:
+        category = "genel"
+    art = KbArticle(
+        title=title[:200],
+        body=(data.get("body") or "").strip(),
+        category=category,
+        firm=firm,
+        keywords=(data.get("keywords") or "").strip()[:300],
+        published=bool(data.get("published", False)),
+        author_id=me.id,
+    )
+    db.session.add(art)
+    db.session.flush()
+    log_audit(
+        me,
+        "kb.create",
+        entity_type="kb",
+        entity_id=art.id,
+        firm=firm,
+        summary=f"Bilgi bankası makalesi eklendi: {title[:80]}",
+    )
+    db.session.commit()
+    return jsonify(art.to_dict()), 201
+
+
+@app.route("/api/kb/<int:art_id>", methods=["PATCH", "DELETE"])
+@director_required
+def kb_modify(art_id):
+    me = _current_user()
+    art = KbArticle.query.get_or_404(art_id)
+    if not _kb_scope_ok(me, art.firm):
+        return jsonify({"error": "Bu makaleyi düzenleme yetkiniz yok"}), 403
+    if request.method == "DELETE":
+        log_audit(
+            me,
+            "kb.delete",
+            entity_type="kb",
+            entity_id=art.id,
+            firm=art.firm,
+            summary=f"Bilgi bankası makalesi silindi: {art.title[:80]}",
+        )
+        db.session.delete(art)
+        db.session.commit()
+        return jsonify({"ok": True})
+    data = request.get_json() or {}
+    if "title" in data and (data["title"] or "").strip():
+        art.title = data["title"].strip()[:200]
+    if "body" in data:
+        art.body = (data["body"] or "").strip()
+    if "category" in data and data["category"] in _KB_CATEGORIES:
+        art.category = data["category"]
+    if "keywords" in data:
+        art.keywords = (data["keywords"] or "").strip()[:300]
+    if "published" in data:
+        art.published = bool(data["published"])
+    if "firm" in data:
+        new_firm = (data["firm"] or "").strip().lower()
+        if _kb_scope_ok(me, new_firm):
+            art.firm = new_firm
+    log_audit(
+        me,
+        "kb.update",
+        entity_type="kb",
+        entity_id=art.id,
+        firm=art.firm,
+        summary=f"Bilgi bankası makalesi güncellendi: {art.title[:80]}",
+    )
+    db.session.commit()
+    return jsonify(art.to_dict())
 
 
 @app.route("/api/board/cards", methods=["GET"])
