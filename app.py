@@ -2873,23 +2873,97 @@ def case_archive():
 
 # ══════════════════════════════════════════════════════════
 #  v5.24 — BİLGİ BANKASI (portal self-service FAQ + IT yönetimi)
+#  v5.28 — E-POSTA KAPISI + ayrı KB rate-limit kovası (içerik koruması)
 # ══════════════════════════════════════════════════════════
 _KB_CATEGORIES = {"genel", "ağ", "donanım", "yazılım", "hesap", "diğer"}
 
+# v5.28 — KB gezinmesi için AYRI limit kovası. Önceden KB istekleri _PORTAL_HITS'i
+# (case açma bütçesi, 10/10dk) tüketiyordu → 10 makale gezen kullanıcı case
+# açamıyordu. KB kovası gezinme dostu (60/10dk) ama toplu scraping'i frenler.
+_KB_HITS: dict = {}
+_KB_MAX = 60
 
-@app.route("/portal/api/kb")
-def portal_kb_list():
-    """Portal (login yok): yayınlanmış makaleler (firma + global), arama/kategori."""
+
+def _kb_rate_limited(ip):
+    import time as _t
+
+    stamps = _KB_HITS.get(ip)
+    if not stamps:
+        return False
+    now = _t.time()
+    stamps[:] = [t for t in stamps if now - t < _PORTAL_WINDOW]
+    if not stamps:
+        _KB_HITS.pop(ip, None)
+        return False
+    return len(stamps) >= _KB_MAX
+
+
+def _kb_register_hit(ip):
+    import time as _t
+
+    if len(_KB_HITS) > 2000:
+        _KB_HITS.clear()
+    _KB_HITS.setdefault(ip, []).append(_t.time())
+
+
+def _kb_domain_map():
+    """v5.28 — Şirket e-posta alan adı → firma eşlemesi (KB erişim kapısı).
+
+    PORTAL_KB_DOMAINS env ile özelleştirilebilir: 'domain:firma,domain:firma'."""
+    raw = os.environ.get("PORTAL_KB_DOMAINS", "inventist.com.tr:inventist,assospharma.com:assos")
+    out = {}
+    for pair in raw.split(","):
+        if ":" in pair:
+            d, f = pair.split(":", 1)
+            out[d.strip().lower()] = f.strip().lower()
+    return out
+
+
+@app.route("/portal/api/kb/verify", methods=["POST"])
+def portal_kb_verify():
+    """v5.28 — KB e-posta kapısı: şirket e-postası doğrulanır, domain firması
+    oturuma KİLİTLENİR (imzalı cookie). İçerik yalnız çalışanlara açılır; erişim
+    audit'e yazılır. Sıkı portal limiter'ı (brute-force koruması)."""
     ip = request.remote_addr or "?"
     if _portal_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
     _portal_register_hit(ip)
-    firm = (request.args.get("firm") or "").strip().lower()
+    email = ((request.get_json(silent=True) or {}).get("email") or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
+    domain = email.rsplit("@", 1)[-1]
+    firm = _kb_domain_map().get(domain)
+    if not firm:
+        return jsonify({"error": "Bilgi Bankası yalnızca şirket e-posta adresiyle kullanılabilir"}), 403
+    session["kb_email"] = email
+    session["kb_firm"] = firm
+    log_audit(None, "kb.access", entity_type="kb", firm=firm, summary=f"KB erişimi doğrulandı: {email}")
+    db.session.commit()
+    return jsonify({"ok": True, "firm": firm})
+
+
+def _kb_gate():
+    """KB içerik endpoint'leri için oturum kapısı → (firma, hata_yaniti)."""
+    if not session.get("kb_email") or not session.get("kb_firm"):
+        return None, (jsonify({"error": "E-posta doğrulaması gerekli", "verify_required": True}), 401)
+    return session["kb_firm"], None
+
+
+@app.route("/portal/api/kb")
+def portal_kb_list():
+    """Portal KB listesi — v5.28: e-posta kapısı + firma OTURUMDAN kilitli
+    (istekteki firm parametresi yok sayılır; Assos çalışanı İnventist KB'sini göremez)."""
+    ip = request.remote_addr or "?"
+    if _kb_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
     q = (request.args.get("q") or "").strip()
     category = (request.args.get("category") or "").strip()
     query = KbArticle.query.filter(KbArticle.published == True)  # noqa: E712
-    if firm:
-        query = query.filter(KbArticle.firm.in_([firm, ""]))
+    query = query.filter(KbArticle.firm.in_([firm, ""]))
     if category and category in _KB_CATEGORIES:
         query = query.filter(KbArticle.category == category)
     arts = query.order_by(KbArticle.view_count.desc(), KbArticle.updated_at.desc()).all()
@@ -2901,12 +2975,19 @@ def portal_kb_list():
 
 @app.route("/portal/api/kb/<int:art_id>")
 def portal_kb_detail(art_id):
-    """Portal: tam makale + görüntülenme sayacı (yalnız yayınlanmış)."""
+    """Portal: tam makale + görüntülenme sayacı (yalnız yayınlanmış + firma kapsamı)."""
     ip = request.remote_addr or "?"
-    if _portal_rate_limited(ip):
+    if _kb_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
-    _portal_register_hit(ip)
-    art = KbArticle.query.filter_by(id=art_id, published=True).first()
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
+    art = KbArticle.query.filter(
+        KbArticle.id == art_id,
+        KbArticle.published == True,  # noqa: E712
+        KbArticle.firm.in_([firm, ""]),
+    ).first()
     if not art:
         return jsonify({"error": "Makale bulunamadı"}), 404
     art.view_count = (art.view_count or 0) + 1
@@ -2918,10 +2999,17 @@ def portal_kb_detail(art_id):
 def portal_kb_feedback(art_id):
     """Portal: 'faydalı oldu mu?' oyu (deflection ölçümü)."""
     ip = request.remote_addr or "?"
-    if _portal_rate_limited(ip):
+    if _kb_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
-    _portal_register_hit(ip)
-    art = KbArticle.query.filter_by(id=art_id, published=True).first()
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
+    art = KbArticle.query.filter(
+        KbArticle.id == art_id,
+        KbArticle.published == True,  # noqa: E712
+        KbArticle.firm.in_([firm, ""]),
+    ).first()
     if not art:
         return jsonify({"error": "Makale bulunamadı"}), 404
     helpful = bool((request.get_json(silent=True) or {}).get("helpful"))
