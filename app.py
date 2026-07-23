@@ -2803,6 +2803,75 @@ def modify_assign_rule(rule_id):
 
 
 # ══════════════════════════════════════════════════════════
+#  v5.27 — CASE ARŞİVİ (ay-bağımsız destek talebi arama)
+# ══════════════════════════════════════════════════════════
+@app.route("/api/archive")
+@login_required
+def case_archive():
+    """Ay-bağımsız destek talebi arşivi (açık + kapalı).
+
+    Görev listesi (get_tasks) AY bazlı filtreler → geçmiş/kapalı case'ler yalnız
+    ait oldukları ay görünümünde bulunuyordu. Arşiv TÜM zamanlardaki destek
+    taleplerini Case No / başlık / bildiren adı-epostası ile arar. Firma kapsamı
+    havuzla aynı (_user_firm_scope): super_admin tümü, diğerleri kendi kapsamı.
+    """
+    me = _current_user()
+    q = (request.args.get("q") or "").strip()
+    firm = (request.args.get("firm") or "").strip().lower()
+    status = (request.args.get("status") or "all").strip()  # all | open | resolved
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = 25
+    query = Task.query.filter(Task.category == "support")
+    scope = _user_firm_scope(me)
+    if scope is not None:
+        if not scope:
+            return jsonify({"items": [], "total": 0, "page": 1, "pages": 0})
+        query = query.filter(Task.firm.in_(list(scope)))
+    if firm:
+        query = query.filter(Task.firm == firm)
+    if status == "open":
+        query = query.filter(Task.is_done == False)  # noqa: E712
+    elif status == "resolved":
+        query = query.filter(Task.is_done == True)  # noqa: E712
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            db.or_(
+                Task.case_code.ilike(like),
+                Task.title.ilike(like),
+                Task.reporter_email.ilike(like),
+                Task.reporter_name.ilike(like),
+            )
+        )
+    total = query.count()
+    rows = query.order_by(Task.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    owner_ids = {t.user_id for t in rows if t.user_id}
+    owners = (
+        {u.id: (u.full_name or u.username) for u in User.query.filter(User.id.in_(list(owner_ids))).all()}
+        if owner_ids
+        else {}
+    )
+    items = [
+        {
+            "id": t.id,
+            "case_code": t.case_code,
+            "title": t.title,
+            "firm": t.firm or "",
+            "status": "resolved" if t.is_done else "open",
+            "source": t.source or "manual",
+            "reporter_name": t.reporter_name,
+            "reporter_email": t.reporter_email,
+            "owner": owners.get(t.user_id),  # None = havuz/atanmamış
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+        }
+        for t in rows
+    ]
+    pages = (total + per_page - 1) // per_page
+    return jsonify({"items": items, "total": total, "page": page, "pages": pages})
+
+
+# ══════════════════════════════════════════════════════════
 #  v5.24 — BİLGİ BANKASI (portal self-service FAQ + IT yönetimi)
 # ══════════════════════════════════════════════════════════
 _KB_CATEGORIES = {"genel", "ağ", "donanım", "yazılım", "hesap", "diğer"}

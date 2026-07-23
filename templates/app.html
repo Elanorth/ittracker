@@ -846,6 +846,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <a class="nav-item" data-nav="tasks" data-perm="all" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
     <a class="nav-item" data-nav="support" data-perm="all" onclick="showTasksWithCat('support')"><span class="nav-icon">🆘</span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
     <a class="nav-item" data-perm="all" onclick="showPage('pool')"><span class="nav-icon">🫧</span>Havuz<span class="nav-badge" id="pool-nav-badge" style="display:none;background:var(--accent);color:#06231d">0</span></a>
+    <a class="nav-item" data-perm="all" onclick="showPage('archive')"><span class="nav-icon">🗄️</span>Arşiv</a>
     <a class="nav-item" data-perm="manager" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
     <a class="nav-item" data-perm="manager" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Raporlama</div>
@@ -1866,6 +1867,29 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
 
   </div>
+</div>
+
+<!-- v5.27 — CASE ARŞİVİ (ay-bağımsız arama) -->
+<div id="page-archive" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Case <span>Arşivi</span></div>
+      <div class="page-sub">Tüm zamanlardaki destek talepleri — Case No, başlık veya bildiren ile arayın (ay filtresinden bağımsız)</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:0 2px">
+    <input class="form-control" id="arch-q" placeholder="🔍 INV-XXXXXX, başlık, e-posta…" style="flex:1;min-width:220px" oninput="archSearchDebounced()">
+    <select class="form-control" id="arch-firm" style="width:150px" onchange="archSearch()">
+      <option value="">Tüm firmalar</option>
+    </select>
+    <select class="form-control" id="arch-status" style="width:130px" onchange="archSearch()">
+      <option value="all">Tümü</option>
+      <option value="open">Açık</option>
+      <option value="resolved">Çözülen</option>
+    </select>
+  </div>
+  <div id="arch-list" style="display:flex;flex-direction:column;gap:8px;padding:0 2px"></div>
+  <div id="arch-pager" style="display:flex;gap:10px;align-items:center;justify-content:center;margin-top:14px;font-size:12px;color:var(--text-muted)"></div>
 </div>
 
 <!-- v5.24 — BİLGİ BANKASI (director+) -->
