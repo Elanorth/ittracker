@@ -15,8 +15,17 @@ from models.database import KbArticle, db
 @pytest.fixture(autouse=True)
 def _reset_portal_limiter():
     app_module._PORTAL_HITS.clear()
+    app_module._KB_HITS.clear()
     yield
     app_module._PORTAL_HITS.clear()
+    app_module._KB_HITS.clear()
+
+
+def _verify(client, email="calisan@inventist.com.tr"):
+    """v5.28 — KB e-posta kapısı: portal KB testleri önce doğrulama yapar."""
+    r = client.post("/portal/api/kb/verify", json={"email": email})
+    assert r.status_code == 200
+    return r.get_json()["firm"]
 
 
 def _art(title="Yazıcı sıfırlama", firm="inventist", category="donanım", published=True, body="", keywords=""):
@@ -27,6 +36,10 @@ def _art(title="Yazıcı sıfırlama", firm="inventist", category="donanım", pu
 
 
 class TestPortalKb:
+    @pytest.fixture(autouse=True)
+    def _gate(self, client):
+        _verify(client)  # inventist domain → firma kilidi inventist
+
     def test_yayin_firma_global_gorunur(self, db, client):
         _art("İnv makale", firm="inventist")
         _art("Global makale", firm="")
@@ -102,7 +115,8 @@ class TestKbCrud:
         aid = client.post("/api/kb", json={"title": "M", "firm": "inventist"}).get_json()["id"]
         r = client.patch(f"/api/kb/{aid}", json={"published": True})
         assert r.status_code == 200 and r.get_json()["published"] is True
-        # portalda görünür oldu
+        # portalda görünür oldu (KB kapısı: önce doğrula)
+        _verify(client)
         assert any(x["id"] == aid for x in client.get("/portal/api/kb?firm=inventist").get_json())
         assert client.delete(f"/api/kb/{aid}").status_code == 200
 
