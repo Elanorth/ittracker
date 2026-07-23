@@ -166,10 +166,17 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
     <div class="wrap">
       <span class="back" onclick="show('s-landing')">← Portal ana sayfa</span>
       <div class="bhead"><div class="dot">📚</div><div><div class="nm">Bilgi Bankası</div><div class="sb">SIK SORULAN SORULAR · ÇÖZÜM ADIMLARI</div></div></div>
-      <div class="kb-firmtabs" id="kb-firmtabs">
-        <button class="kb-firmtab active" data-firm="inventist" onclick="kbSetFirm('inventist')">İnventist</button>
-        <button class="kb-firmtab" data-firm="assos" onclick="kbSetFirm('assos')">Assos</button>
+      <!-- v5.28 — E-posta kapısı: içerik yalnız şirket çalışanlarına açılır -->
+      <div class="card" id="kb-gate">
+        <h2>Şirket e-postanızla devam edin</h2>
+        <div class="sub">Bilgi Bankası yalnızca İnventist &amp; Assos çalışanlarına açıktır. Şirket e-posta adresinizi girin — alan adınıza göre firmanızın makaleleri açılır.</div>
+        <div class="fg"><label>Şirket E-postası <span class="req">*</span></label><input id="kb-gate-email" type="email" placeholder="ad.soyad@inventist.com.tr" onkeydown="if(event.key==='Enter')kbVerify()"></div>
+        <button class="btn-b" onclick="kbVerify()">Doğrula ve Aç →</button>
+        <div class="formerr" id="kb-gate-err"></div>
+        <div class="kvkk">🔒 E-posta adresiniz yalnızca erişim doğrulaması için kullanılır ve erişim kaydı tutulur.</div>
       </div>
+      <div id="kb-main" class="hidden">
+      <div class="kb-firmtabs" id="kb-firmtabs"></div>
       <div class="card">
         <div id="kb-list-view">
           <input class="kb-search" id="kb-q" placeholder="🔍 Sorununuzu yazın (ör. yazıcı, vpn, şifre)…" oninput="kbSearchDebounced()">
@@ -191,6 +198,7 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
           </div>
         </div>
       </div>
+      </div><!-- /#kb-main -->
     </div>
   </div>
 </div>
@@ -395,15 +403,31 @@ async function sendReply(){
 /* ── v5.24 Bilgi Bankası ── */
 const KB_CATS=[['','Tümü'],['genel','Genel'],['ağ','Ağ/İnternet'],['donanım','Donanım'],['yazılım','Yazılım'],['hesap','Hesap/Erişim'],['diğer','Diğer']];
 let _kbFirm='inventist', _kbCat='', _kbArtId=null, _kbT=null;
+/* v5.28 — E-posta kapısı: oturum doğrulanana dek içerik kapalı (sunucu 401 döner). */
+function kbShowGate(show){
+  document.getElementById('kb-gate').classList.toggle('hidden',!show);
+  document.getElementById('kb-main').classList.toggle('hidden',show);
+}
 function openKb(){
   document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
-  renderKbChips(); kbBackToList(); kbSearch(); show('s-kb');
+  renderKbChips(); kbBackToList(); show('s-kb');
+  kbSearch();  // oturum varsa listeyi açar; yoksa 401 → kapı görünür
 }
-function kbSetFirm(f){
-  _kbFirm=f;
-  document.querySelectorAll('.kb-firmtab').forEach(b=>b.classList.toggle('active',b.dataset.firm===f));
-  document.getElementById('kb-branded').setAttribute('data-brand',f);
-  kbSearch();
+async function kbVerify(){
+  const err=document.getElementById('kb-gate-err'); err.textContent='';
+  const email=document.getElementById('kb-gate-email').value.trim();
+  if(!email){err.textContent='E-posta adresinizi girin.';return;}
+  try{
+    const r=await fetch('/portal/api/kb/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Doğrulanamadı');
+    _kbFirm=d.firm;
+    document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
+    // Firma OTURUMA kilitli → sekme yerine etiket
+    document.getElementById('kb-firmtabs').innerHTML=
+      '<span class="kb-firmtab active" style="cursor:default">'+(d.firm==='assos'?'Assos Pharma':'İnventist')+' Bilgi Bankası</span>';
+    kbShowGate(false); kbSearch();
+  }catch(e){ err.textContent=e.message; }
 }
 function renderKbChips(){
   document.getElementById('kb-chips').innerHTML=KB_CATS.map(c=>
@@ -414,9 +438,11 @@ function kbSearchDebounced(){ clearTimeout(_kbT); _kbT=setTimeout(kbSearch,250);
 async function kbSearch(){
   const q=document.getElementById('kb-q').value.trim();
   const box=document.getElementById('kb-results');
-  const params=new URLSearchParams({firm:_kbFirm}); if(q)params.set('q',q); if(_kbCat)params.set('category',_kbCat);
+  const params=new URLSearchParams(); if(q)params.set('q',q); if(_kbCat)params.set('category',_kbCat);
   try{
     const r=await fetch('/portal/api/kb?'+params.toString());
+    if(r.status===401){ kbShowGate(true); return; }  // v5.28 — doğrulama gerekli
+    kbShowGate(false);
     const arts=await r.json();
     if(!arts.length){ box.innerHTML='<div class="kb-empty">Eşleşen makale bulunamadı.<br>Farklı bir kelime deneyin ya da destek talebi oluşturun.</div>'; return; }
     box.innerHTML=arts.map(a=>{

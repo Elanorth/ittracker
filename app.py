@@ -2803,24 +2803,167 @@ def modify_assign_rule(rule_id):
 
 
 # ══════════════════════════════════════════════════════════
+#  v5.27 — CASE ARŞİVİ (ay-bağımsız destek talebi arama)
+# ══════════════════════════════════════════════════════════
+@app.route("/api/archive")
+@login_required
+def case_archive():
+    """Ay-bağımsız destek talebi arşivi (açık + kapalı).
+
+    Görev listesi (get_tasks) AY bazlı filtreler → geçmiş/kapalı case'ler yalnız
+    ait oldukları ay görünümünde bulunuyordu. Arşiv TÜM zamanlardaki destek
+    taleplerini Case No / başlık / bildiren adı-epostası ile arar. Firma kapsamı
+    havuzla aynı (_user_firm_scope): super_admin tümü, diğerleri kendi kapsamı.
+    """
+    me = _current_user()
+    q = (request.args.get("q") or "").strip()
+    firm = (request.args.get("firm") or "").strip().lower()
+    status = (request.args.get("status") or "all").strip()  # all | open | resolved
+    page = max(request.args.get("page", 1, type=int), 1)
+    per_page = 25
+    query = Task.query.filter(Task.category == "support")
+    scope = _user_firm_scope(me)
+    if scope is not None:
+        if not scope:
+            return jsonify({"items": [], "total": 0, "page": 1, "pages": 0})
+        query = query.filter(Task.firm.in_(list(scope)))
+    if firm:
+        query = query.filter(Task.firm == firm)
+    if status == "open":
+        query = query.filter(Task.is_done == False)  # noqa: E712
+    elif status == "resolved":
+        query = query.filter(Task.is_done == True)  # noqa: E712
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            db.or_(
+                Task.case_code.ilike(like),
+                Task.title.ilike(like),
+                Task.reporter_email.ilike(like),
+                Task.reporter_name.ilike(like),
+            )
+        )
+    total = query.count()
+    rows = query.order_by(Task.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    owner_ids = {t.user_id for t in rows if t.user_id}
+    owners = (
+        {u.id: (u.full_name or u.username) for u in User.query.filter(User.id.in_(list(owner_ids))).all()}
+        if owner_ids
+        else {}
+    )
+    items = [
+        {
+            "id": t.id,
+            "case_code": t.case_code,
+            "title": t.title,
+            "firm": t.firm or "",
+            "status": "resolved" if t.is_done else "open",
+            "source": t.source or "manual",
+            "reporter_name": t.reporter_name,
+            "reporter_email": t.reporter_email,
+            "owner": owners.get(t.user_id),  # None = havuz/atanmamış
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+        }
+        for t in rows
+    ]
+    pages = (total + per_page - 1) // per_page
+    return jsonify({"items": items, "total": total, "page": page, "pages": pages})
+
+
+# ══════════════════════════════════════════════════════════
 #  v5.24 — BİLGİ BANKASI (portal self-service FAQ + IT yönetimi)
+#  v5.28 — E-POSTA KAPISI + ayrı KB rate-limit kovası (içerik koruması)
 # ══════════════════════════════════════════════════════════
 _KB_CATEGORIES = {"genel", "ağ", "donanım", "yazılım", "hesap", "diğer"}
 
+# v5.28 — KB gezinmesi için AYRI limit kovası. Önceden KB istekleri _PORTAL_HITS'i
+# (case açma bütçesi, 10/10dk) tüketiyordu → 10 makale gezen kullanıcı case
+# açamıyordu. KB kovası gezinme dostu (60/10dk) ama toplu scraping'i frenler.
+_KB_HITS: dict = {}
+_KB_MAX = 60
 
-@app.route("/portal/api/kb")
-def portal_kb_list():
-    """Portal (login yok): yayınlanmış makaleler (firma + global), arama/kategori."""
+
+def _kb_rate_limited(ip):
+    import time as _t
+
+    stamps = _KB_HITS.get(ip)
+    if not stamps:
+        return False
+    now = _t.time()
+    stamps[:] = [t for t in stamps if now - t < _PORTAL_WINDOW]
+    if not stamps:
+        _KB_HITS.pop(ip, None)
+        return False
+    return len(stamps) >= _KB_MAX
+
+
+def _kb_register_hit(ip):
+    import time as _t
+
+    if len(_KB_HITS) > 2000:
+        _KB_HITS.clear()
+    _KB_HITS.setdefault(ip, []).append(_t.time())
+
+
+def _kb_domain_map():
+    """v5.28 — Şirket e-posta alan adı → firma eşlemesi (KB erişim kapısı).
+
+    PORTAL_KB_DOMAINS env ile özelleştirilebilir: 'domain:firma,domain:firma'."""
+    raw = os.environ.get("PORTAL_KB_DOMAINS", "inventist.com.tr:inventist,assospharma.com:assos")
+    out = {}
+    for pair in raw.split(","):
+        if ":" in pair:
+            d, f = pair.split(":", 1)
+            out[d.strip().lower()] = f.strip().lower()
+    return out
+
+
+@app.route("/portal/api/kb/verify", methods=["POST"])
+def portal_kb_verify():
+    """v5.28 — KB e-posta kapısı: şirket e-postası doğrulanır, domain firması
+    oturuma KİLİTLENİR (imzalı cookie). İçerik yalnız çalışanlara açılır; erişim
+    audit'e yazılır. Sıkı portal limiter'ı (brute-force koruması)."""
     ip = request.remote_addr or "?"
     if _portal_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
     _portal_register_hit(ip)
-    firm = (request.args.get("firm") or "").strip().lower()
+    email = ((request.get_json(silent=True) or {}).get("email") or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
+    domain = email.rsplit("@", 1)[-1]
+    firm = _kb_domain_map().get(domain)
+    if not firm:
+        return jsonify({"error": "Bilgi Bankası yalnızca şirket e-posta adresiyle kullanılabilir"}), 403
+    session["kb_email"] = email
+    session["kb_firm"] = firm
+    log_audit(None, "kb.access", entity_type="kb", firm=firm, summary=f"KB erişimi doğrulandı: {email}")
+    db.session.commit()
+    return jsonify({"ok": True, "firm": firm})
+
+
+def _kb_gate():
+    """KB içerik endpoint'leri için oturum kapısı → (firma, hata_yaniti)."""
+    if not session.get("kb_email") or not session.get("kb_firm"):
+        return None, (jsonify({"error": "E-posta doğrulaması gerekli", "verify_required": True}), 401)
+    return session["kb_firm"], None
+
+
+@app.route("/portal/api/kb")
+def portal_kb_list():
+    """Portal KB listesi — v5.28: e-posta kapısı + firma OTURUMDAN kilitli
+    (istekteki firm parametresi yok sayılır; Assos çalışanı İnventist KB'sini göremez)."""
+    ip = request.remote_addr or "?"
+    if _kb_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
     q = (request.args.get("q") or "").strip()
     category = (request.args.get("category") or "").strip()
     query = KbArticle.query.filter(KbArticle.published == True)  # noqa: E712
-    if firm:
-        query = query.filter(KbArticle.firm.in_([firm, ""]))
+    query = query.filter(KbArticle.firm.in_([firm, ""]))
     if category and category in _KB_CATEGORIES:
         query = query.filter(KbArticle.category == category)
     arts = query.order_by(KbArticle.view_count.desc(), KbArticle.updated_at.desc()).all()
@@ -2832,12 +2975,19 @@ def portal_kb_list():
 
 @app.route("/portal/api/kb/<int:art_id>")
 def portal_kb_detail(art_id):
-    """Portal: tam makale + görüntülenme sayacı (yalnız yayınlanmış)."""
+    """Portal: tam makale + görüntülenme sayacı (yalnız yayınlanmış + firma kapsamı)."""
     ip = request.remote_addr or "?"
-    if _portal_rate_limited(ip):
+    if _kb_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
-    _portal_register_hit(ip)
-    art = KbArticle.query.filter_by(id=art_id, published=True).first()
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
+    art = KbArticle.query.filter(
+        KbArticle.id == art_id,
+        KbArticle.published == True,  # noqa: E712
+        KbArticle.firm.in_([firm, ""]),
+    ).first()
     if not art:
         return jsonify({"error": "Makale bulunamadı"}), 404
     art.view_count = (art.view_count or 0) + 1
@@ -2849,10 +2999,17 @@ def portal_kb_detail(art_id):
 def portal_kb_feedback(art_id):
     """Portal: 'faydalı oldu mu?' oyu (deflection ölçümü)."""
     ip = request.remote_addr or "?"
-    if _portal_rate_limited(ip):
+    if _kb_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
-    _portal_register_hit(ip)
-    art = KbArticle.query.filter_by(id=art_id, published=True).first()
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
+    art = KbArticle.query.filter(
+        KbArticle.id == art_id,
+        KbArticle.published == True,  # noqa: E712
+        KbArticle.firm.in_([firm, ""]),
+    ).first()
     if not art:
         return jsonify({"error": "Makale bulunamadı"}), 404
     helpful = bool((request.get_json(silent=True) or {}).get("helpful"))
@@ -3137,6 +3294,19 @@ def start_scheduler():
     )
 
 
+def _log_startup_mail_config():
+    """v5.26 — Başlangıçta AKTİF mail gönderenini logla (docker logs'ta görünür).
+
+    Şifre ASLA loglanmaz. Amaç: 'mail hangi adresten gidiyor?' belirsizliğini
+    anında görünür kılmak — SMTP_USER env'i (dosyadan gelen gerçek değer) + host +
+    MAIL_SUPPRESS. Ayarlar UI'ı os.environ'ı canlı değiştirebildiği için asıl
+    kaynak env/.env dosyasıdır; bu log o değeri gösterir."""
+    sender = os.environ.get("SMTP_USER") or "(SMTP_USER YOK — mail gönderilmez)"
+    host = os.environ.get("SMTP_HOST", "smtp.office365.com")
+    suppress = os.environ.get("MAIL_SUPPRESS", "0")
+    print(f"[mail] Aktif gönderen (SMTP_USER)={sender} | host={host} | MAIL_SUPPRESS={suppress}")
+
+
 if __name__ == "__main__":
     # Debug modunda reloader iki process çalıştırır — sadece ikinci (main) process
     # init_db + scheduler çalıştırmalı. WERKZEUG_RUN_MAIN sadece reloader child'ında set olur.
@@ -3148,10 +3318,12 @@ if __name__ == "__main__":
     if not (debug_mode and is_reloader_parent):
         with app.app_context():
             init_db()
+        _log_startup_mail_config()
         start_scheduler()
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)
 else:
     # WSGI (gunicorn vb.) import yolu: init_db + scheduler tek seferlik
     with app.app_context():
         init_db()
+    _log_startup_mail_config()
     start_scheduler()
