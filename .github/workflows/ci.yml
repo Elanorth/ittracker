@@ -1,9 +1,12 @@
 name: CI — test
 
+# NOT: `push` tetikleyicisi BİLİNÇLİ olarak YOK. develop/main push'larında testler
+# zaten Deploy workflow'ları içinde koşar (jobs.test: uses ci.yml, workflow_call).
+# Eskiden push tetikleyicisi de vardı → aynı push'ta İKİ CI run'ı aynı concurrency
+# grubuna (ci-<ref>) düşüyor, cancel-in-progress biri diğerini İPTAL ediyordu →
+# "test (push)" her seferinde cancelled (❌) görünüyor, elle re-run geçiyordu.
 on:
   pull_request:
-    branches: [main, develop]
-  push:
     branches: [main, develop]
   workflow_call:
 
