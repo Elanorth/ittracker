@@ -423,6 +423,77 @@ def _security_headers(resp):
     return resp
 
 
+# ══════════════════════════════════════════════════════════
+#  v5.29 — IP ALLOWLIST (iç uygulama yalnızca kurumsal IP'lerden)
+# ══════════════════════════════════════════════════════════
+# İç uygulama (login/dashboard/API/yönetim) yalnızca APP_IP_ALLOWLIST'teki
+# public IP'lerden (İnventist + Assos ofisleri) erişilir. PORTAL herkese açık
+# kalır (dış çalışanlar case açar). Trafik yalnız Cloudflare Tunnel'dan geldiği
+# için gerçek istemci IP'si CF-Connecting-IP header'ında güvenilir; nginx port'u
+# host'a publish edilmediğinden tünel dışı doğrudan erişim (header spoof) yok.
+#
+# GÜVENLİ VARSAYILAN: APP_IP_ALLOWLIST boş/tanımsız → kısıtlama KAPALI (kilitlenme
+# riski yok; prod'da bilinçli set edilir). Recovery: env'i boşalt + container recreate.
+import ipaddress as _ipaddr
+
+# Portal + statik + PWA yolları DAİMA açık (dış kullanıcı erişimi)
+_PUBLIC_PREFIXES = ("/portal", "/static/")
+_PUBLIC_EXACT = {"/sw.js", "/manifest.json", "/favicon.ico"}
+
+
+def _ip_allowlist():
+    """APP_IP_ALLOWLIST env'inden IP/CIDR ağ listesi (boşsa [] = kısıtlama kapalı)."""
+    raw = (os.environ.get("APP_IP_ALLOWLIST") or "").strip()
+    if not raw:
+        return []
+    nets = []
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            nets.append(_ipaddr.ip_network(item, strict=False))
+        except ValueError:
+            print(f"[ip-allowlist] geçersiz IP/CIDR atlandı: {item}")
+    return nets
+
+
+def _is_public_path(path):
+    return path in _PUBLIC_EXACT or path == "/portal" or any(path.startswith(p) for p in _PUBLIC_PREFIXES)
+
+
+@app.before_request
+def _enforce_ip_allowlist():
+    nets = _ip_allowlist()
+    if not nets:
+        return  # kısıtlama kapalı
+    if _is_public_path(request.path):
+        return  # portal + statik daima açık
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if not cf_ip:
+        return  # Cloudflare dışı (healthcheck/internal) — tek ingress tünel, güvenli
+    try:
+        ip = _ipaddr.ip_address(cf_ip.strip())
+    except ValueError:
+        return  # parse edilemeyen header → engelleme (fail-open, loglanmaz)
+    if any(ip in net for net in nets):
+        return  # izinli kurumsal IP
+    # Engellendi
+    if request.path.startswith("/api/") or request.headers.get("Accept", "").startswith("application/json"):
+        return jsonify({"error": "Bu uygulamaya yalnızca kurumsal ağdan erişilebilir."}), 403
+    from flask import Response
+
+    return Response(
+        "<!doctype html><meta charset='utf-8'><title>Erişim Kısıtlı</title>"
+        "<div style='font-family:sans-serif;max-width:460px;margin:12vh auto;text-align:center;color:#333'>"
+        "<h2>Erişim Kısıtlı</h2><p>IT Görev Takip Sistemi'ne yalnızca İnventist / Assos "
+        "kurumsal ağından erişilebilir.</p><p style='color:#888;font-size:13px'>Destek talebiniz "
+        "varsa <a href='/portal'>Destek Portalı</a>'nı kullanabilirsiniz.</p></div>",
+        status=403,
+        mimetype="text/html",
+    )
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
