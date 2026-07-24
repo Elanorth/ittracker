@@ -117,6 +117,17 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .kb-helpful{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--bd);font-size:12px;color:var(--mut)}
 .kb-still{margin-top:14px;font-size:12px;color:var(--mut)}
 .kb-still a{color:var(--ac);cursor:pointer;font-weight:600}
+/* v5.30 — form-içi KB deflection */
+#form-kb-suggest{margin:-4px 0 16px;border:1px solid var(--bd);border-radius:11px;padding:12px 14px;background:var(--soft)}
+.fkb-head{font-size:11.5px;font-weight:700;color:var(--ac);margin-bottom:9px}
+.fkb-item{border:1px solid var(--bd);border-radius:8px;padding:9px 11px;margin-bottom:7px;cursor:pointer;background:var(--pan);transition:border-color .15s}
+.fkb-item:last-child{margin-bottom:0}
+.fkb-item:hover{border-color:var(--ac)}
+.fkb-item .ft{font-size:12.5px;font-weight:600}
+.fkb-item .fs{font-size:11px;color:var(--mut);margin-top:3px;line-height:1.5}
+.fkb-body{margin-top:8px;padding:11px;background:var(--pan2);border:1px solid var(--bd);border-radius:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--tx)}
+.fkb-solved{margin-top:9px;display:flex;gap:8px;align-items:center;font-size:11px;color:var(--mut)}
+.fkb-solved a{color:var(--ac);cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
@@ -214,11 +225,16 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
         <div class="sub">Talebiniz kaydedildiğinde size özel bir <b>Case No</b> üretilir ve onay e-postası gönderilir. IT ekibi iş saatleri içinde en kısa sürede dönüş yapar.</div>
         <div class="grid2">
           <div class="fg"><label>Ad Soyad <span class="req">*</span></label><input id="f-name-in" placeholder="Ahmet Yılmaz"></div>
-          <div class="fg"><label>E-posta <span class="req">*</span></label><input id="f-email" type="email" placeholder="ahmet@firma.com"><div class="hint">Onay ve yanıt bildirimleri bu adrese gönderilir.</div></div>
+          <div class="fg"><label>E-posta <span class="req">*</span></label><input id="f-email" type="email" placeholder="ahmet@firma.com" oninput="formKbTryVerify()"><div class="hint">Onay ve yanıt bildirimleri bu adrese gönderilir.</div></div>
         </div>
         <div class="grid2">
           <div class="fg"><label>Kategori</label><select id="f-cat"><option value="support">Genel Destek</option><option value="infra">Ağ / İnternet</option><option value="other">Diğer</option></select></div>
-          <div class="fg"><label>Konu <span class="req">*</span></label><input id="f-subject" placeholder="Kısa başlık"></div>
+          <div class="fg"><label>Konu <span class="req">*</span></label><input id="f-subject" placeholder="Kısa başlık" oninput="formKbSuggestDebounced()"></div>
+        </div>
+        <!-- v5.30 — Deflection: konu yazarken eşleşen Bilgi Bankası makaleleri -->
+        <div id="form-kb-suggest" class="hidden">
+          <div class="fkb-head">💡 Bunlar sorununuzu çözebilir — talep açmadan önce göz atın:</div>
+          <div id="fkb-list"></div>
         </div>
         <div class="fg">
           <label>AnyDesk ID <span style="color:var(--mut);font-weight:400">(opsiyonel)</span></label>
@@ -300,8 +316,61 @@ function openForm(b){
   document.getElementById('f-dot').textContent  = BRANDS[b].dot;
   ['f-name-in','f-email','f-subject','f-desc','f-anydesk'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-err').textContent='';
+  // v5.30 — deflection durumunu sıfırla
+  _fkbVerified=false; _fkbFirm=null;
+  document.getElementById('form-kb-suggest').classList.add('hidden');
+  document.getElementById('fkb-list').innerHTML='';
   updateCnt();
   show('s-form');
+}
+
+/* v5.30 — Form-içi KB deflection: e-posta girilince sessiz verify (kapı), konu
+   yazılınca eşleşen makaleler; tam içerik yine kapılı (aynı oturum). */
+let _fkbVerified=false, _fkbFirm=null, _fkbET=null, _fkbST=null;
+function formKbTryVerify(){
+  clearTimeout(_fkbET);
+  _fkbET=setTimeout(async()=>{
+    const email=document.getElementById('f-email').value.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+    if(_fkbVerified) return;
+    try{
+      const r=await fetch('/portal/api/kb/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+      if(r.ok){ _fkbVerified=true; _fkbFirm=(await r.json()).firm; formKbSuggest(); }
+    }catch(e){}
+  },500);
+}
+function formKbSuggestDebounced(){ clearTimeout(_fkbST); _fkbST=setTimeout(formKbSuggest,350); }
+async function formKbSuggest(){
+  const box=document.getElementById('form-kb-suggest'), list=document.getElementById('fkb-list');
+  const q=document.getElementById('f-subject').value.trim();
+  if(!_fkbVerified || q.length<3){ box.classList.add('hidden'); return; }
+  try{
+    const r=await fetch('/portal/api/kb?q='+encodeURIComponent(q));
+    if(!r.ok){ box.classList.add('hidden'); return; }
+    const arts=(await r.json()).slice(0,3);
+    if(!arts.length){ box.classList.add('hidden'); return; }
+    list.innerHTML=arts.map(a=>`<div class="fkb-item" onclick="formKbOpen(${a.id},this)">
+      <div class="ft">${esc(a.title)}</div><div class="fs">${esc(a.snippet||'')}</div></div>`).join('');
+    box.classList.remove('hidden');
+  }catch(e){ box.classList.add('hidden'); }
+}
+async function formKbOpen(id,el){
+  if(el.querySelector('.fkb-body')){ el.querySelector('.fkb-body').remove(); const s=el.querySelector('.fkb-solved'); if(s)s.remove(); return; }
+  try{
+    const r=await fetch('/portal/api/kb/'+id);
+    if(!r.ok) return;
+    const a=await r.json();
+    const b=document.createElement('div'); b.className='fkb-body'; b.textContent=a.body||'';
+    el.appendChild(b);
+    const sv=document.createElement('div'); sv.className='fkb-solved';
+    sv.innerHTML="Çözüldü mü? <a onclick=\"event.stopPropagation();kbFeedback2("+id+",true,this)\">👍 Evet, talebi iptal et</a> <a onclick=\"event.stopPropagation();kbFeedback2("+id+",false,this)\">👎 Hayır</a>";
+    el.appendChild(sv);
+  }catch(e){}
+}
+async function kbFeedback2(id,helpful,el){
+  try{ await fetch('/portal/api/kb/'+id+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({helpful})}); }catch(e){}
+  if(helpful){ show('s-landing'); }
+  else{ el.closest('.fkb-solved').innerHTML='<span>Yine de talebinizi aşağıdan gönderebilirsiniz.</span>'; }
 }
 
 const desc=document.getElementById('f-desc'), cnt=document.getElementById('f-cnt'), sub=document.getElementById('f-submit');
