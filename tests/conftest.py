@@ -9,6 +9,16 @@ Pytest fixtures — IT Tracker test altyapısı.
 
 import os
 
+# ⚠️ KRİTİK — testler ASLA gerçek e-posta göndermemeli.
+# Sebep: app.py import'ta load_dotenv() ile yerel .env'i okur; geliştirici
+# makinesinde .env GERÇEK SMTP creds içerebilir (ör. SMTP_USER=info@..., geçerli
+# şifre). MAIL_SUPPRESS zorlanmazsa portal testleri (/portal/api/cases +
+# ahmet@inventist.com.tr) send_case_ack ile GERÇEK mail atıp bounce üretir
+# (2026-07 olayı: info@ gelen kutusuna çok sayıda NDR). setdefault DEĞİL, force (=):
+# ortamda MAIL_SUPPRESS=0 olsa bile testler susturulur. load_dotenv override=False
+# olduğu ve .env'de MAIL_SUPPRESS bulunmadığı için bu değer test boyunca korunur.
+os.environ["MAIL_SUPPRESS"] = "1"
+
 os.environ.setdefault("ENABLE_SCHEDULER", "0")
 os.environ.setdefault("ADMIN_PASSWORD", "test_admin_pwd_only")
 os.environ.setdefault("ADMIN_USERNAME", "test_admin")
