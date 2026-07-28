@@ -71,6 +71,9 @@ function applySettingsPermissions() {
   const backupCard = document.getElementById('settings-card-backup');
   if (smtpCard) smtpCard.style.display = (level === 'super_admin') ? '' : 'none';
   if (backupCard) backupCard.style.display = (level === 'super_admin') ? '' : 'none';
+  // v5.32 — Teams bildirimleri kartı: yalnız super_admin
+  const teamsCard = document.getElementById('settings-card-teams');
+  if (teamsCard) teamsCard.style.display = (level === 'super_admin') ? '' : 'none';
   // v5.19 — Otomatik atama kartı: director+ kural yönetir; master toggle super_admin.
   const aaCard = document.getElementById('settings-card-autoassign');
   const isDirPlus = (level === 'super_admin' || level === 'it_director');
@@ -599,7 +602,7 @@ function showPage(name, opts = {}) {
   if (name==='managed-firms') { loadManagedFirmsPage(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
-  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); loadAutoAssign(); }
+  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); loadAutoAssign(); loadTeamsSettings(); }
   if (name==='kb')        loadKb();
   if (name==='archive')   loadArchivePage();
   if (name==='notifications') loadNotificationsPage();
@@ -3327,6 +3330,46 @@ async function deleteAssignRule(id) {
   } catch (e) {
     showToast('err', 'Kural silinemedi');
   }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TEAMS BİLDİRİMLERİ (v5.32)
+// ══════════════════════════════════════════════════════════
+async function loadTeamsSettings() {
+  const card = document.getElementById('settings-card-teams');
+  if (!card || card.style.display === 'none') return;
+  try {
+    const r = await fetch('/api/settings/teams');
+    if (!r.ok) return;
+    const d = await r.json();
+    const st = document.getElementById('teams-status');
+    const inp = document.getElementById('teams-url');
+    if (st) st.textContent = d.configured ? `· kayıtlı (${d.masked})` : '· ayarlı değil';
+    if (inp) inp.placeholder = d.configured ? '(kayıtlı — değiştirmek için yeni URL yazın)' : 'https://outlook.office.com/webhook/...';
+  } catch (e) { /* sessiz */ }
+}
+
+async function saveTeamsSettings() {
+  const url = document.getElementById('teams-url').value.trim();
+  try {
+    const r = await fetch('/api/settings/teams', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Kaydedilemedi');
+    showToast('ok', url ? 'Teams webhook kaydedildi' : 'Teams bildirimleri kapatıldı');
+    document.getElementById('teams-url').value = '';
+    loadTeamsSettings();
+  } catch (e) { showToast('err', e.message); }
+}
+
+async function testTeams() {
+  try {
+    const r = await fetch('/api/settings/teams/test', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Gönderilemedi');
+    showToast('ok', '✅ Test kartı Teams kanalına gönderildi');
+  } catch (e) { showToast('err', 'Test başarısız: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════════
