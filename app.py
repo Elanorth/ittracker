@@ -2453,6 +2453,23 @@ def portal_create_case():
             send_case_new_to_it(rcpt, case_code, subject, firm, name, bool(assignee))
     except Exception as e:
         print(f"[portal] IT yeni-case bildirim hatası: {e}")
+    # v5.32 — Teams kanalı bildirimi (yapılandırılmışsa)
+    try:
+        from services.webhook import notify_teams
+
+        _dest = f"→ {assignee.full_name or assignee.username}" if assignee else "🫧 havuza düştü"
+        notify_teams(
+            f"🆕 Yeni destek talebi — {case_code}",
+            text=subject,
+            facts=[
+                ("Firma", (firm or "").capitalize()),
+                ("Bildiren", f"{name} <{email}>"),
+                ("Kategori", category),
+                ("Atama", _dest),
+            ],
+        )
+    except Exception as e:
+        print(f"[portal] Teams bildirim hatası: {e}")
     return jsonify({"ok": True, "case_code": case_code}), 201
 
 
@@ -2755,6 +2772,47 @@ def auto_assign_setting():
     )
     db.session.commit()
     return jsonify({"enabled": enabled})
+
+
+@app.route("/api/settings/teams", methods=["GET", "POST"])
+@super_admin_required
+def teams_settings():
+    """v5.32 — Teams Incoming Webhook URL yönetimi (global). GET maskeli durum, POST kaydet."""
+    if request.method == "GET":
+        url = get_setting("teams_webhook_url", "") or ""
+        return jsonify({"configured": bool(url), "masked": (url[:38] + "…") if url else ""})
+    data = request.get_json() or {}
+    url = (data.get("url") or "").strip()
+    if url and not url.lower().startswith("https://"):
+        return jsonify({"error": "Webhook URL https:// ile başlamalı"}), 400
+    set_setting("teams_webhook_url", url)
+    me = _current_user()
+    log_audit(
+        me,
+        "settings.teams",
+        entity_type="settings",
+        summary=f"Teams webhook {'ayarlandı' if url else 'kaldırıldı'}",
+    )
+    db.session.commit()
+    return jsonify({"configured": bool(url)})
+
+
+@app.route("/api/settings/teams/test", methods=["POST"])
+@super_admin_required
+def teams_settings_test():
+    """Kayıtlı webhook'a test kartı gönderir."""
+    from services.webhook import notify_teams
+
+    r = notify_teams(
+        "✅ IT Tracker — Teams bağlantı testi",
+        text="Bu bir test bildirimidir. Teams entegrasyonu çalışıyor.",
+        facts=[("Kaynak", "Ayarlar > Test"), ("Durum", "Bağlantı başarılı")],
+    )
+    if r.get("suppressed"):
+        return jsonify({"ok": False, "error": "Bildirimler bastırılmış (MAIL_SUPPRESS=1)"}), 400
+    if not r.get("ok"):
+        return jsonify({"ok": False, "error": r.get("error") or "Gönderilemedi"}), 400
+    return jsonify({"ok": True})
 
 
 def _rule_scope_ok(me, firm):

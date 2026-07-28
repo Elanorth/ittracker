@@ -1764,6 +1764,24 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </div>
     </div>
 
+    <!-- Teams Bildirimleri (v5.32) -->
+    <div class="card" id="settings-card-teams">
+      <div class="card-header"><div class="card-title">TEAMS BİLDİRİMLERİ</div></div>
+      <div class="card-body">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">
+          Yeni destek talebi açıldığında IT ekibinin Microsoft Teams kanalına anlık kart gönderilir. Teams'te kanal → ⋯ → <b>Bağlayıcılar</b> → <b>Incoming Webhook</b> ile bir URL oluşturup buraya yapıştırın.
+        </div>
+        <div class="form-group" style="margin-bottom:6px">
+          <label>Teams Webhook URL <span id="teams-status" style="font-weight:400;font-size:10px;color:var(--text-muted)"></span></label>
+          <input class="form-control" id="teams-url" type="url" placeholder="https://outlook.office.com/webhook/...">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-primary btn-sm" onclick="saveTeamsSettings()">Kaydet</button>
+          <button class="btn btn-outline btn-sm" onclick="testTeams()">Test Kartı Gönder</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Config Backup -->
     <div class="card" id="settings-card-backup">
       <div class="card-header"><div class="card-title">CONFIG BACKUP AYARLARI</div></div>
