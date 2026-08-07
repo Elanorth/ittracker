@@ -47,6 +47,7 @@ repos:
         language: node
         additional_dependencies: ["eslint@8.57.1"]
         files: ^static/.*\.js$
+        exclude: ^static/vendor/  # vendored 3rd-party (Chart.js min) linter'a girmez
 
   # ────── Gizli bilgi tarama ──────
   - repo: https://github.com/Yelp/detect-secrets
@@ -54,4 +55,4 @@ repos:
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: ^(\.secrets\.baseline|tests/|docs/)
+        exclude: ^(\.secrets\.baseline|tests/|docs/|static/vendor/)
