@@ -985,10 +985,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="card">
       <div class="card-header"><div class="card-title">SON 5 GÜN · AÇILAN / TAMAMLANAN</div></div>
       <div class="card-body">
-        <div class="bar-chart" id="bar-chart"></div>
-        <!-- Gün etiketleri artık renderBars() içinde dinamik üretilir (kayan 5 gün);
-             eski statik PAZARTESİ..CUMA etiketleri yalnızca cuma günleri doğruydu. -->
-        <div id="bar-chart-labels" style="display:flex;justify-content:space-between;margin-top:6px;padding:0 2px"></div>
+        <!-- v5.33 — Chart.js gruplu bar; container'a eski .bar-chart (flex/height:90px)
+             sınıfı VERİLMEZ, aksi halde 150px canvas taşıp başlıkla çakışır (v5.34 fix). -->
+        <div id="bar-chart"></div>
       </div>
     </div>
     <div class="card">
