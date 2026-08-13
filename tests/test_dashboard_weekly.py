@@ -19,8 +19,12 @@ def _mktask(db, user, title, created_days_ago=0, completed_days_ago=None):
     from models.database import Task
 
     t = Task(
-        user_id=user.id, title=title, category="support", priority="orta",
-        period="Tek Seferlik", firm="inventist",
+        user_id=user.id,
+        title=title,
+        category="support",
+        priority="orta",
+        period="Tek Seferlik",
+        firm="inventist",
         created_at=datetime.utcnow() - timedelta(days=created_days_ago),
     )
     if completed_days_ago is not None:

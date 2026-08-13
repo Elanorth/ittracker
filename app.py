@@ -1561,9 +1561,11 @@ def dashboard_weekly_trends():
 
     # İlgili kullanıcının, pencereye değen görevleri (created veya completed penceredeyse)
     win_start = starts[0]
-    rows = Task.query.filter(Task.user_id == uid).filter(
-        db.or_(Task.created_at >= win_start, Task.completed_at >= win_start)
-    ).all()
+    rows = (
+        Task.query.filter(Task.user_id == uid)
+        .filter(db.or_(Task.created_at >= win_start, Task.completed_at >= win_start))
+        .all()
+    )
     for t in rows:
         if t.created_at:
             b = _bucket(t.created_at.date())
