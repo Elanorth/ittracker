@@ -72,3 +72,12 @@ class TestWeeklyTrends:
         login_as(u)
         assert len(client.get("/api/dashboard/weekly-trends?weeks=1").get_json()["labels"]) == 2  # min 2
         assert len(client.get("/api/dashboard/weekly-trends?weeks=99").get_json()["labels"]) == 26  # max 26
+
+    def test_periyot_secici_degerleri(self, db, client, user_factory, login_as):
+        # v5.36 — UI toggle değerleri (8/12/26) tam bu uzunlukta seri döndürmeli
+        u = user_factory(username="wt_sel", firm="inventist", permission_level="it_specialist")
+        login_as(u)
+        for w in (8, 12, 26):
+            d = client.get(f"/api/dashboard/weekly-trends?weeks={w}").get_json()
+            assert len(d["labels"]) == w == len(d["opened"]) == len(d["resolved"])
+            assert d["window"]["weeks"] == w
