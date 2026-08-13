@@ -9,6 +9,9 @@
     "ecmaVersion": 2022,
     "sourceType": "script"
   },
+  "globals": {
+    "Chart": "readonly"
+  },
   "rules": {
     "no-undef": "error"
   }

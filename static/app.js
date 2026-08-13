@@ -859,91 +859,104 @@ async function resolveCase(id) {
 }
 
 // v4.7 — KATEGORİ DAĞILIMI: gerçek verilerden pie chart
-function renderCategoryPie() {
-  const wrap = document.getElementById('dash-pie-wrap');
-  if (!wrap) return;
-
-  const CAT_META = {
-    routine : { label:'Rutin',       color:'var(--accent)'  },
-    support : { label:'Destek',      color:'var(--accent3)' },
-    infra   : { label:'Altyapı',     color:'var(--accent2)' },
-    backup  : { label:'Backup',      color:'var(--gold)'    },
-    project : { label:'Proje',       color:'var(--green)'   },
-    other   : { label:'Diğer',       color:'var(--surface3)'}
-  };
-
-  const counts = {};
-  tasks.forEach(t => {
-    const k = (t.cat && CAT_META[t.cat]) ? t.cat : 'other';
-    counts[k] = (counts[k] || 0) + 1;
-  });
-
-  const total = tasks.length;
-  const done  = tasks.filter(t => t.done).length;
-  const rate  = total ? Math.round(done / total * 100) : 0;
-
-  if (!total) {
-    wrap.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:30px 0">Henüz görev yok</div>';
-    return;
+// ── v5.33 — Chart.js grafik altyapısı (CSS değişkenlerinden tema-duyarlı renk) ──
+function _cssVar(name) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || '#888';
+}
+function _chartTheme() {
+  return { text: _cssVar('--text'), muted: _cssVar('--text-muted'), grid: _cssVar('--border2') || _cssVar('--border') };
+}
+// Doughnut ortasına % yazan hafif plugin (tema-duyarlı)
+const _centerTextPlugin = {
+  id: 'centerText',
+  afterDraw(chart, args, opts) {
+    if (!opts || opts.text == null) return;
+    const { ctx, chartArea } = chart;
+    const cx = (chartArea.left + chartArea.right) / 2;
+    const cy = (chartArea.top + chartArea.bottom) / 2;
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = _cssVar('--text');
+    ctx.font = "700 22px 'IBM Plex Mono', monospace";
+    ctx.fillText(opts.text, cx, cy - 6);
+    ctx.fillStyle = _cssVar('--text-muted');
+    ctx.font = "9px 'IBM Plex Mono', monospace";
+    ctx.fillText(opts.sub || '', cx, cy + 12);
+    ctx.restore();
   }
-
-  // stroke-dasharray + stroke-dashoffset ile halka dilimleri üret
-  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-  let offset = 25; // -90° rotasyon ile 12 saat konumundan başlar
-  const circles = [];
-  const legend  = [];
-  entries.forEach(([cat, n]) => {
-    const pct = (n / total) * 100;
-    const meta = CAT_META[cat] || CAT_META.other;
-    circles.push(`<circle cx="18" cy="18" r="15.9" fill="none" stroke="${meta.color}" stroke-width="3.4" stroke-dasharray="${pct.toFixed(2)} ${(100-pct).toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 18 18)"/>`);
-    // v5.2 — legend item tıklanabilir: ilgili kategori sayfasına gider
-    legend.push(`<div class="legend-item" role="button" tabindex="0" style="cursor:pointer" onclick="showTasksWithCat('${cat}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTasksWithCat('${cat}')}" title="${meta.label} kategorisindeki görevleri gör"><div class="legend-dot" style="background:${meta.color}"></div>${meta.label} (${Math.round(pct)}%)</div>`);
-    offset = (offset - pct + 100) % 100; // sonraki dilimin başlangıç konumu
-  });
-
-  wrap.innerHTML = `
-    <div class="chart-wrap">
-      <svg width="130" height="130" viewBox="0 0 36 36">
-        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3.4"/>
-        ${circles.join('')}
-        <text x="18" y="19" text-anchor="middle" fill="var(--text)" font-size="5.5" font-family="IBM Plex Mono" font-weight="700">${rate}%</text>
-        <text x="18" y="22.5" text-anchor="middle" fill="var(--text-muted)" font-size="3">tamamlandı</text>
-      </svg>
-      <div class="chart-legend">
-        ${legend.join('')}
-      </div>
-    </div>`;
+};
+let _catChart = null, _firmChart = null, _activityChart = null;
+function _destroyDashCharts() {
+  [_catChart, _firmChart, _activityChart].forEach(c => { try { c && c.destroy(); } catch (e) {} });
+  _catChart = _firmChart = _activityChart = null;
 }
 
-// v4.7 — FİRMA DAĞILIMI: gerçek verilerden progress bars
+const _CAT_META = {
+  routine: { label: 'Rutin', v: '--accent' }, support: { label: 'Destek', v: '--accent3' },
+  infra: { label: 'Altyapı', v: '--accent2' }, backup: { label: 'Backup', v: '--gold' },
+  project: { label: 'Proje', v: '--green' }, other: { label: 'Diğer', v: '--surface3' }
+};
+
+function renderCategoryPie() {
+  const wrap = document.getElementById('dash-pie-wrap');
+  if (!wrap || typeof Chart === 'undefined') return;
+  const counts = {};
+  tasks.forEach(t => { const k = (t.cat && _CAT_META[t.cat]) ? t.cat : 'other'; counts[k] = (counts[k] || 0) + 1; });
+  const total = tasks.length;
+  const rate = total ? Math.round(tasks.filter(t => t.done).length / total * 100) : 0;
+  if (!total) { if (_catChart) { _catChart.destroy(); _catChart = null; } wrap.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:30px 0">Henüz görev yok</div>'; return; }
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const cats = entries.map(([c]) => c);
+  wrap.innerHTML = '<div style="position:relative;height:190px"><canvas id="cat-canvas"></canvas></div>';
+  const th = _chartTheme();
+  if (_catChart) _catChart.destroy();
+  _catChart = new Chart(document.getElementById('cat-canvas'), {
+    type: 'doughnut',
+    data: {
+      labels: entries.map(([c]) => _CAT_META[c].label),
+      datasets: [{ data: entries.map(([, n]) => n), backgroundColor: entries.map(([c]) => _cssVar(_CAT_META[c].v)), borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '66%',
+      onClick: (e, els) => { if (els.length) showTasksWithCat(cats[els[0].index]); },
+      plugins: {
+        legend: { position: 'right', labels: { color: th.muted, boxWidth: 10, font: { size: 11 } }, onClick: (e, item) => showTasksWithCat(cats[item.index]) },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.parsed} (${Math.round(c.parsed / total * 100)}%)` } },
+        centerText: { text: rate + '%', sub: 'tamamlandı' }
+      }
+    },
+    plugins: [_centerTextPlugin]
+  });
+}
+
+// v4.7→v5.33 — FİRMA DAĞILIMI: Chart.js yatay bar (tıkla → firma görevleri)
 function renderFirmBars() {
   const el = document.getElementById('dash-firm-bars');
-  if (!el) return;
+  if (!el || typeof Chart === 'undefined') return;
   const firmMap = {};
-  tasks.forEach(t => {
-    const f = (t.firm && String(t.firm).trim()) || '—';
-    firmMap[f] = (firmMap[f] || 0) + 1;
+  tasks.forEach(t => { const f = (t.firm && String(t.firm).trim()) || '—'; firmMap[f] = (firmMap[f] || 0) + 1; });
+  const sorted = Object.entries(firmMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (!sorted.length) { if (_firmChart) { _firmChart.destroy(); _firmChart = null; } el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">Henüz görev yok</div>'; return; }
+  const names = sorted.map(([n]) => (FIRMS[n] && FIRMS[n].label) || n);
+  const rawNames = sorted.map(([n]) => n);
+  const palette = ['--accent', '--gold', '--accent3', '--accent2', '--green', '--surface3'];
+  el.innerHTML = '<div style="position:relative;height:' + Math.max(120, sorted.length * 34) + 'px"><canvas id="firm-canvas"></canvas></div>';
+  const th = _chartTheme();
+  if (_firmChart) _firmChart.destroy();
+  _firmChart = new Chart(document.getElementById('firm-canvas'), {
+    type: 'bar',
+    data: { labels: names, datasets: [{ data: sorted.map(([, n]) => n), backgroundColor: sorted.map((_, i) => _cssVar(palette[i % palette.length])), borderRadius: 4, barThickness: 18 }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      onClick: (e, els) => { if (els.length) showTasksWithFirm(rawNames[els[0].index]); },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.parsed.x} görev` } } },
+      scales: {
+        x: { beginAtZero: true, ticks: { color: th.muted, precision: 0 }, grid: { color: th.grid } },
+        y: { ticks: { color: th.text, font: { size: 11 } }, grid: { display: false } }
+      }
+    }
   });
-  const sorted = Object.entries(firmMap).sort((a,b) => b[1] - a[1]).slice(0, 6);
-  if (!sorted.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">Henüz görev yok</div>';
-    return;
-  }
-  const total = sorted.reduce((s, [,n]) => s + n, 0);
-  const colors = ['var(--accent)','var(--gold)','var(--accent3)','var(--accent2)','var(--green)','var(--surface3)'];
-  el.innerHTML = sorted.map(([name, n], i) => {
-    const pct = Math.round((n / total) * 100);
-    // v5.2 — firm bar tıklanabilir: ilgili firmanın görevleri Tasks sayfasında listelenir
-    const safe = String(name).replace(/'/g, "\\'");
-    return `
-      <div class="progress-wrap" role="button" tabindex="0" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background .15s"
-           onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''"
-           onclick="showTasksWithFirm('${safe}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTasksWithFirm('${safe}')}"
-           title="${escapeHtml(name)} firmasının görevlerini gör">
-        <div class="progress-label"><span>${escapeHtml(name)}</span><span style="color:${colors[i]}">${n} görev · %${pct}</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
-      </div>`;
-  }).join('');
 }
 
 // v5.0 — Yönetilen Firmalar Şeridi (IT Müdürü dashboard'ında)
@@ -1925,7 +1938,7 @@ function renderBars() {
   // gün göründüğü için grafik yanıltıcıydı. Tamamlanma artık completed_at'ten
   // bağımsız sayılır (rutinlerde to_dict occurrence completed_at'ini döner).
   const barEl = document.getElementById('bar-chart');
-  if (!barEl) return;
+  if (!barEl || typeof Chart === 'undefined') return;
   const days = [];
   for (let i = 4; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
@@ -1934,20 +1947,30 @@ function renderBars() {
     const completed = tasks.filter(t => t.completed_at && t.completed_at.substring(0, 10) === ds).length;
     days.push({ label: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][d.getDay()], c: created, d: completed });
   }
-  const max = Math.max(...days.map(x => Math.max(x.c, x.d)), 1);
-  barEl.innerHTML = days.map(d => `
-    <div class="bar-col" title="${d.label}: ${d.c} açıldı · ${d.d} tamamlandı">
-      <div class="bar-num">${d.d}</div>
-      <div class="bar-inner" style="height:80px">
-        <div style="position:absolute;bottom:0;width:100%;height:${(d.c/max)*80}px;background:var(--surface3);border-radius:4px 4px 0 0"></div>
-        <div style="position:absolute;bottom:0;width:100%;height:${(d.d/max)*80}px;background:var(--accent);border-radius:4px 4px 0 0;opacity:.85"></div>
-      </div>
-    </div>`).join('');
-  // Gün etiketleri — kayan 5 günün gerçek gün adları (eski statik PZT..CUM yanlıştı)
+  // v5.33 — inline-bar yerine Chart.js gruplu bar (açılan vs tamamlanan)
   const lblEl = document.getElementById('bar-chart-labels');
-  if (lblEl) lblEl.innerHTML = days.map(d =>
-    `<span style="font-size:9px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${d.label.toUpperCase()}</span>`
-  ).join('');
+  if (lblEl) lblEl.innerHTML = '';  // eski etiket satırı Chart.js ekseninde
+  barEl.innerHTML = '<div style="position:relative;height:150px"><canvas id="activity-canvas"></canvas></div>';
+  const th = _chartTheme();
+  if (_activityChart) _activityChart.destroy();
+  _activityChart = new Chart(document.getElementById('activity-canvas'), {
+    type: 'bar',
+    data: {
+      labels: days.map(d => d.label),
+      datasets: [
+        { label: 'Açılan', data: days.map(d => d.c), backgroundColor: _cssVar('--surface3'), borderRadius: 4 },
+        { label: 'Tamamlanan', data: days.map(d => d.d), backgroundColor: _cssVar('--accent'), borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: th.muted, boxWidth: 10, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: th.muted }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: th.muted, precision: 0 }, grid: { color: th.grid } }
+      }
+    }
+  });
 }
 
 function renderTeamBars() {
