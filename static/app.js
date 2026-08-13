@@ -1973,13 +1973,25 @@ function renderBars() {
   });
 }
 
-// v5.35 — HAFTALIK AKIŞ: son 8 hafta açılan vs çözülen görev (Chart.js line)
+// v5.35 — HAFTALIK AKIŞ: açılan vs çözülen görev (Chart.js line)
+// v5.36 — periyot seçici (8/12/26 hafta) + net akış özeti
+let _weeklyWeeks = 8;
+function setWeeklyPeriod(weeks, btnEl) {
+  if (weeks === _weeklyWeeks) return;
+  _weeklyWeeks = weeks;
+  document.querySelectorAll('#weekly-period-tabs .tab').forEach(t => {
+    const isActive = t === btnEl;
+    t.classList.toggle('active', isActive);
+    t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  loadWeeklyTrend();
+}
 async function loadWeeklyTrend() {
   const cv = document.getElementById('weekly-trend-chart');
   if (!cv || typeof Chart === 'undefined') return;
   try {
-    const q = selectedUserId ? '?user_id=' + selectedUserId + '&weeks=8' : '?weeks=8';
-    const res = await fetch('/api/dashboard/weekly-trends' + q);
+    const uParam = selectedUserId ? 'user_id=' + selectedUserId + '&' : '';
+    const res = await fetch('/api/dashboard/weekly-trends?' + uParam + 'weeks=' + _weeklyWeeks);
     if (!res.ok) return;
     const d = await res.json();
     const th = _chartTheme();
@@ -2003,6 +2015,16 @@ async function loadWeeklyTrend() {
         }
       }
     });
+    // Net akış özeti: toplam açılan / çözülen / net (açılan − çözülen)
+    const sum = a => (a || []).reduce((x, y) => x + y, 0);
+    const opened = sum(d.opened), resolved = sum(d.resolved), net = opened - resolved;
+    const netColor = net > 0 ? 'var(--danger)' : net < 0 ? 'var(--green)' : 'var(--text-muted)';
+    const netLabel = net > 0 ? `+${net} biriken` : net < 0 ? `${net} eriyen` : '±0 dengede';
+    const sm = document.getElementById('weekly-trend-summary');
+    if (sm) {
+      sm.innerHTML = `Son ${_weeklyWeeks} hafta · Açılan <b style="color:var(--text)">${opened}</b> · ` +
+        `Çözülen <b style="color:var(--text)">${resolved}</b> · Net <b style="color:${netColor}">${netLabel}</b>`;
+    }
   } catch (e) { /* sessiz */ }
 }
 
