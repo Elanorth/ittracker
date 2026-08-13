@@ -1533,6 +1533,59 @@ def dashboard_trends():
     )
 
 
+@app.route("/api/dashboard/weekly-trends")
+@login_required
+def dashboard_weekly_trends():
+    """v5.35 — Son N hafta: her hafta AÇILAN (created_at) ve ÇÖZÜLEN (completed_at)
+    görev sayısı. Trend çizgisi için. Kapsam _resolve_scope_uid (kullanıcı bazlı;
+    director+ firm-user dropdown ile başka kullanıcıyı görebilir).
+    """
+    me = _current_user()
+    uid, err = _resolve_scope_uid(me, request.args.get("user_id", type=int))
+    if err:
+        return err
+    weeks = min(max(request.args.get("weeks", 8, type=int), 2), 26)
+    today = date.today()
+    this_monday = today - timedelta(days=today.weekday())  # bu haftanın Pazartesi'si
+    starts = [this_monday - timedelta(weeks=i) for i in range(weeks - 1, -1, -1)]
+    end = starts[-1] + timedelta(days=7)  # son haftanın bitişi (bu Pazartesi+7)
+    opened = [0] * weeks
+    resolved = [0] * weeks
+
+    def _bucket(d):
+        # d bir date; hangi hafta kovasına düşüyor (yoksa -1)
+        for i, s in enumerate(starts):
+            if s <= d < s + timedelta(days=7):
+                return i
+        return -1
+
+    # İlgili kullanıcının, pencereye değen görevleri (created veya completed penceredeyse)
+    win_start = starts[0]
+    rows = (
+        Task.query.filter(Task.user_id == uid)
+        .filter(db.or_(Task.created_at >= win_start, Task.completed_at >= win_start))
+        .all()
+    )
+    for t in rows:
+        if t.created_at:
+            b = _bucket(t.created_at.date())
+            if b >= 0:
+                opened[b] += 1
+        if t.completed_at:
+            b = _bucket(t.completed_at.date())
+            if b >= 0:
+                resolved[b] += 1
+    _TR_AY = ["", "Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
+    return jsonify(
+        {
+            "labels": [f"{s.day:02d} {_TR_AY[s.month]}" for s in starts],
+            "opened": opened,
+            "resolved": resolved,
+            "window": {"start": win_start.isoformat(), "end": end.isoformat(), "weeks": weeks},
+        }
+    )
+
+
 # ── v4.5 SLA STATS ──
 @app.route("/api/sla/stats")
 @login_required

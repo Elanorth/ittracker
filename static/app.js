@@ -673,7 +673,7 @@ function renderDashboard() {
   renderDashboardTaskList();
   renderDashUpcoming();
   renderBars();
-  renderTeamBars();
+  loadWeeklyTrend();
   // v4.7 — dinamik pie chart + firma dağılımı
   renderCategoryPie();
   renderFirmBars();
@@ -886,10 +886,10 @@ const _centerTextPlugin = {
     ctx.restore();
   }
 };
-let _catChart = null, _firmChart = null, _activityChart = null;
+let _catChart = null, _firmChart = null, _activityChart = null, _weeklyChart = null;
 function _destroyDashCharts() {
-  [_catChart, _firmChart, _activityChart].forEach(c => { try { c && c.destroy(); } catch (e) {} });
-  _catChart = _firmChart = _activityChart = null;
+  [_catChart, _firmChart, _activityChart, _weeklyChart].forEach(c => { try { c && c.destroy(); } catch (e) {} });
+  _catChart = _firmChart = _activityChart = _weeklyChart = null;
 }
 
 const _CAT_META = {
@@ -1973,19 +1973,59 @@ function renderBars() {
   });
 }
 
-function renderTeamBars() {
-  const el = document.getElementById('team-bars'); if (!el) return;
-  const teamMap = {};
-  tasks.forEach(t => { if (t.team) teamMap[t.team] = (teamMap[t.team]||0) + 1; });
-  const sorted = Object.entries(teamMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  if (!sorted.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">Henüz görev yok</div>'; return; }
-  const max = sorted[0][1];
-  const colors = ['var(--accent)','var(--accent3)','var(--accent2)','var(--gold)','var(--green)'];
-  el.innerHTML = sorted.map(([name, n], i) => `
-    <div class="progress-wrap" style="margin:5px 0">
-      <div class="progress-label"><span>${escapeHtml(name)}</span><span style="color:${colors[i]}">${n}</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${(n/max)*100}%;background:${colors[i]}"></div></div>
-    </div>`).join('');
+// v5.35 — HAFTALIK AKIŞ: açılan vs çözülen görev (Chart.js line)
+// v5.36 — periyot seçici (8/12/26 hafta) + net akış özeti
+let _weeklyWeeks = 8;
+function setWeeklyPeriod(weeks, btnEl) {
+  if (weeks === _weeklyWeeks) return;
+  _weeklyWeeks = weeks;
+  document.querySelectorAll('#weekly-period-tabs .tab').forEach(t => {
+    const isActive = t === btnEl;
+    t.classList.toggle('active', isActive);
+    t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  loadWeeklyTrend();
+}
+async function loadWeeklyTrend() {
+  const cv = document.getElementById('weekly-trend-chart');
+  if (!cv || typeof Chart === 'undefined') return;
+  try {
+    const uParam = selectedUserId ? 'user_id=' + selectedUserId + '&' : '';
+    const res = await fetch('/api/dashboard/weekly-trends?' + uParam + 'weeks=' + _weeklyWeeks);
+    if (!res.ok) return;
+    const d = await res.json();
+    const th = _chartTheme();
+    try { _weeklyChart && _weeklyChart.destroy(); } catch (e) {}
+    _weeklyChart = new Chart(cv.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: d.labels,
+        datasets: [
+          { label: 'Açılan', data: d.opened, borderColor: _cssVar('--accent3'), backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 },
+          { label: 'Çözülen', data: d.resolved, borderColor: _cssVar('--green'), backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: th.text, boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: th.muted, font: { size: 10 } }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: th.muted, precision: 0, font: { size: 10 } }, grid: { color: th.grid } }
+        }
+      }
+    });
+    // Net akış özeti: toplam açılan / çözülen / net (açılan − çözülen)
+    const sum = a => (a || []).reduce((x, y) => x + y, 0);
+    const opened = sum(d.opened), resolved = sum(d.resolved), net = opened - resolved;
+    const netColor = net > 0 ? 'var(--danger)' : net < 0 ? 'var(--green)' : 'var(--text-muted)';
+    const netLabel = net > 0 ? `+${net} biriken` : net < 0 ? `${net} eriyen` : '±0 dengede';
+    const sm = document.getElementById('weekly-trend-summary');
+    if (sm) {
+      sm.innerHTML = `Son ${_weeklyWeeks} hafta · Açılan <b style="color:var(--text)">${opened}</b> · ` +
+        `Çözülen <b style="color:var(--text)">${resolved}</b> · Net <b style="color:${netColor}">${netLabel}</b>`;
+    }
+  } catch (e) { /* sessiz */ }
 }
 
 // ══════════════════════════════════════════════════════════
