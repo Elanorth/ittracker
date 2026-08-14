@@ -1343,6 +1343,10 @@ function onCatChange() {
     periodSel.disabled = true;
   }
 
+  // v5.37 — Destek talebinde manuel bitiş tarihi yok; SLA notu göster
+  document.getElementById('deadline-field')?.classList.toggle('hidden', isSupport);
+  document.getElementById('sla-deadline-note')?.classList.toggle('hidden', !isSupport);
+
   // Checklist rutin ve proje görevlerinde
   document.getElementById('checklist-section').classList.toggle('hidden', !(isRoutine || isProject));
 
@@ -1386,6 +1390,9 @@ document.addEventListener('change', e => {
   if (e.target?.id === 'edit-task-cat') {
     const cat = e.target.value;
     document.getElementById('edit-priority-row')?.classList.toggle('hidden', cat !== 'support');
+    // v5.37 — Destek: manuel son tarih yok, SLA notu göster
+    document.getElementById('edit-deadline-field')?.classList.toggle('hidden', cat === 'support');
+    document.getElementById('edit-sla-deadline-note')?.classList.toggle('hidden', cat !== 'support');
   }
 });
 function toggleBackupSection() { onCatChange(); }
@@ -2764,6 +2771,9 @@ function openEditTask(id) {
   }
   const prRow = document.getElementById('edit-priority-row');
   if (prRow) prRow.classList.toggle('hidden', t.cat !== 'support');
+  // v5.37 — Destek: manuel son tarih gizli, SLA notu görünür
+  document.getElementById('edit-deadline-field')?.classList.toggle('hidden', t.cat === 'support');
+  document.getElementById('edit-sla-deadline-note')?.classList.toggle('hidden', t.cat !== 'support');
   const prSel = document.getElementById('edit-task-priority');
   if (prSel) prSel.value = (t.priority || 'orta');
   document.getElementById('edit-task-firm').value     = t.firm;

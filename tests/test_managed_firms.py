@@ -358,12 +358,13 @@ class TestManagedFirmsDetailEndpoint:
         u_inv = user_factory(username="mfd_sort_inv", firm="inventist", permission_level="junior")
         u_assos = user_factory(username="mfd_sort_assos", firm="assos", permission_level="junior")
         # Assos'a 2 geciken görev, İnventist'e 1 geciken görev
+        # (v5.37: support SLA-bazlı → deadline-bazlı geciken için infra kullanılır)
         old_deadline = date.today() - timedelta(days=10)
-        t1 = task_factory(user_id=u_assos.id, title="Geciken 1", category="support", firm="assos")
+        t1 = task_factory(user_id=u_assos.id, title="Geciken 1", category="infra", firm="assos")
         t1.deadline = old_deadline
-        t2 = task_factory(user_id=u_assos.id, title="Geciken 2", category="support", firm="assos")
+        t2 = task_factory(user_id=u_assos.id, title="Geciken 2", category="infra", firm="assos")
         t2.deadline = old_deadline
-        t3 = task_factory(user_id=u_inv.id, title="Geciken 3", category="support", firm="inventist")
+        t3 = task_factory(user_id=u_inv.id, title="Geciken 3", category="infra", firm="inventist")
         t3.deadline = old_deadline
         from models.database import db as _db
 
