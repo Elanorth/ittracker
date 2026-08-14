@@ -1117,6 +1117,10 @@ def create_task():
         next_due = _next_due_date(period)
         if not deadline:
             deadline = next_due
+    # v5.37 — Destek talebi: bitiş SLA'ya göre otomatik (önceliğe bağlı). Manuel
+    # deadline saklanmaz; gecikme tek kaynağı SLA breach.
+    if category == "support":
+        deadline = None
     cl_raw = data.get("checklist", "[]")
     if isinstance(cl_raw, list):
         cl_raw = _json.dumps(cl_raw)
@@ -1231,6 +1235,10 @@ def update_task(task_id):
         task.notes = data["notes"]
     if "deadline" in data:
         task.deadline = datetime.fromisoformat(data["deadline"]).date() if data["deadline"] else None
+    # v5.37 — Destek talebinde manuel deadline tutulmaz (SLA otomatik). Kategori
+    # bu PATCH'te support'a çevrilmiş olsa bile temizlenir.
+    if task.category == "support":
+        task.deadline = None
     if "checklist" in data:
         cl = data["checklist"] if isinstance(data["checklist"], list) else _json.loads(data["checklist"])
         task.checklist = _json.dumps(cl)

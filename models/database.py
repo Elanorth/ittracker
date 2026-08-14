@@ -474,6 +474,15 @@ class Task(db.Model):
             if occ_set is not None:
                 return prev_key not in occ_set
             return TaskOccurrence.query.filter_by(task_id=self.id, period_key=prev_key).first() is None
+        # v5.37 — Destek talepleri: gecikme TEK KAYNAK = SLA breach (önceliğe göre
+        # otomatik hesaplanan sla_deadline). Manuel `deadline` alanı destek için
+        # kullanılmaz (form onu göstermez, backend None'a zorlar) — böylece SLA
+        # rozeti ile "GECİKEN" KPI'ı çelişmez.
+        if self.category == "support":
+            if self.is_done:
+                return False
+            dl = sla_deadline(self.created_at, self.priority)
+            return bool(dl and datetime.utcnow() > dl)
         return (not self.is_done) and (self.deadline is not None) and (self.deadline < today)
 
     def overdue_period_count(self, today=None) -> int:

@@ -1329,9 +1329,16 @@ textarea.form-control{resize:vertical;min-height:64px;}
             <div class="form-hint">Varsayılan: bugün</div>
           </div>
           <div class="form-group" id="deadline-group">
-            <label>Bitiş / Son Tarih</label>
-            <input class="form-control" id="new-deadline" type="date">
-            <div class="form-hint" id="deadline-hint">Aşılırsa geciken olarak işaretlenir</div>
+            <div id="deadline-field">
+              <label>Bitiş / Son Tarih</label>
+              <input class="form-control" id="new-deadline" type="date">
+              <div class="form-hint" id="deadline-hint">Aşılırsa geciken olarak işaretlenir</div>
+            </div>
+            <!-- v5.37 — Destek talebinde bitiş SLA'ya göre otomatik; manuel tarih yok -->
+            <div id="sla-deadline-note" class="hidden">
+              <label>Bitiş Süresi (SLA)</label>
+              <div class="form-hint" style="line-height:1.6">⏱ Önceliğe göre otomatik hesaplanır: <b>Yüksek 4s · Orta 24s · Düşük 72s</b> (iş saati bazlı). Manuel tarih gerekmez.</div>
+            </div>
           </div>
         </div>
 
@@ -2131,9 +2138,15 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div class="form-group">
-        <label>Son Tarih</label>
-        <input class="form-control" id="edit-task-deadline" type="date">
+      <div class="form-group" id="edit-deadline-group">
+        <div id="edit-deadline-field">
+          <label>Son Tarih</label>
+          <input class="form-control" id="edit-task-deadline" type="date">
+        </div>
+        <div class="hidden" id="edit-sla-deadline-note">
+          <label>Bitiş Süresi (SLA)</label>
+          <div class="form-hint" style="line-height:1.6">⏱ Önceliğe göre otomatik: Yüksek 4s · Orta 24s · Düşük 72s</div>
+        </div>
       </div>
       <div class="form-group">
         <label>Durum</label>
@@ -2316,6 +2329,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div class="toast-wrap" id="toast-wrap"></div>
 
 <script defer src="/static/vendor/chart.umd.min.js?v={{ version }}"></script>
+<script defer src="/static/js/utils.js?v={{ version }}"></script>
 <script defer src="/static/app.js?v={{ version }}"></script>
 </body>
 </html>

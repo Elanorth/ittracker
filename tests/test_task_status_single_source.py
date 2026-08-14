@@ -118,10 +118,14 @@ class TestManagedFirmsOverdueTop3Canonical:
 
     @freeze_time("2026-04-29")
     def test_deadline_bazli_gorev_days_overdue_tasir(self, db, client, user_factory, task_factory, login_as):
-        """Deadline'lı (rutin olmayan) geciken görev days_overdue taşır, overdue_periods None."""
+        """Deadline'lı (rutin olmayan) geciken görev days_overdue taşır, overdue_periods None.
+
+        NOT: v5.37'den beri support SLA-bazlı (manuel deadline yok); deadline-bazlı
+        kategori temsilcisi olarak infra kullanılır.
+        """
         admin = user_factory(username="mfot_b", firm="inventist", permission_level="super_admin", is_admin=True)
         worker = user_factory(username="mfot_bw", firm="inventist", permission_level="junior")
-        t = task_factory(user_id=worker.id, title="Geciken destek", category="support", firm="inventist")
+        t = task_factory(user_id=worker.id, title="Geciken altyapı", category="infra", firm="inventist")
         t.deadline = date(2026, 4, 20)  # 9 gün önce
         db.session.commit()
 
