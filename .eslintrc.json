@@ -10,7 +10,18 @@
     "sourceType": "script"
   },
   "globals": {
-    "Chart": "readonly"
+    "Chart": "readonly",
+    "escapeHtml": "readonly",
+    "_cssVar": "readonly",
+    "_chartTheme": "readonly",
+    "_centerTextPlugin": "readonly",
+    "unreadBadge": "readonly",
+    "priorityBadge": "readonly",
+    "slaBadge": "readonly",
+    "portalBadge": "readonly",
+    "_slaRemainingHuman": "readonly",
+    "_periodCompletionLabel": "readonly",
+    "_periodCompletionBadge": "readonly"
   },
   "rules": {
     "no-undef": "error"
