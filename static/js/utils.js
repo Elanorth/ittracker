@@ -1,11 +1,13 @@
 // ══════════════════════════════════════════════════════════
 //  utils.js — Saf/stateless yardımcı fonksiyonlar (v5.38)
 //
-//  app.js (~4400 satır) modülerleştirmesinin 1. adımı. Buradaki fonksiyonlar
-//  yalnızca kendi argümanlarına + DOM/CSS değişkenlerine bağlıdır; app.js'in
-//  değişken modül state'ine (tasks, currentUser, FIRMS, TODAY, ...) bağımlı
-//  DEĞİLDİR. Klasik <script> olarak app.js'ten ÖNCE yüklenir → tanımlar global
-//  kalır, inline onclick ve app.js çağrıları aynen çalışır. Davranış birebir aynı.
+//  app.js (~4400 satır) modülerleştirmesi. Buradaki fonksiyonlar yalnızca kendi
+//  argümanlarına + DOM/CSS değişkenlerine (+ aşağıdaki sabit TODAY/CAT_LABELS'e)
+//  bağlıdır; app.js'in DEĞİŞKEN modül state'ine (tasks, currentUser, FIRMS,
+//  selectedUserId, ...) bağımlı DEĞİLDİR. Klasik <script> olarak app.js'ten ÖNCE
+//  yüklenir → tanımlar global kalır, inline onclick ve app.js çağrıları aynen
+//  çalışır. Davranış birebir aynı.
+//  Adım 1 (v5.38): saf helper'lar. Adım 2 (v5.39): TODAY/CAT_LABELS + formatter'lar.
 // ══════════════════════════════════════════════════════════
 
 function escapeHtml(s) {
@@ -122,4 +124,36 @@ function _slaRemainingHuman(t) {
   const h = Math.floor(rem); const m = Math.round((rem - h) * 60);
   const color = rem < (t.sla.target_hours || 24) * 0.25 ? 'var(--gold)' : 'var(--accent)';
   return { txt: h ? `${h}s ${m}dk` : `${m}dk`, color };
+}
+
+// ── Adım 2 (v5.39): sabitler + tarih/etiket formatter'ları ──
+// TODAY: sayfa yükünde bir kez hesaplanan bugünün ISO tarihi (deadline karşılaştırmaları).
+const TODAY = new Date().toISOString().split('T')[0];
+const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Destek',infra:'Altyapı',other:'Diğer'};
+
+function _appVersionSuffix() {
+  const el = document.getElementById('logo-sub-text');
+  const v = el && el.dataset ? el.dataset.appVersion : '';
+  return v ? ' · v' + v : '';
+}
+function _routineOverdueLabel(t) {
+  const unit = { 'Günlük':'gün', 'Haftalık':'hafta', 'Aylık':'ay', 'Yıllık':'yıl' }[t.period] || 'dönem';
+  const n = t.overdue_periods || 0;
+  if (n > 0) return `${n} ${unit} atlandı`;
+  return t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor';
+}
+function dlClass(dl, done) {
+  if (done) return 'ok'; if (!dl) return null;
+  const diff = (new Date(dl) - new Date(TODAY)) / 86400000;
+  return diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
+}
+function dlText(dl, done) {
+  if (!dl) return null; if (done) return 'Tamamlandı';
+  const diff = Math.round((new Date(dl) - new Date(TODAY)) / 86400000);
+  if (diff < 0) return `${Math.abs(diff)}g gecikti`;
+  if (diff === 0) return 'Bugün son!';
+  return `${diff}g kaldı`;
+}
+function catLabel(cat) {
+  return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
 }

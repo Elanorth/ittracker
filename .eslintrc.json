@@ -21,7 +21,18 @@
     "portalBadge": "readonly",
     "_slaRemainingHuman": "readonly",
     "_periodCompletionLabel": "readonly",
-    "_periodCompletionBadge": "readonly"
+    "_periodCompletionBadge": "readonly",
+    "TODAY": "readonly",
+    "CAT_LABELS": "readonly",
+    "dlClass": "readonly",
+    "dlText": "readonly",
+    "catLabel": "readonly",
+    "_routineOverdueLabel": "readonly",
+    "_appVersionSuffix": "readonly",
+    "initAuditPage": "readonly",
+    "loadAuditLog": "readonly",
+    "showToast": "readonly",
+    "firmUsers": "readonly"
   },
   "rules": {
     "no-undef": "error"
