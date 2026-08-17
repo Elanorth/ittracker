@@ -46,8 +46,10 @@ class TestWeeklyTrends:
     def test_acilan_ve_cozulen_sayilir(self, db, client, user_factory, login_as):
         u = user_factory(username="wt_c", firm="inventist", permission_level="it_specialist")
         login_as(u)
-        _mktask(db, u, "bu hafta açık", created_days_ago=1)  # bu hafta açılan
-        _mktask(db, u, "bu hafta çözülen", created_days_ago=2, completed_days_ago=1)  # açılan+çözülen
+        # days_ago=0 → her zaman içinde bulunulan haftaya düşer (Pazartesi koşusunda
+        # "1-2 gün önce" önceki ISO haftasına kayıp testi kırıyordu — tarihe dayanıklı)
+        _mktask(db, u, "bu hafta açık", created_days_ago=0)  # bu hafta açılan
+        _mktask(db, u, "bu hafta çözülen", created_days_ago=0, completed_days_ago=0)  # açılan+çözülen
         d = client.get("/api/dashboard/weekly-trends?weeks=4").get_json()
         assert d["opened"][-1] >= 2  # son hafta en az 2 açılan
         assert d["resolved"][-1] >= 1  # son hafta en az 1 çözülen

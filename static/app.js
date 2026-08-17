@@ -7,11 +7,7 @@
 // Sürüm TEK KAYNAK: Flask APP_VERSION (VERSION dosyası) app.html'de logo-sub-text
 // data-app-version'a enjekte edilir; buradan okunur. Eskiden 3 string'de elle 'v5.0'
 // yazılıydı ve sürüm bump'larında güncellenmiyordu (prod'da v5.11 sekmesi + v5.0 logo).
-function _appVersionSuffix() {
-  const el = document.getElementById('logo-sub-text');
-  const v = el && el.dataset ? el.dataset.appVersion : '';
-  return v ? ' · v' + v : '';
-}
+// _appVersionSuffix → static/js/utils.js (v5.39)
 
 function applyThemeForFirm(firmSlug) {
   const f = (firmSlug || '').toLowerCase();
@@ -147,7 +143,7 @@ async function loadFirmsFromDB() {
 }
 const BACKUP_TYPES = ['.cfg','.conf','.txt','.bin','.xml','.json','.tar','.zip'];
 const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
-const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Destek',infra:'Altyapı',other:'Diğer'};
+// CAT_LABELS → static/js/utils.js (v5.39)
 
 // ── Uygulama durumu ──
 let tasks = [];       // API'den yüklenir
@@ -447,12 +443,7 @@ function normalizeTask(t) {
 
 // v5.1 — Rutin görev gecikme rozeti metni (periyot sayısı bazlı).
 // Diğer kategoriler deadline kullanmaya devam eder; bu yalnızca rutin içindir.
-function _routineOverdueLabel(t) {
-  const unit = { 'Günlük':'gün', 'Haftalık':'hafta', 'Aylık':'ay', 'Yıllık':'yıl' }[t.period] || 'dönem';
-  const n = t.overdue_periods || 0;
-  if (n > 0) return `${n} ${unit} atlandı`;
-  return t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor';
-}
+// _routineOverdueLabel → static/js/utils.js (v5.39)
 
 // ══════════════════════════════════════════════════════════
 //  NAVIGATION
@@ -1356,18 +1347,7 @@ function onFileSelected(input) {
 // ══════════════════════════════════════════════════════════
 //  TASK HELPERS
 // ══════════════════════════════════════════════════════════
-function dlClass(dl, done) {
-  if (done) return 'ok'; if (!dl) return null;
-  const diff = (new Date(dl) - new Date(TODAY)) / 86400000;
-  return diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
-}
-function dlText(dl, done) {
-  if (!dl) return null; if (done) return 'Tamamlandı';
-  const diff = Math.round((new Date(dl) - new Date(TODAY)) / 86400000);
-  if (diff < 0) return `${Math.abs(diff)}g gecikti`;
-  if (diff === 0) return 'Bugün son!';
-  return `${diff}g kaldı`;
-}
+// dlClass / dlText → static/js/utils.js (v5.39)
 
 // v5.6 — KANONİK görev zamanlama bilgisi (TEK KAYNAK).
 // Gecikme/gruplama/sıralama/badge mantığı SADECE buradan gelir. Dashboard satırı
@@ -1428,9 +1408,7 @@ function taskTiming(t) {
   const badgeClass = diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
   return { group, sortKey: new Date(t.deadline).getTime() / 3600000, badgeText, badgeClass };
 }
-function catLabel(cat) {
-  return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
-}
+// catLabel → static/js/utils.js (v5.39)
 // unreadBadge / priorityBadge / slaBadge → static/js/utils.js (v5.38)
 function firmChip(firm) {
   const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${escapeHtml(firm)}</span>` : '';
@@ -2623,7 +2601,7 @@ function renderDashUpcoming() {
 // ══════════════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════════════
-const TODAY = new Date().toISOString().split('T')[0];
+// TODAY → static/js/utils.js (v5.39)
 document.addEventListener('DOMContentLoaded', () => { const s = document.getElementById('new-start'); if (s) s.value = TODAY; });
 const _startEl = document.getElementById('new-start'); if (_startEl) _startEl.value = TODAY;
 
