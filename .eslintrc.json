@@ -28,7 +28,11 @@
     "dlText": "readonly",
     "catLabel": "readonly",
     "_routineOverdueLabel": "readonly",
-    "_appVersionSuffix": "readonly"
+    "_appVersionSuffix": "readonly",
+    "initAuditPage": "readonly",
+    "loadAuditLog": "readonly",
+    "showToast": "readonly",
+    "firmUsers": "readonly"
   },
   "rules": {
     "no-undef": "error"
