@@ -35,7 +35,9 @@
     "firmUsers": "readonly",
     "loadManagedFirmsPage": "readonly",
     "showPage": "readonly",
-    "currentUser": "readonly"
+    "currentUser": "readonly",
+    "filterFullByFirm": "readonly",
+    "updateTeamOptions": "readonly"
   },
   "rules": {
     "no-undef": "error"
