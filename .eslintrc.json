@@ -32,7 +32,10 @@
     "initAuditPage": "readonly",
     "loadAuditLog": "readonly",
     "showToast": "readonly",
-    "firmUsers": "readonly"
+    "firmUsers": "readonly",
+    "loadManagedFirmsPage": "readonly",
+    "showPage": "readonly",
+    "currentUser": "readonly"
   },
   "rules": {
     "no-undef": "error"
