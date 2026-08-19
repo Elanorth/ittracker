@@ -11,6 +11,7 @@
 //  etmeye devam ediyor. Plan: docs/js-esm-migration-plan.md
 // ══════════════════════════════════════════════════════════
 import { expose, exposeAll } from './bridge.js';
+import './state.js'; // paylaşılan state'i kurar (window.state) — ESM Faz 2
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;

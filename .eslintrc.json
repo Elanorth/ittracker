@@ -37,14 +37,15 @@
     "showPage": "readonly",
     "currentUser": "readonly",
     "filterFullByFirm": "readonly",
-    "updateTeamOptions": "readonly"
+    "updateTeamOptions": "readonly",
+    "state": "readonly"
   },
   "rules": {
     "no-undef": "error"
   },
   "overrides": [
     {
-      "files": ["static/js/main.js", "static/js/bridge.js"],
+      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js"],
       "parserOptions": { "sourceType": "module" }
     }
   ]
