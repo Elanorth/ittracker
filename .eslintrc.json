@@ -44,7 +44,6 @@
   },
   "overrides": [
     {
-      "comment": "ESM Faz 1+ dosyaları module olarak parse edilir (import/export). Yeni ESM dosyaları dönüştükçe bu listeye eklenir; tüm static/js/ ESM olunca base sourceType 'module'a çevrilebilir.",
       "files": ["static/js/main.js", "static/js/bridge.js"],
       "parserOptions": { "sourceType": "module" }
     }
