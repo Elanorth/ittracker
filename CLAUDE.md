@@ -72,6 +72,13 @@ export PATH="$HOME/.local/bin:$PATH"      # uv PATH
 ```
 `.venv` gitignore'da. Kurulum yoksa: `uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt -r requirements-dev.txt`. Deploy yine staging→prod akışıyla; yerel test yalnızca push öncesi hızlı doğrulama içindir.
 
+**Lint — pre-commit (2026-08):** CI'daki pre-commit hook'larının (ruff lint+format, **eslint no-undef**, detect-secrets, EOF/whitespace) birebir aynısı Mac'te koşulabiliyor. Mac'te sistem Node YOK; pre-commit eslint için kendi node env'ini `nodeenv` ile indirir (`~/.cache/pre-commit`). Kurulu (`.venv/bin/pre-commit`, git hook `.git/hooks/pre-commit` aktif → her commit'te otomatik). Manuel:
+```bash
+.venv/bin/pre-commit run --all-files          # tüm hook'lar (CI ile birebir)
+.venv/bin/pre-commit run --files <dosyalar>   # sadece değişenler
+```
+Kurulum yoksa: `uv pip install --python .venv/bin/python pre-commit && .venv/bin/pre-commit install`. **Push öncesi çalıştır** — özellikle JS/`.eslintrc.json` değişikliklerinde (eslint yalnız CI'da koşuyordu, ilk-push fail'lerine yol açıyordu; artık lokal yakalanır).
+
 ```bash
 # Yeni feature
 git checkout -b feature/x develop
