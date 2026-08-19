@@ -1965,7 +1965,7 @@ function renderScheduledPage() {
       <div class="progress-label"><span>${k}</span><span style="color:${pColors[k]}">${v}</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${v/maxP*100}%;background:${pColors[k]}"></div></div>
     </div>`).join('');
-  if (schedView === 'calendar') renderCalendar();
+  if (state.schedView === 'calendar') renderCalendar();
   else renderScheduledList();
 }
 
@@ -2159,12 +2159,9 @@ async function toggleAlarm(taskId) {
 // ══════════════════════════════════════════════════════════
 //  TAKVİM
 // ══════════════════════════════════════════════════════════
-let schedView = 'list';
-let calYear  = new Date().getFullYear();
-let calMonth = new Date().getMonth(); // 0-indexed
-
+// schedView/calYear/calMonth → state.js (window.state, ESM Faz 2a)
 function toggleSchedView(view) {
-  schedView = view;
+  state.schedView = view;
   const listEl = document.getElementById('sched-list-view');
   const calEl  = document.getElementById('sched-cal-view');
   if (listEl) listEl.style.display = view === 'list' ? '' : 'none';
@@ -2176,7 +2173,7 @@ function toggleSchedView(view) {
 
 function renderCalendar() {
   const routines = tasks.filter(t => t.cat === 'routine');
-  const yr = calYear, mo = calMonth;
+  const yr = state.calYear, mo = state.calMonth;
   const MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const el = document.getElementById('cal-month-title');
   if (el) el.textContent = `${MONTHS_TR[mo]} ${yr}`;
@@ -2252,15 +2249,15 @@ function renderCalendar() {
 }
 
 function calNavMonth(dir) {
-  calMonth += dir;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  state.calMonth += dir;
+  if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+  if (state.calMonth < 0)  { state.calMonth = 11; state.calYear--; }
   renderCalendar();
 }
 
 function calGoToday() {
-  calYear  = new Date().getFullYear();
-  calMonth = new Date().getMonth();
+  state.calYear  = new Date().getFullYear();
+  state.calMonth = new Date().getMonth();
   renderCalendar();
 }
 

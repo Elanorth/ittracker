@@ -141,4 +141,8 @@ Cadence korunur (her 2 develop'ta 1 prod release, merge-commit).
 4. **Şimdi başlanır** (v5.42, Faz 1). ✅
 
 **Hedef:** Tüm fazlar (1–5) tamamlanır → uzun manuel test dönemi → **V6** sürümü.
-Cadence korunur (her 2 develop'ta 1 prod release).
+
+**Cadence kararı (2026-08-18):** ESM fazları boyunca prod **v5.40'ta DONDURULUR**;
+develop/staging'de fazlar biriktirilir (v5.42→…), araya prod release GİRMEZ. Tüm
+fazlar bitince uzun test → tek büyük **V6** develop→main release'i. Gerekçe: ESM
+riskli/çok-fazlı bir refactor akışı; prod'u izole tutmak + tek seferde doğrulamak.
