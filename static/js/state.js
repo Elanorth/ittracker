@@ -22,6 +22,12 @@ export const state = {
   schedView: 'list',
   calYear: new Date().getFullYear(),
   calMonth: new Date().getMonth(), // 0-indexed
+
+  // ── 2b: Dashboard / filtre state'i ──
+  selectedUserId: null,       // v4.2 — director+'in görüntülediği kullanıcı (null = kendim)
+  currentFilter: 'all',       // BUGÜNÜN GÖREVLERİ durum filtresi (all/open/done)
+  dashPage: 0,                // BUGÜNÜN GÖREVLERİ pagination sayfası
+  currentCategoryFilter: '',  // BUGÜNÜN GÖREVLERİ kategori filtresi
 };
 
 // Klasik app.js (ve inline handler'lar) için global köprü.
