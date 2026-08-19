@@ -149,7 +149,7 @@ const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
 let tasks = [];       // API'den yüklenir
 let USERS = [];       // API'den yüklenir
 let currentUser = {}; // /api/me
-let selectedUserId = null; // v4.2 — director+ tarafından görüntülenen kullanıcı (null = kendim)
+// selectedUserId → state.js (ESM Faz 2b, window.state)
 let firmUsers = [];   // v4.2 — director+'in firmasındaki kullanıcılar
 let _addReturnPage = 'tasks';  // v5.21 — 'Yeni Görev'e girmeden önceki sayfa; kayıt sonrası buraya dön
 
@@ -219,7 +219,7 @@ async function initFirmUserFilter() {
 
 async function onFirmUserChange() {
   const val = document.getElementById('firm-user-filter').value;
-  selectedUserId = val ? parseInt(val) : null;
+  state.selectedUserId = val ? parseInt(val) : null;
   refreshAssignModeUI();
   await loadTasks();
   renderDashboard();
@@ -231,7 +231,7 @@ async function onFirmUserChange() {
 // v5.0 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
 function applyAssignModeDefaults() {
   const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
-  const inAssignMode = isDirectorUp && selectedUserId && selectedUserId !== currentUser.id;
+  const inAssignMode = isDirectorUp && state.selectedUserId && state.selectedUserId !== currentUser.id;
   const catSel = document.getElementById('new-cat');
   if (!catSel || !inAssignMode) return;
   // Sadece sayfaya ilk girişte / hâlâ default değerdeyken support'a çevir
@@ -247,7 +247,7 @@ function refreshAssignModeUI() {
   const banner = document.getElementById('assign-mode-banner');
   const target = document.getElementById('assign-target-name');
   const mnGroup = document.getElementById('new-manager-note-group');
-  const assignTo = (isDirectorUp && selectedUserId && selectedUserId !== currentUser.id) ? selectedUserId : null;
+  const assignTo = (isDirectorUp && state.selectedUserId && state.selectedUserId !== currentUser.id) ? state.selectedUserId : null;
   if (banner) {
     if (assignTo) {
       const u = firmUsers.find(u => u.id === assignTo);
@@ -267,7 +267,7 @@ async function loadTasks(month, year) {
     const m = month || now.getMonth() + 1;
     const y = year  || now.getFullYear();
     // v4.2 — director+ başka kullanıcıyı görüntülüyorsa user_id eklenir
-    const userParam = selectedUserId ? '&user_id=' + selectedUserId : '';
+    const userParam = state.selectedUserId ? '&user_id=' + state.selectedUserId : '';
     const res = await fetch('/api/tasks?month=' + m + '&year=' + y + userParam);
     const data = await res.json();
     // API alanlarını frontend formatına normalize et
@@ -279,7 +279,7 @@ async function loadTasks(month, year) {
 }
 
 // v4.2 — başka kullanıcının görevlerine yazma izni yok (yalnızca görüntüleme)
-function isReadOnlyScope() { return !!selectedUserId && selectedUserId !== currentUser.id; }
+function isReadOnlyScope() { return !!state.selectedUserId && state.selectedUserId !== currentUser.id; }
 
 // v4.3 — HTML escape (kırmızı not ve benzeri güvenli gösterim için)
 // escapeHtml / _periodCompletionLabel / _periodCompletionBadge → static/js/utils.js (v5.38)
@@ -478,8 +478,8 @@ function renderDashboard() {
   const el = document.getElementById('dash-name');
   // v4.2 — başka kullanıcıyı görüntülüyorsak onun adını göster
   let displayName = (currentUser.full_name || '').split(' ')[0] || 'Hoş Geldiniz';
-  if (selectedUserId) {
-    const u = firmUsers.find(u => u.id === selectedUserId);
+  if (state.selectedUserId) {
+    const u = firmUsers.find(u => u.id === state.selectedUserId);
     if (u) displayName = `👁 ${u.full_name}`;
   }
   if (el) el.textContent = displayName;
@@ -527,7 +527,7 @@ function renderDashboard() {
   // v5.0 — Gerçek trend backend'den gelir (asenkron — KPI yenilendikçe rozet eklenir)
   loadKpiTrends();
 
-  dashPage = 0; // dashboard açılışında sayfayı sıfırla
+  state.dashPage = 0; // dashboard açılışında sayfayı sıfırla
   renderDashboardTaskList();
   renderDashUpcoming();
   renderBars();
@@ -543,7 +543,7 @@ function renderDashboard() {
 // v5.0 — Gerçek trend rozetleri (backend /api/dashboard/trends)
 async function loadKpiTrends() {
   try {
-    const url = '/api/dashboard/trends' + (selectedUserId ? `?user_id=${selectedUserId}` : '');
+    const url = '/api/dashboard/trends' + (state.selectedUserId ? `?user_id=${state.selectedUserId}` : '');
     const r = await fetch(url);
     if (!r.ok) return;
     const data = await r.json();
@@ -888,7 +888,7 @@ async function loadSlaKpi() {
     const now = new Date();
     const q = new URLSearchParams();
     q.set('month', now.getMonth() + 1); q.set('year', now.getFullYear());
-    if (selectedUserId) q.set('user_id', selectedUserId);
+    if (state.selectedUserId) q.set('user_id', state.selectedUserId);
     const r = await fetch('/api/sla/stats?' + q.toString());
     if (!r.ok) { row.style.display = 'none'; return; }
     const s = await r.json();
@@ -1162,13 +1162,13 @@ function taskRow(t) {
 // ══════════════════════════════════════════════════════════
 //  DASHBOARD TASK LIST (sayfalı, 5'er)
 // ══════════════════════════════════════════════════════════
-let currentFilter = 'all';
-let dashPage = 0;
+// currentFilter → state.js (ESM Faz 2b)
+// dashPage → state.js (ESM Faz 2b)
 const DASH_PAGE_SIZE = 5;
 
 function filterTasks(f) {
-  currentFilter = f;
-  dashPage = 0; // filtre değiştiğinde ilk sayfaya dön
+  state.currentFilter = f;
+  state.dashPage = 0; // filtre değiştiğinde ilk sayfaya dön
   // Yalnızca durum tabs'ını güncelle (kategori tabs'ı dokunulmasın)
   document.querySelectorAll('#tab-all, #tab-open, #tab-done').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-'+f)?.classList.add('active');
@@ -1176,17 +1176,17 @@ function filterTasks(f) {
 }
 
 // v5.2 — Dashboard "Bugünün Görevleri" kategori filtresi (durum filtresiyle birlikte çalışır)
-let currentCategoryFilter = '';
+// currentCategoryFilter → state.js (ESM Faz 2b)
 function filterTasksByCat(cat) {
-  currentCategoryFilter = cat;
-  dashPage = 0;
+  state.currentCategoryFilter = cat;
+  state.dashPage = 0;
   document.querySelectorAll('#today-cat-tabs .tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`#today-cat-tabs .tab[data-cat="${cat}"]`)?.classList.add('active');
   renderDashboardTaskList();
 }
 
 function setDashPage(p) {
-  dashPage = Math.max(0, p);
+  state.dashPage = Math.max(0, p);
   renderDashboardTaskList();
 }
 
@@ -1210,12 +1210,12 @@ function renderDashboardTaskList() {
   if (!body) return;
   let list = tasks;
   // Durum filtresi
-  if (currentFilter === 'open') list = list.filter(t => !t.done);
-  if (currentFilter === 'done') list = list.filter(t => t.done);
+  if (state.currentFilter === 'open') list = list.filter(t => !t.done);
+  if (state.currentFilter === 'done') list = list.filter(t => t.done);
   // v5.2 — Kategori filtresi (durum filtresiyle çakışmayacak şekilde sonra uygulanır)
-  if (currentCategoryFilter) list = list.filter(t => t.cat === currentCategoryFilter);
+  if (state.currentCategoryFilter) list = list.filter(t => t.cat === state.currentCategoryFilter);
   if (!list.length) {
-    const emptyMsg = currentCategoryFilter
+    const emptyMsg = state.currentCategoryFilter
       ? `Bu kategoride görev yok`
       : 'Görev yok';
     body.innerHTML = `<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">${emptyMsg}</div>`;
@@ -1232,8 +1232,8 @@ function renderDashboardTaskList() {
 
   const total = list.length;
   const pageCount = Math.ceil(total / DASH_PAGE_SIZE);
-  if (dashPage >= pageCount) dashPage = pageCount - 1;
-  const start = dashPage * DASH_PAGE_SIZE;
+  if (state.dashPage >= pageCount) state.dashPage = pageCount - 1;
+  const start = state.dashPage * DASH_PAGE_SIZE;
   const slice = list.slice(start, start + DASH_PAGE_SIZE);
 
   // Grup başlıkları ekleyerek render et (grup değiştiğinde ya da sayfa ilkinde)
@@ -1250,19 +1250,19 @@ function renderDashboardTaskList() {
   }).join('');
 
   if (pageCount > 1) {
-    const prevDisabled = dashPage === 0 ? 'disabled' : '';
-    const nextDisabled = dashPage >= pageCount - 1 ? 'disabled' : '';
+    const prevDisabled = state.dashPage === 0 ? 'disabled' : '';
+    const nextDisabled = state.dashPage >= pageCount - 1 ? 'disabled' : '';
     html += `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 6px 2px;border-top:1px solid var(--border);margin-top:auto">
         <div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
           ${start+1}–${Math.min(start+DASH_PAGE_SIZE, total)} / ${total}
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn btn-outline btn-sm" ${prevDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${dashPage-1})">‹ Önceki</button>
+          <button class="btn btn-outline btn-sm" ${prevDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${state.dashPage-1})">‹ Önceki</button>
           <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
-            ${dashPage+1} / ${pageCount}
+            ${state.dashPage+1} / ${pageCount}
           </span>
-          <button class="btn btn-outline btn-sm" ${nextDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${dashPage+1})">Sonraki ›</button>
+          <button class="btn btn-outline btn-sm" ${nextDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${state.dashPage+1})">Sonraki ›</button>
         </div>
       </div>`;
   }
@@ -1424,7 +1424,7 @@ async function addTask() {
   const backupFile = document.getElementById('backup-file').files[0];
   // v4.3 — atama modu: director+ başka kullanıcıyı görüntülüyorsa görev ona atanır
   const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
-  const assignTo = (isDirectorUp && selectedUserId && selectedUserId !== currentUser.id) ? selectedUserId : null;
+  const assignTo = (isDirectorUp && state.selectedUserId && state.selectedUserId !== currentUser.id) ? state.selectedUserId : null;
   const mgrNote = isDirectorUp ? (document.getElementById('new-manager-note')?.value || '').trim() : '';
   let body, fetchOpts;
   if (cat === 'backup' && backupFile) {
@@ -1558,7 +1558,7 @@ async function loadWeeklyTrend() {
   const cv = document.getElementById('weekly-trend-chart');
   if (!cv || typeof Chart === 'undefined') return;
   try {
-    const uParam = selectedUserId ? 'user_id=' + selectedUserId + '&' : '';
+    const uParam = state.selectedUserId ? 'user_id=' + state.selectedUserId + '&' : '';
     const res = await fetch('/api/dashboard/weekly-trends?' + uParam + 'weeks=' + _weeklyWeeks);
     if (!res.ok) return;
     const d = await res.json();
@@ -3476,7 +3476,7 @@ async function onReportMonthChange() {
   const body = document.getElementById('report-stats-body');
   if (body) body.innerHTML = '<div style="padding:24px;text-align:center;font-size:12px;color:var(--text-muted)">Yükleniyor...</div>';
   try {
-    const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
+    const userParam = state.selectedUserId ? `&user_id=${state.selectedUserId}` : '';
     const res = await fetch(`/api/tasks?month=${my.month}&year=${my.year}${userParam}`);
     const taskList = await res.json();
     renderReportStats(taskList, my.month, my.year);
@@ -3521,7 +3521,7 @@ function renderReportStats(taskList, month, year) {
 function previewReportPdf() {
   const my = _getSelectedMonthYear();
   if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
-  const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
+  const userParam = state.selectedUserId ? `&user_id=${state.selectedUserId}` : '';
   window.open(`/api/report/pdf?month=${my.month}&year=${my.year}${userParam}`, '_blank');
 }
 
@@ -3530,7 +3530,7 @@ function previewReportPdf() {
 function exportTasksCsv() {
   const my = _getSelectedMonthYear();
   if (!my) { showToast('err', 'Lütfen önce ay seçin'); return; }
-  const userParam = selectedUserId ? `&user_id=${selectedUserId}` : '';
+  const userParam = state.selectedUserId ? `&user_id=${state.selectedUserId}` : '';
   window.location.href = `/api/tasks/export?month=${my.month}&year=${my.year}${userParam}`;
   showToast('ok', 'CSV indiriliyor…');
 }
@@ -3546,7 +3546,7 @@ async function sendReportMail() {
     const res  = await fetch('/api/report/send', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ month: my.month, year: my.year, cc: cc||null, user_id: selectedUserId || null })
+      body: JSON.stringify({ month: my.month, year: my.year, cc: cc||null, user_id: state.selectedUserId || null })
     });
     const data = await res.json();
     if (data.ok) {
