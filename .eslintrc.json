@@ -41,5 +41,11 @@
   },
   "rules": {
     "no-undef": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["static/js/main.js", "static/js/bridge.js"],
+      "parserOptions": { "sourceType": "module" }
+    }
+  ]
 }
