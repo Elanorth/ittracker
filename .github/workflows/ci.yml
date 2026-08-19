@@ -17,6 +17,8 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Asılı bir run 6 saat sürünmesin (varsayılan job timeout). apt bazen ASILIYOR.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -30,9 +32,25 @@ jobs:
             requirements-dev.txt
 
       - name: System deps (WeasyPrint)
+        # GitHub-hosted runner apt'si zaman zaman ASILIYOR (fail değil, hang) →
+        # tüm oturum boyunca "System deps (WeasyPrint)" adımı takılıyordu. Çözüm:
+        # her apt komutunu `timeout` ile sar (hang → retryable hata), retry + IPv4.
+        timeout-minutes: 8
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          set -eux
+          printf 'Acquire::ForceIPv4 "true";\nAcquire::Retries "3";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99ci-resilience >/dev/null
+          apt_retry() {
+            for i in 1 2 3; do
+              if sudo timeout -k 20 120 "$@"; then return 0; fi
+              echo "::warning::apt denemesi $i başarısız/timeout, tekrar: $*"
+              sleep 5
+            done
+            echo "::error::apt 3 denemede başarısız: $*"
+            return 1
+          }
+          apt_retry apt-get update
+          apt_retry apt-get install -y --no-install-recommends \
             libpango-1.0-0 libpangoft2-1.0-0 libgdk-pixbuf-xlib-2.0-0 libffi-dev
 
       - name: Install
