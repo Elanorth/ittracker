@@ -146,7 +146,7 @@ const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
 // CAT_LABELS → static/js/utils.js (v5.39)
 
 // ── Uygulama durumu ──
-let tasks = [];       // API'den yüklenir
+// tasks → state.js (ESM Faz 2c-2, window.state)
 // USERS → state.js (ESM Faz 2c-1, window.state)
 // currentUser → state.js (ESM Faz 2c-1, window.state)
 // selectedUserId → state.js (ESM Faz 2b, window.state)
@@ -225,7 +225,7 @@ async function onFirmUserChange() {
   renderDashboard();
   // Hangi sayfadaysak yeniden render et
   const activePage = document.querySelector('.page-section.active');
-  if (activePage && activePage.id === 'page-tasks') renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
+  if (activePage && activePage.id === 'page-tasks') renderFullList(state.tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
 }
 
 // v5.0 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
@@ -271,8 +271,8 @@ async function loadTasks(month, year) {
     const res = await fetch('/api/tasks?month=' + m + '&year=' + y + userParam);
     const data = await res.json();
     // API alanlarını frontend formatına normalize et
-    tasks = data.map(normalizeTask);
-  } catch(e) { console.error('Görevler yüklenemedi:', e); tasks = []; }
+    state.tasks = data.map(normalizeTask);
+  } catch(e) { console.error('Görevler yüklenemedi:', e); state.tasks = []; }
   // v5.2 — destek talebi sayısını sidebar nav badge'ine yansıt
   try { updateSupportNavBadge(); } catch(_) {}
   try { updatePoolBadge(); } catch(_) {}
@@ -430,27 +430,27 @@ function showPage(name, opts = {}) {
       if (opts.cat === 'support') {
         _ftCat = 'support';
         if (filterEl) filterEl.value = 'support';
-        renderFullList(tasks.filter(t => t.cat === 'support'));
+        renderFullList(state.tasks.filter(t => t.cat === 'support'));
       } else if (opts.firm !== undefined) {
         // Firma drill-down — kategori bağımsız
         _ftCat = '';
         if (filterEl) filterEl.value = '';
-        renderFullList(tasks.filter(t => (t.firm || '') === opts.firm));
+        renderFullList(state.tasks.filter(t => (t.firm || '') === opts.firm));
       } else if (opts.statusKind) {
         // KPI jump — durum filtresi, kategori bağımsız
         _ftCat = '';
         if (filterEl) filterEl.value = '';
         const k = opts.statusKind;
-        let list = tasks;
-        if (k === 'overdue') list = tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY);
-        else if (k === 'open') list = tasks.filter(t => !t.done);
-        else if (k === 'done') list = tasks.filter(t => t.done);
+        let list = state.tasks;
+        if (k === 'overdue') list = state.tasks.filter(t => !t.done && t.deadline && t.deadline < TODAY);
+        else if (k === 'open') list = state.tasks.filter(t => !t.done);
+        else if (k === 'done') list = state.tasks.filter(t => t.done);
         renderFullList(list);
       } else {
         // Varsayılan: Anlık Görevler (task + backup)
         _ftCat = 'task';
         if (filterEl) filterEl.value = 'task';
-        renderFullList(tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
+        renderFullList(state.tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
       }
     });
   }
@@ -505,13 +505,13 @@ function renderDashboard() {
   const subEl = document.getElementById('dash-subtitle');
   if (subEl) subEl.textContent = `${tarihStr} · ${aySonu}`;
 
-  const total   = tasks.length;
-  const done    = tasks.filter(t => t.done).length;
-  const pending = tasks.filter(t => !t.done).length;
+  const total   = state.tasks.length;
+  const done    = state.tasks.filter(t => t.done).length;
+  const pending = state.tasks.filter(t => !t.done).length;
   // v5.x — "Geciken" KANONİK taskTiming()'den (rutinlerde donmuş deadline değil
   // is_overdue; destek için SLA). Böylece KPI sayısı, alttaki "Geciken" grubuyla tutar.
-  const late    = tasks.filter(t => taskTiming(t).group === 'overdue').length;
-  const backups = tasks.filter(t => t.cat === 'backup').length;
+  const late    = state.tasks.filter(t => taskTiming(t).group === 'overdue').length;
+  const backups = state.tasks.filter(t => t.cat === 'backup').length;
   const rate    = total ? Math.round(done/total*100) : 0;
 
   // KPI kartları — dinamik güncelle (v5.0: backend'den gelen gerçek trend)
@@ -603,7 +603,7 @@ function addTaskFromTasksView() {
 function updateSupportNavBadge() {
   const badge = document.getElementById('support-nav-badge');
   if (!badge) return;
-  const cnt = tasks.filter(t => t.cat === 'support' && !t.done).length;
+  const cnt = state.tasks.filter(t => t.cat === 'support' && !t.done).length;
   if (cnt > 0) {
     badge.textContent = String(cnt);
     badge.style.display = '';
@@ -691,14 +691,14 @@ async function releaseCase(id) {
     if (!r.ok) throw new Error((await r.json()).error || 'Bırakılamadı');
     showToast('ok', '🫧 Talep havuza geri bırakıldı');
     closeEditTaskModal();
-    await loadTasks(); renderFullList(tasks); updatePoolBadge();
+    await loadTasks(); renderFullList(state.tasks); updatePoolBadge();
   } catch (e) { showToast('err', e.message); }
 }
 
 // v5.23 — Portal case'i çözüldü olarak kapat (is_done=true → 'resolved' + kapanış maili)
 // veya zaten çözülmüşse yeniden aç. Buton etiketi openEditTask'ta t.done'a göre ayarlanır.
 async function resolveCase(id) {
-  const t = tasks.find(x => x.id === id);
+  const t = state.tasks.find(x => x.id === id);
   const wasDone = t && t.done;
   const msg = wasDone
     ? 'Bu talebi yeniden açmak istediğinize emin misiniz?'
@@ -712,7 +712,7 @@ async function resolveCase(id) {
     if (!r.ok) throw new Error((await r.json()).error || 'İşlem başarısız');
     showToast('ok', wasDone ? '↩ Talep yeniden açıldı' : '✓ Talep çözüldü — kullanıcıya bilgi verildi');
     closeEditTaskModal();
-    await loadTasks(); renderFullList(tasks); updatePoolBadge();
+    await loadTasks(); renderFullList(state.tasks); updatePoolBadge();
   } catch (e) { showToast('err', e.message); }
 }
 
@@ -735,9 +735,9 @@ function renderCategoryPie() {
   const wrap = document.getElementById('dash-pie-wrap');
   if (!wrap || typeof Chart === 'undefined') return;
   const counts = {};
-  tasks.forEach(t => { const k = (t.cat && _CAT_META[t.cat]) ? t.cat : 'other'; counts[k] = (counts[k] || 0) + 1; });
-  const total = tasks.length;
-  const rate = total ? Math.round(tasks.filter(t => t.done).length / total * 100) : 0;
+  state.tasks.forEach(t => { const k = (t.cat && _CAT_META[t.cat]) ? t.cat : 'other'; counts[k] = (counts[k] || 0) + 1; });
+  const total = state.tasks.length;
+  const rate = total ? Math.round(state.tasks.filter(t => t.done).length / total * 100) : 0;
   if (!total) { if (_catChart) { _catChart.destroy(); _catChart = null; } wrap.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:30px 0">Henüz görev yok</div>'; return; }
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const cats = entries.map(([c]) => c);
@@ -768,7 +768,7 @@ function renderFirmBars() {
   const el = document.getElementById('dash-firm-bars');
   if (!el || typeof Chart === 'undefined') return;
   const firmMap = {};
-  tasks.forEach(t => { const f = (t.firm && String(t.firm).trim()) || '—'; firmMap[f] = (firmMap[f] || 0) + 1; });
+  state.tasks.forEach(t => { const f = (t.firm && String(t.firm).trim()) || '—'; firmMap[f] = (firmMap[f] || 0) + 1; });
   const sorted = Object.entries(firmMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
   if (!sorted.length) { if (_firmChart) { _firmChart.destroy(); _firmChart = null; } el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">Henüz görev yok</div>'; return; }
   const names = sorted.map(([n]) => (FIRMS[n] && FIRMS[n].label) || n);
@@ -1208,7 +1208,7 @@ function _dashSortKey(t)  { return taskTiming(t).sortKey; }
 function renderDashboardTaskList() {
   const body = document.getElementById('task-list-body');
   if (!body) return;
-  let list = tasks;
+  let list = state.tasks;
   // Durum filtresi
   if (state.currentFilter === 'open') list = list.filter(t => !t.done);
   if (state.currentFilter === 'done') list = list.filter(t => t.done);
@@ -1274,7 +1274,7 @@ function renderDashboardTaskList() {
 // ══════════════════════════════════════════════════════════
 function renderProjectsPage() {
   const firmFilter = document.getElementById('proj-filter-firm')?.value || '';
-  let projs = tasks.filter(t => t.cat === 'project');
+  let projs = state.tasks.filter(t => t.cat === 'project');
   if (firmFilter) projs = projs.filter(t => t.firm === firmFilter);
 
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1355,7 +1355,7 @@ function renderProjectsPage() {
 // ══════════════════════════════════════════════════════════
 let _ftFirm = '', _ftCat = '', _ftSearch = '';
 function renderFullList(list) {
-  let l = list || tasks;
+  let l = list || state.tasks;
   if (_ftFirm)   l = l.filter(t => t.firm === _ftFirm);
   if (_ftCat)    l = l.filter(t => t.cat  === _ftCat);
   if (_ftSearch) l = l.filter(t => t.title.toLowerCase().includes(_ftSearch));
@@ -1372,7 +1372,7 @@ function filterFullList(v)   { _ftSearch = v.toLowerCase(); renderFullList(); }
 //  API — GÖREV TOGGLE (checkbox)
 // ══════════════════════════════════════════════════════════
 async function apiToggleTask(id) {
-  const t = tasks.find(t => t.id === id); if (!t) return;
+  const t = state.tasks.find(t => t.id === id); if (!t) return;
   const newDone = !t.done;
   // v5.0 — server `date.today()` kullanır (Karar 2 = B). Frontend month/year göndermez,
   // server bugünün period_key'ini hesaplar (Günlük/Haftalık/Aylık/Yıllık).
@@ -1392,7 +1392,7 @@ async function apiToggleTask(id) {
       // Gerçek veriyle hemen güncelle — geçici done gösterme
       Object.assign(t, normalized);
       renderDashboardTaskList();
-      renderFullList(tasks);
+      renderFullList(state.tasks);
       renderDashUpcoming();
       buildNotifications();
       if (document.getElementById('page-scheduled')?.classList.contains('active')) renderScheduledPage();
@@ -1402,7 +1402,7 @@ async function apiToggleTask(id) {
     } else {
       Object.assign(t, normalized);
       renderDashboardTaskList();
-      renderFullList(tasks);
+      renderFullList(state.tasks);
       renderDashUpcoming();
       buildNotifications();
       if (document.getElementById('page-scheduled')?.classList.contains('active')) renderScheduledPage();
@@ -1462,7 +1462,7 @@ async function addTask() {
     const res  = await fetch('/api/tasks', fetchOpts);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Kayıt hatası');
-    tasks.unshift(normalizeTask(data));
+    state.tasks.unshift(normalizeTask(data));
     // Formu temizle
     document.getElementById('new-title').value = '';
     document.getElementById('new-start').value = TODAY;
@@ -1511,8 +1511,8 @@ function renderBars() {
   for (let i = 4; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const ds = d.toISOString().split('T')[0];
-    const created   = tasks.filter(t => t.startDate === ds).length;
-    const completed = tasks.filter(t => t.completed_at && t.completed_at.substring(0, 10) === ds).length;
+    const created   = state.tasks.filter(t => t.startDate === ds).length;
+    const completed = state.tasks.filter(t => t.completed_at && t.completed_at.substring(0, 10) === ds).length;
     days.push({ label: ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'][d.getDay()], c: created, d: completed });
   }
   // v5.33 — inline-bar yerine Chart.js gruplu bar (açılan vs tamamlanan)
@@ -1801,7 +1801,7 @@ function setDateDisplay(dayId, fullId) {
 // ══════════════════════════════════════════════════════════
 //  BİLDİRİM SİSTEMİ
 // ══════════════════════════════════════════════════════════
-let notifications = [];
+// notifications → state.js (ESM Faz 2c-2)
 
 // v5.0 — Bildirimler artık backend /api/notifications/preview üzerinden gelir
 // (rutin gecikmeleri + tüm overdue + SLA warning + SLA breach). Yerel rutin
@@ -1817,7 +1817,7 @@ function _saveReadIds(set) {
 }
 
 async function buildNotifications() {
-  notifications = [];
+  state.notifications = [];
   const readIds = _getReadIds();
 
   let backendOk = false;
@@ -1827,20 +1827,20 @@ async function buildNotifications() {
       const data = await r.json();
       backendOk = true;
       // v5.22 — Yeni portal case / kullanıcı yanıtı (en üstte)
-      (data.new_cases || []).forEach(t => notifications.push({
+      (data.new_cases || []).forEach(t => state.notifications.push({
         id:'nc'+t.id, type:'info', title:t.title,
         meta:`${t.kind==='reply'?'Kullanıcı yanıtı':'Yeni talep'} · ${t.case_code||''} · ${(FIRMS[t.firm]||{}).label||t.firm||''}${t.pooled?' · havuz':''}`,
         tag:'new', tagLabel:t.kind==='reply'?'YENİ YANIT':'YENİ TALEP', taskId:t.id,
         read: readIds.has('nc'+t.id), mailSent:false, _sortKey:-1
       }));
       // Sıralama: yeni case → breached → overdue → warning
-      (data.sla_breached || []).forEach(t => notifications.push({
+      (data.sla_breached || []).forEach(t => state.notifications.push({
         id:'sb'+t.id, type:'danger', title:t.title,
         meta:`SLA AŞILDI · ${t.firm||''} ${t.team?'· '+t.team:''}`,
         tag:'late', tagLabel:'SLA AŞILDI', taskId:t.id,
         read: readIds.has('sb'+t.id), mailSent:false, _sortKey:0
       }));
-      (data.overdue || []).forEach(t => notifications.push({
+      (data.overdue || []).forEach(t => state.notifications.push({
         id:'ov'+t.id, type:'danger', title:t.title,
         meta:`${t.days_late||'?'} gün gecikti · ${t.firm||''} ${t.team?'· '+t.team:''}`,
         tag:'late', tagLabel:`${t.days_late||'?'}g gecikti`, taskId:t.id,
@@ -1851,26 +1851,26 @@ async function buildNotifications() {
         const rem = (typeof rh === 'number')
           ? (rh >= 24 ? `${(rh/24).toFixed(1)}g kaldı` : `${rh.toFixed(1)}s kaldı`)
           : 'süresi azaldı';
-        notifications.push({
+        state.notifications.push({
           id:'sw'+t.id, type:'warn', title:t.title,
           meta:`SLA: ${rem} · ${t.firm||''} ${t.team?'· '+t.team:''}`,
           tag:'due', tagLabel:'SLA YAKIN', taskId:t.id,
           read: readIds.has('sw'+t.id), mailSent:false, _sortKey:2
         });
       });
-      notifications.sort((a,b) => a._sortKey - b._sortKey);
+      state.notifications.sort((a,b) => a._sortKey - b._sortKey);
     }
   } catch(e) { /* sessizce fallback */ }
 
   if (!backendOk) {
     // Fallback: önceki yerel rutin tarama
     // v5.1 — Kanonik is_overdue/overdue_periods kullan (donmuş deadline yerine)
-    const routines = tasks.filter(t => t.cat === 'routine' && t.period !== 'Tek Seferlik' && !t.done);
+    const routines = state.tasks.filter(t => t.cat === 'routine' && t.period !== 'Tek Seferlik' && !t.done);
     routines.forEach(t => {
       const id = 'n'+t.id;
       if (t.is_overdue) {
         const lbl = _routineOverdueLabel(t);
-        notifications.push({ id, type:'danger', title:t.title,
+        state.notifications.push({ id, type:'danger', title:t.title,
           meta:`${lbl} · ${t.team||''} · ${(FIRMS[t.firm]||{}).label||t.firm}`,
           tag:'late', tagLabel:lbl, taskId:t.id, read:readIds.has(id), mailSent:t.mailSent||false });
       }
@@ -1880,10 +1880,10 @@ async function buildNotifications() {
 }
 
 function updateNotifUI() {
-  const unread = notifications.filter(n => !n.read).length;
+  const unread = state.notifications.filter(n => !n.read).length;
   const dot = document.getElementById('notif-dot');
   if (dot) dot.style.display = unread > 0 ? 'block' : 'none';
-  const overdueCount = tasks.filter(t => t.cat==='routine' && !t.done && t.is_overdue).length;
+  const overdueCount = state.tasks.filter(t => t.cat==='routine' && !t.done && t.is_overdue).length;
   const nb = document.getElementById('sched-nav-badge');
   if (nb) { nb.textContent = overdueCount; nb.style.display = overdueCount > 0 ? 'inline-flex' : 'none'; }
   renderNotifList();
@@ -1891,8 +1891,8 @@ function updateNotifUI() {
 
 function renderNotifList() {
   const el = document.getElementById('notif-list'); if (!el) return;
-  if (!notifications.length) { el.innerHTML = '<div class="notif-empty">🎉 Tüm rutin görevler zamanında!<br>Gecikme veya uyarı yok.</div>'; return; }
-  el.innerHTML = notifications.map(n => `
+  if (!state.notifications.length) { el.innerHTML = '<div class="notif-empty">🎉 Tüm rutin görevler zamanında!<br>Gecikme veya uyarı yok.</div>'; return; }
+  el.innerHTML = state.notifications.map(n => `
     <div class="notif-item ${n.read?'':'unread'}" onclick="notifClick('${n.id}',${n.taskId})">
       <div class="notif-icon ${n.type==='danger'?'ndanger':n.type==='warn'?'nwarn':'ninfo'}">${n.tag==='new'?(n.tagLabel==='YENİ YANIT'?'💬':'🆕'):n.type==='danger'?'🔴':n.type==='warn'?'⚠️':'🔔'}</div>
       <div style="flex:1">
@@ -1907,13 +1907,13 @@ function renderNotifList() {
 }
 
 function notifClick(notifId, taskId) {
-  const n = notifications.find(x => x.id === notifId); if (n) n.read = true;
+  const n = state.notifications.find(x => x.id === notifId); if (n) n.read = true;
   const r = _getReadIds(); r.add(notifId); _saveReadIds(r);
   updateNotifUI(); closeNotifDropdown(); openEditTask(taskId);
 }
 function clearAllNotifs() {
   const r = _getReadIds();
-  notifications.forEach(n => { n.read = true; r.add(n.id); });
+  state.notifications.forEach(n => { n.read = true; r.add(n.id); });
   _saveReadIds(r);
   updateNotifUI();
 }
@@ -1943,7 +1943,7 @@ document.addEventListener('keydown', e => {
 // ══════════════════════════════════════════════════════════
 function renderScheduledPage() {
   setDateDisplay('sched-date-day', 'sched-date-full');
-  const routines = tasks.filter(t => t.cat === 'routine');
+  const routines = state.tasks.filter(t => t.cat === 'routine');
 
   // v5.1 — Kanonik gruplama: is_done (period_key bazlı) + is_overdue.
   // Donmuş next_due/last_completed yerine backend'in periyot-aware sinyalleri.
@@ -1977,7 +1977,7 @@ function renderScheduledList() {
   const soon  = new Date(TODAY); soon.setDate(soon.getDate() + 7); // 7 gün içi = aktif
 
   // Tüm rutin görevleri al
-  let all = tasks.filter(t => t.cat === 'routine');
+  let all = state.tasks.filter(t => t.cat === 'routine');
   if (periodF) all = all.filter(t => t.period === periodF);
   if (firmF)   all = all.filter(t => t.firm   === firmF);
 
@@ -2136,7 +2136,7 @@ function _renderSchedRow(t) {
 
 
 async function toggleAlarm(taskId) {
-  const t = tasks.find(t => t.id === taskId); if (!t) return;
+  const t = state.tasks.find(t => t.id === taskId); if (!t) return;
   const next = !t.alarm;
   t.alarm = next;
   renderScheduledList(); buildNotifications();
@@ -2172,7 +2172,7 @@ function toggleSchedView(view) {
 }
 
 function renderCalendar() {
-  const routines = tasks.filter(t => t.cat === 'routine');
+  const routines = state.tasks.filter(t => t.cat === 'routine');
   const yr = state.calYear, mo = state.calMonth;
   const MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const el = document.getElementById('cal-month-title');
@@ -2264,7 +2264,7 @@ function calGoToday() {
 function renderDashUpcoming() {
   // v5.x — KANONİK taskTiming(): rutin gecikmesi donmuş deadline'dan değil
   // is_overdue/overdue_periods'tan gelir. Geciken önce (sortKey), sonra bekleyenler.
-  const upcoming = tasks
+  const upcoming = state.tasks
     .filter(t => t.cat === 'routine' && !t.done)
     .sort((a, b) => {
       const ta = taskTiming(a), tb = taskTiming(b);
@@ -2301,7 +2301,7 @@ loadApp();
 //  EDIT TASK MODAL — API bağlı
 // ══════════════════════════════════════════════════════════
 function openEditTask(id) {
-  const t = tasks.find(t => t.id === id); if (!t) return;
+  const t = state.tasks.find(t => t.id === id); if (!t) return;
   document.getElementById('edit-task-id').value       = id;
   document.getElementById('edit-task-title').value    = t.title;
   document.getElementById('edit-task-cat').value      = t.cat;
@@ -2450,11 +2450,11 @@ async function saveEditTask() {
     });
     if (!res.ok) throw new Error((await res.json()).error || 'API hatası');
     const updated = await res.json();
-    const idx = tasks.findIndex(t => t.id === id);
-    if (idx > -1) tasks[idx] = normalizeTask(updated);
+    const idx = state.tasks.findIndex(t => t.id === id);
+    if (idx > -1) state.tasks[idx] = normalizeTask(updated);
     closeEditTaskModal();
     renderDashboardTaskList();
-    renderFullList(tasks);
+    renderFullList(state.tasks);
     renderDashUpcoming();
     buildNotifications();
     showToast('ok', 'Görev güncellendi ✓');
@@ -2462,7 +2462,7 @@ async function saveEditTask() {
 }
 async function saveAndCompleteTask() {
   const id = parseInt(document.getElementById('edit-task-id').value);
-  const t  = tasks.find(t => t.id === id);
+  const t  = state.tasks.find(t => t.id === id);
   if (!t) return;
   const body = {
     title:    document.getElementById('edit-task-title').value.trim(),
@@ -2490,11 +2490,11 @@ async function saveAndCompleteTask() {
     });
     if (!res.ok) throw new Error((await res.json()).error || 'API hatası');
     const updated = await res.json();
-    const idx = tasks.findIndex(t => t.id === id);
-    if (idx > -1) tasks[idx] = normalizeTask(updated);
+    const idx = state.tasks.findIndex(t => t.id === id);
+    if (idx > -1) state.tasks[idx] = normalizeTask(updated);
     closeEditTaskModal();
     renderDashboardTaskList();
-    renderFullList(tasks);
+    renderFullList(state.tasks);
     if (document.getElementById('page-scheduled')?.classList.contains('active')) renderScheduledPage();
     if (document.getElementById('page-projects')?.classList.contains('active'))  renderProjectsPage();
     renderDashUpcoming();
@@ -2509,10 +2509,10 @@ async function deleteTask() {
   try {
     const res = await fetch(`/api/tasks/${id}`, { method:'DELETE' });
     if (!res.ok) throw new Error('Silme hatası');
-    tasks.splice(tasks.findIndex(t => t.id === id), 1);
+    state.tasks.splice(state.tasks.findIndex(t => t.id === id), 1);
     closeEditTaskModal();
     renderDashboardTaskList();
-    renderFullList(tasks);
+    renderFullList(state.tasks);
     renderDashUpcoming();
     buildNotifications();
     if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
@@ -2734,7 +2734,7 @@ function closeEditUserModal() {
 //  YEDEKLER SAYFASI
 // ══════════════════════════════════════════════════════════
 function getBackupTasks() {
-  return tasks.filter(t => t.cat === 'backup' && t.backup);
+  return state.tasks.filter(t => t.cat === 'backup' && t.backup);
 }
 
 function formatFileSize(bytes) {
