@@ -32,10 +32,8 @@
     "initAuditPage": "readonly",
     "loadAuditLog": "readonly",
     "showToast": "readonly",
-    "firmUsers": "readonly",
     "loadManagedFirmsPage": "readonly",
     "showPage": "readonly",
-    "currentUser": "readonly",
     "filterFullByFirm": "readonly",
     "updateTeamOptions": "readonly",
     "state": "readonly"

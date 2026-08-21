@@ -49,7 +49,7 @@ function applyPermissions(level) {
   });
 
   // Ortak Alan — can_access_board veya super_admin
-  const showBoard = currentUser.can_access_board || currentUser.permission_level === 'super_admin';
+  const showBoard = state.currentUser.can_access_board || state.currentUser.permission_level === 'super_admin';
   document.querySelectorAll('[data-perm="board"]').forEach(el => {
     el.style.display = showBoard ? '' : 'none';
   });
@@ -62,7 +62,7 @@ function applyPermissions(level) {
 }
 
 function applySettingsPermissions() {
-  const level = (currentUser.permission_level || 'junior');
+  const level = (state.currentUser.permission_level || 'junior');
   const smtpCard = document.getElementById('settings-card-smtp');
   const backupCard = document.getElementById('settings-card-backup');
   if (smtpCard) smtpCard.style.display = (level === 'super_admin') ? '' : 'none';
@@ -84,7 +84,7 @@ function applySettingsPermissions() {
 }
 
 function applyJuniorTaskRestrictions() {
-  const level = (currentUser.permission_level || 'junior');
+  const level = (state.currentUser.permission_level || 'junior');
   const catSel = document.getElementById('new-cat');
   const firmSel = document.getElementById('new-firm');
   const periodSel = document.getElementById('new-period');
@@ -97,8 +97,8 @@ function applyJuniorTaskRestrictions() {
     });
     catSel.value = 'task';
     // Firma: otomatik kullanıcının firması
-    if (currentUser.firm) {
-      firmSel.value = currentUser.firm;
+    if (state.currentUser.firm) {
+      firmSel.value = state.currentUser.firm;
       firmSel.disabled = true;
       updateTeamOptions();
     }
@@ -147,10 +147,10 @@ const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
 
 // ── Uygulama durumu ──
 let tasks = [];       // API'den yüklenir
-let USERS = [];       // API'den yüklenir
-let currentUser = {}; // /api/me
+// USERS → state.js (ESM Faz 2c-1, window.state)
+// currentUser → state.js (ESM Faz 2c-1, window.state)
 // selectedUserId → state.js (ESM Faz 2b, window.state)
-let firmUsers = [];   // v4.2 — director+'in firmasındaki kullanıcılar
+// firmUsers → state.js (ESM Faz 2c-1, window.state)
 let _addReturnPage = 'tasks';  // v5.21 — 'Yeni Görev'e girmeden önceki sayfa; kayıt sonrası buraya dön
 
 // ══════════════════════════════════════════════════════════
@@ -178,7 +178,7 @@ function manualLogin() {
 async function loadApp() {
   try {
     const me = await fetch('/api/me').then(r => r.json());
-    currentUser = me;
+    state.currentUser = me;
     document.getElementById('sb-name').textContent = me.full_name || me.username;
     document.getElementById('sb-role').textContent = me.role || '';
     document.getElementById('sb-avatar').textContent = (me.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -199,17 +199,17 @@ async function loadApp() {
 
 // ── v4.2: Director+ kullanıcı filtresi ──
 async function initFirmUserFilter() {
-  const level = currentUser.permission_level || 'junior';
+  const level = state.currentUser.permission_level || 'junior';
   if (level !== 'super_admin' && level !== 'it_director') return;
   try {
     const res = await fetch('/api/firm/users');
     if (!res.ok) return;
-    firmUsers = await res.json();
+    state.firmUsers = await res.json();
     const sel = document.getElementById('firm-user-filter');
     const wrap = document.getElementById('firm-user-filter-wrap');
     if (!sel || !wrap) return;
     // Options: kendim + diğer kullanıcılar (kendisini ayrı kategori "kendim" olarak sunuyoruz)
-    const others = firmUsers.filter(u => u.id !== currentUser.id);
+    const others = state.firmUsers.filter(u => u.id !== state.currentUser.id);
     sel.innerHTML = '<option value="">— Kendim —</option>' +
       others.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}${u.firm ? ' · '+escapeHtml(u.firm) : ''}</option>`).join('');
     wrap.style.display = others.length ? 'flex' : 'none';
@@ -230,8 +230,8 @@ async function onFirmUserChange() {
 
 // v5.0 — Atama modu (director+ başka kullanıcıyı görüntülüyor) açıkken kategori default'u "support"
 function applyAssignModeDefaults() {
-  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
-  const inAssignMode = isDirectorUp && state.selectedUserId && state.selectedUserId !== currentUser.id;
+  const isDirectorUp = state.currentUser.permission_level === 'super_admin' || state.currentUser.permission_level === 'it_director';
+  const inAssignMode = isDirectorUp && state.selectedUserId && state.selectedUserId !== state.currentUser.id;
   const catSel = document.getElementById('new-cat');
   if (!catSel || !inAssignMode) return;
   // Sadece sayfaya ilk girişte / hâlâ default değerdeyken support'a çevir
@@ -243,14 +243,14 @@ function applyAssignModeDefaults() {
 
 // v4.3 — Yeni görev sayfasında atama modu banner'ı + IT Müdürü notu alanı görünürlüğü
 function refreshAssignModeUI() {
-  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  const isDirectorUp = state.currentUser.permission_level === 'super_admin' || state.currentUser.permission_level === 'it_director';
   const banner = document.getElementById('assign-mode-banner');
   const target = document.getElementById('assign-target-name');
   const mnGroup = document.getElementById('new-manager-note-group');
-  const assignTo = (isDirectorUp && state.selectedUserId && state.selectedUserId !== currentUser.id) ? state.selectedUserId : null;
+  const assignTo = (isDirectorUp && state.selectedUserId && state.selectedUserId !== state.currentUser.id) ? state.selectedUserId : null;
   if (banner) {
     if (assignTo) {
-      const u = firmUsers.find(u => u.id === assignTo);
+      const u = state.firmUsers.find(u => u.id === assignTo);
       if (target) target.textContent = u ? u.full_name : '—';
       banner.classList.remove('hidden');
     } else {
@@ -279,7 +279,7 @@ async function loadTasks(month, year) {
 }
 
 // v4.2 — başka kullanıcının görevlerine yazma izni yok (yalnızca görüntüleme)
-function isReadOnlyScope() { return !!state.selectedUserId && state.selectedUserId !== currentUser.id; }
+function isReadOnlyScope() { return !!state.selectedUserId && state.selectedUserId !== state.currentUser.id; }
 
 // v4.3 — HTML escape (kırmızı not ve benzeri güvenli gösterim için)
 // escapeHtml / _periodCompletionLabel / _periodCompletionBadge → static/js/utils.js (v5.38)
@@ -366,10 +366,10 @@ function showPage(name, opts = {}) {
   // v5.0 BUG-2 — mobile'da menü item'a tıklayınca sidebar otomatik kapansın
   toggleSidebar(true);
   // Yetki guard: Junior sadece izinli sayfalara erişebilir
-  const level = (currentUser.permission_level || 'junior');
+  const level = (state.currentUser.permission_level || 'junior');
   if (level === 'junior' && !JUNIOR_ALLOWED_PAGES.includes(name)) return;
   // Board guard: can_access_board veya super_admin
-  if (name === 'board' && !currentUser.can_access_board && level !== 'super_admin') return;
+  if (name === 'board' && !state.currentUser.can_access_board && level !== 'super_admin') return;
   // v4.4 — Denetim sayfası yalnızca director+
   if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
   // v5.24 — Bilgi Bankası yönetimi yalnızca director+
@@ -477,9 +477,9 @@ function renderDashboard() {
   const now = new Date();
   const el = document.getElementById('dash-name');
   // v4.2 — başka kullanıcıyı görüntülüyorsak onun adını göster
-  let displayName = (currentUser.full_name || '').split(' ')[0] || 'Hoş Geldiniz';
+  let displayName = (state.currentUser.full_name || '').split(' ')[0] || 'Hoş Geldiniz';
   if (state.selectedUserId) {
-    const u = firmUsers.find(u => u.id === state.selectedUserId);
+    const u = state.firmUsers.find(u => u.id === state.selectedUserId);
     if (u) displayName = `👁 ${u.full_name}`;
   }
   if (el) el.textContent = displayName;
@@ -798,7 +798,7 @@ function renderFirmBars() {
 async function loadDirectorFirmsStrip() {
   const stripEl = document.getElementById('director-firms-strip');
   if (!stripEl) return;
-  const lvl = (currentUser && currentUser.permission_level) || 'junior';
+  const lvl = (state.currentUser && state.currentUser.permission_level) || 'junior';
   // Yetki kapısı — diğer roller için gizli kalır
   if (lvl !== 'super_admin' && lvl !== 'it_director') {
     stripEl.style.display = 'none';
@@ -858,14 +858,14 @@ function onFirmStripClick(firmSlug, cardEl) {
   if (cardEl) cardEl.classList.add('active');
 
   if (!firmSlug) return;
-  // firmUsers (initFirmUserFilter'da yüklenir) içinden bu firma'nın ilk
+  // state.firmUsers (initFirmUserFilter'da yüklenir) içinden bu firma'nın ilk
   // kullanıcısını bul. Self ise filtreyi temizle (kendim).
   const sel = document.getElementById('firm-user-filter');
   if (!sel) return;
-  const candidates = (firmUsers || []).filter(u => (u.firm || '') === firmSlug);
+  const candidates = (state.firmUsers || []).filter(u => (u.firm || '') === firmSlug);
   // Önce kendim olmayanı seç (varsa); yoksa kendim
-  let pick = candidates.find(u => u.id !== currentUser.id) || candidates[0];
-  if (pick && pick.id !== currentUser.id) {
+  let pick = candidates.find(u => u.id !== state.currentUser.id) || candidates[0];
+  if (pick && pick.id !== state.currentUser.id) {
     sel.value = String(pick.id);
   } else {
     sel.value = ''; // Kendim
@@ -1423,8 +1423,8 @@ async function addTask() {
   const cat = document.getElementById('new-cat').value;
   const backupFile = document.getElementById('backup-file').files[0];
   // v4.3 — atama modu: director+ başka kullanıcıyı görüntülüyorsa görev ona atanır
-  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
-  const assignTo = (isDirectorUp && state.selectedUserId && state.selectedUserId !== currentUser.id) ? state.selectedUserId : null;
+  const isDirectorUp = state.currentUser.permission_level === 'super_admin' || state.currentUser.permission_level === 'it_director';
+  const assignTo = (isDirectorUp && state.selectedUserId && state.selectedUserId !== state.currentUser.id) ? state.selectedUserId : null;
   const mgrNote = isDirectorUp ? (document.getElementById('new-manager-note')?.value || '').trim() : '';
   let body, fetchOpts;
   if (cat === 'backup' && backupFile) {
@@ -1481,7 +1481,7 @@ async function addTask() {
     let okMsg;
     if (cat === 'backup') okMsg = 'Config Backup kaydedildi ✓';
     else if (assignTo) {
-      const u = firmUsers.find(u => u.id === assignTo);
+      const u = state.firmUsers.find(u => u.id === assignTo);
       okMsg = `✓ ${u ? u.full_name : 'Kullanıcı'} kişisine görev atandı`;
     } else okMsg = 'Görev eklendi ✓';
     showToast('ok', okMsg);
@@ -1599,13 +1599,13 @@ async function loadWeeklyTrend() {
 // ══════════════════════════════════════════════════════════
 //  ADMIN — KULLANICI TABLOSU (API'den)
 // ══════════════════════════════════════════════════════════
-let INVITATIONS = [];
+// INVITATIONS → state.js (ESM Faz 2c-1, window.state)
 async function loadAndRenderUsers() {
   try {
     const [uRes, iRes] = await Promise.all([fetch('/api/admin/users'), fetch('/api/admin/invitations')]);
     if (!uRes.ok) { document.getElementById('user-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Yetkisiz erişim</td></tr>'; return; }
-    USERS = await uRes.json();
-    INVITATIONS = iRes.ok ? await iRes.json() : [];
+    state.USERS = await uRes.json();
+    state.INVITATIONS = iRes.ok ? await iRes.json() : [];
     renderUserTable();
     renderUserStats();
     renderInvitations();
@@ -1613,10 +1613,10 @@ async function loadAndRenderUsers() {
 }
 
 function renderUserStats() {
-  const total = USERS.length;
-  const active = USERS.filter(u => u.active).length;
-  const pending = INVITATIONS.length;
-  const o365 = USERS.filter(u => u.o365_linked).length;
+  const total = state.USERS.length;
+  const active = state.USERS.filter(u => u.active).length;
+  const pending = state.INVITATIONS.length;
+  const o365 = state.USERS.filter(u => u.o365_linked).length;
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-active').textContent = active;
   document.getElementById('stat-pending').textContent = pending;
@@ -1626,7 +1626,7 @@ function renderUserStats() {
   const permCounts = {};
   const permLabels = {super_admin:'Super Admin', it_director:'IT Müdürü', it_manager:'IT Yöneticisi', it_specialist:'IT Specialist', junior:'Junior'};
   const permColors = {super_admin:'var(--accent)', it_director:'var(--accent-gold, #f5b400)', it_manager:'var(--accent3)', it_specialist:'var(--accent2)', junior:'var(--text-muted)'};
-  USERS.forEach(u => { const p = u.permission_level || 'junior'; permCounts[p] = (permCounts[p]||0)+1; });
+  state.USERS.forEach(u => { const p = u.permission_level || 'junior'; permCounts[p] = (permCounts[p]||0)+1; });
   const maxP = Math.max(...Object.values(permCounts), 1);
   document.getElementById('perm-dist-body').innerHTML = Object.entries(permCounts).map(([k,v]) =>
     `<div class="progress-wrap"><div class="progress-label"><span>${permLabels[k]||k}</span><span style="color:${permColors[k]||'var(--text-muted)'}">${v}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${(v/maxP)*100}%;background:${permColors[k]||'var(--text-muted)'}"></div></div></div>`
@@ -1636,9 +1636,9 @@ function renderUserStats() {
 function renderInvitations() {
   const tbody = document.getElementById('inv-tbody');
   const empty = document.getElementById('inv-empty');
-  if (!INVITATIONS.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  if (!state.INVITATIONS.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = INVITATIONS.map(inv => {
+  tbody.innerHTML = state.INVITATIONS.map(inv => {
     const expired = new Date(inv.expires_at) < new Date();
     const expLabel = expired ? '<span style="color:var(--red)">Süresi dolmuş</span>' : new Date(inv.expires_at).toLocaleDateString('tr-TR');
     return `<tr>
@@ -1662,7 +1662,7 @@ function permBadge(level) {
 }
 
 function renderUserTable() {
-  document.getElementById('user-tbody').innerHTML = USERS.map(u => `
+  document.getElementById('user-tbody').innerHTML = state.USERS.map(u => `
     <tr>
       <td><div style="font-weight:600;font-size:12px">${escapeHtml(u.full_name)}</div><div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">${escapeHtml(u.username)}</div></td>
       <td><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(u.role || '—')}</span></td>
@@ -1699,7 +1699,7 @@ async function cancelInvite(id) {
 function openInviteModal() {
   // IT Müdürü seçeneği sadece Super Admin'e görünür
   const dirOpt = document.querySelector('#inv-perm option[value="it_director"]');
-  if (dirOpt) dirOpt.style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
+  if (dirOpt) dirOpt.style.display = (state.currentUser.permission_level === 'super_admin') ? '' : 'none';
   document.getElementById('invite-modal').classList.remove('hidden');
 }
 function closeModal() { document.getElementById('invite-modal').classList.add('hidden'); }
@@ -2312,7 +2312,7 @@ function openEditTask(id) {
   // v4.3 — IT Müdürü notu alanı: director+ düzenleyebilir, diğerleri sadece görür
   const mnGroup = document.getElementById('edit-manager-note-group');
   const mnArea  = document.getElementById('edit-task-manager-note');
-  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  const isDirectorUp = state.currentUser.permission_level === 'super_admin' || state.currentUser.permission_level === 'it_director';
   if (mnGroup && mnArea) {
     mnArea.value = t.manager_note || '';
     // director+ her zaman görür; diğer kullanıcılar sadece not varsa görür (salt okunur)
@@ -2431,7 +2431,7 @@ async function saveEditTask() {
   };
   if (body.category === 'support') body.priority = document.getElementById('edit-task-priority')?.value || 'orta';
   // v4.3 — director+ ise manager_note gönder
-  const isDirectorUp = currentUser.permission_level === 'super_admin' || currentUser.permission_level === 'it_director';
+  const isDirectorUp = state.currentUser.permission_level === 'super_admin' || state.currentUser.permission_level === 'it_director';
   if (isDirectorUp) {
     const mn = document.getElementById('edit-task-manager-note');
     if (mn) body.manager_note = mn.value || '';
@@ -2669,7 +2669,7 @@ async function uploadBackupToTask() {
 // ══════════════════════════════════════════════════════════
 function openEditUser(id) {
   id = parseInt(id);
-  const u = USERS.find(u => u.id === id); if (!u) return;
+  const u = state.USERS.find(u => u.id === id); if (!u) return;
   document.getElementById('edit-user-id').value       = id;
   document.getElementById('edit-user-name').value     = u.full_name || '';
   document.getElementById('edit-user-username').value = u.username  || '';
@@ -2683,7 +2683,7 @@ function openEditUser(id) {
   const permSel = document.getElementById('edit-user-perm');
   const saOpt = permSel.querySelector('option[value="super_admin"]');
   const dirOpt = permSel.querySelector('option[value="it_director"]');
-  const canAssignTop = (currentUser.permission_level === 'super_admin');
+  const canAssignTop = (state.currentUser.permission_level === 'super_admin');
   if (saOpt) saOpt.style.display = canAssignTop ? '' : 'none';
   if (dirOpt) dirOpt.style.display = canAssignTop ? '' : 'none';
   // IT Müdürü düzenleniyorsa ve ben SA değilsem modalı açma
@@ -2692,14 +2692,14 @@ function openEditUser(id) {
     return;
   }
   // Super Admin düzenleniyorsa ve ben SA değilsem modalı açma
-  if (u.permission_level === 'super_admin' && currentUser.permission_level !== 'super_admin') {
+  if (u.permission_level === 'super_admin' && state.currentUser.permission_level !== 'super_admin') {
     showToast('err', 'Super Admin kullanıcısını düzenleme yetkiniz yok');
     return;
   }
   // Board erişim checkbox
   document.getElementById('edit-user-board-access').checked = !!u.can_access_board;
   // Board toggle sadece super_admin'e görünür
-  document.getElementById('edit-user-board-group').style.display = (currentUser.permission_level === 'super_admin') ? '' : 'none';
+  document.getElementById('edit-user-board-group').style.display = (state.currentUser.permission_level === 'super_admin') ? '' : 'none';
   document.getElementById('edit-user-modal').classList.remove('hidden');
 }
 async function saveEditUser() {
@@ -2713,7 +2713,7 @@ async function saveEditUser() {
     active:   status === 'active',
   };
   // Board erişim — sadece super_admin gönderebilir
-  if (currentUser.permission_level === 'super_admin') {
+  if (state.currentUser.permission_level === 'super_admin') {
     body.can_access_board = document.getElementById('edit-user-board-access').checked;
   }
   try {
@@ -2831,11 +2831,11 @@ async function loadAutoAssign() {
   const card = document.getElementById('settings-card-autoassign');
   if (!card || card.style.display === 'none') return;
   try {
-    // Hedef kişi listesi (kapsamdaki kullanıcılar) — firmUsers'ı tazele
+    // Hedef kişi listesi (kapsamdaki kullanıcılar) — state.firmUsers'ı tazele
     try {
       const uRes = await fetch('/api/firm/users');
-      if (uRes.ok) firmUsers = await uRes.json();
-    } catch (e) { /* firmUsers eski haliyle kalır */ }
+      if (uRes.ok) state.firmUsers = await uRes.json();
+    } catch (e) { /* state.firmUsers eski haliyle kalır */ }
     // Master toggle durumu
     const tRes = await fetch('/api/settings/auto-assign');
     if (tRes.ok) {
@@ -2853,7 +2853,7 @@ async function loadAutoAssign() {
 }
 
 function populateAaSelects() {
-  const isSA = (currentUser.permission_level === 'super_admin');
+  const isSA = (state.currentUser.permission_level === 'super_admin');
   // Firma seçenekleri — super_admin: tüm firmalar + global; director: kapsamı
   const firmSel = document.getElementById('aa-firm');
   if (firmSel) {
@@ -2862,7 +2862,7 @@ function populateAaSelects() {
       opts.push('<option value="">Tüm firmalar</option>');
       Object.entries(FIRMS).forEach(([slug, f]) => opts.push(`<option value="${slug}">${escapeHtml(f.label || slug)}</option>`));
     } else {
-      const scope = [...new Set(firmUsers.map(u => u.firm).filter(Boolean))];
+      const scope = [...new Set(state.firmUsers.map(u => u.firm).filter(Boolean))];
       scope.forEach(slug => opts.push(`<option value="${slug}">${escapeHtml((FIRMS[slug] && FIRMS[slug].label) || slug)}</option>`));
     }
     firmSel.innerHTML = opts.join('');
@@ -2870,8 +2870,8 @@ function populateAaSelects() {
   // Hedef kişi seçenekleri
   const tgtSel = document.getElementById('aa-target');
   if (tgtSel) {
-    tgtSel.innerHTML = firmUsers.length
-      ? firmUsers.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}${u.firm ? ' · ' + escapeHtml(u.firm) : ''}</option>`).join('')
+    tgtSel.innerHTML = state.firmUsers.length
+      ? state.firmUsers.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}${u.firm ? ' · ' + escapeHtml(u.firm) : ''}</option>`).join('')
       : '<option value="">(kullanıcı yok)</option>';
   }
 }
@@ -3111,7 +3111,7 @@ function renderKbAdminList() {
 function _kbPopulateFirmSelect(selected) {
   const sel = document.getElementById('kb-edit-firm');
   if (!sel) return;
-  const isSA = currentUser.permission_level === 'super_admin';
+  const isSA = state.currentUser.permission_level === 'super_admin';
   const opts = [];
   if (isSA) {
     opts.push('<option value="">Tüm firmalar (global)</option>');
@@ -3119,8 +3119,8 @@ function _kbPopulateFirmSelect(selected) {
   } else {
     // director: yönettiği firmalar (mevcut makalelerden + kendi firması)
     const scope = new Set(_kbArticles.map(a => a.firm).filter(Boolean));
-    if (currentUser.firm) scope.add(currentUser.firm);
-    (currentUser.managed_firm_slugs || []).forEach(s => scope.add(s));
+    if (state.currentUser.firm) scope.add(state.currentUser.firm);
+    (state.currentUser.managed_firm_slugs || []).forEach(s => scope.add(s));
     [...scope].forEach(slug => opts.push(`<option value="${slug}">${escapeHtml((FIRMS[slug] && FIRMS[slug].label) || slug)}</option>`));
   }
   sel.innerHTML = opts.join('');
@@ -3245,8 +3245,8 @@ async function saveUserSettings() {
     document.getElementById('sb-avatar').textContent = initials;
     // Şifre alanını temizle
     document.getElementById('set-password').value = '';
-    // USERS dizisini güncelle
-    const me = USERS.find(u => u.username === 'lmc' || u.id === 1);
+    // state.USERS dizisini güncelle
+    const me = state.USERS.find(u => u.username === 'lmc' || u.id === 1);
     if (me) { me.name = data.full_name; me.username = data.username; me.email = data.email; me.role = data.role; }
     showToast('ok', 'Kullanici bilgileri kaydedildi — yeni kullanici adi: ' + data.username);
     renderUserTable();
@@ -3714,8 +3714,8 @@ function saveTeams() { showToast('ok', 'Ekip değişiklikleri otomatik kaydedild
 // ══════════════════════════════════════════════════════════
 //  ORTAK ALAN (BOARD) — Trello Kanban
 // ══════════════════════════════════════════════════════════
-let boardCards = [];
-let boardUsers = [];
+// boardCards → state.js (ESM Faz 2c-1, window.state)
+// boardUsers → state.js (ESM Faz 2c-1, window.state)
 const BOARD_COLS = ['todo','in_progress','review','done'];
 const COL_LABELS = {todo:'Yapılacak', in_progress:'Devam Eden', review:'İnceleme', done:'Tamamlandı'};
 
@@ -3726,12 +3726,12 @@ async function renderBoard() {
       fetch('/api/board/users')
     ]);
     if (!cardsRes.ok) { showToast('err','Board yuklenemedi'); return; }
-    boardCards = await cardsRes.json();
-    if (usersRes.ok) boardUsers = await usersRes.json();
+    state.boardCards = await cardsRes.json();
+    if (usersRes.ok) state.boardUsers = await usersRes.json();
   } catch(e) { showToast('err', e.message); return; }
 
   BOARD_COLS.forEach(col => {
-    const cards = boardCards.filter(c => c.column === col);
+    const cards = state.boardCards.filter(c => c.column === col);
     const el = document.getElementById('board-col-' + col);
     const countEl = document.getElementById('bc-' + col);
     if (countEl) countEl.textContent = cards.length;
@@ -3763,7 +3763,7 @@ let _bCardChecklist = [];
 let _bCardChecklistDone = [];
 
 async function openBoardCardModal(id) {
-  const card = boardCards.find(c => c.id === id);
+  const card = state.boardCards.find(c => c.id === id);
   if (!card) return;
   document.getElementById('bcard-mode').value = 'edit';
   document.getElementById('bcard-id').value = id;
@@ -3827,7 +3827,7 @@ function setBCardCol(c) {
 function populateBCardAssigned(selectedId) {
   const sel = document.getElementById('bcard-assigned');
   sel.innerHTML = '<option value="">— Kimse —</option>' +
-    boardUsers.map(u => `<option value="${u.id}" ${u.id===selectedId?'selected':''}>${escapeHtml(u.full_name)}</option>`).join('');
+    state.boardUsers.map(u => `<option value="${u.id}" ${u.id===selectedId?'selected':''}>${escapeHtml(u.full_name)}</option>`).join('');
 }
 
 // Checklist
@@ -3909,7 +3909,7 @@ async function saveBoardCard() {
     column: _bCardCol, color: _bCardColor,
     checklist: _bCardChecklist, checklist_done: _bCardChecklistDone,
     assigned_to: assigned ? parseInt(assigned) : null,
-    firm: currentUser.firm || '',
+    firm: state.currentUser.firm || '',
   };
   try {
     let url = '/api/board/cards';

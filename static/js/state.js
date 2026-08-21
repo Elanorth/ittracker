@@ -28,6 +28,14 @@ export const state = {
   currentFilter: 'all',       // BUGÜNÜN GÖREVLERİ durum filtresi (all/open/done)
   dashPage: 0,                // BUGÜNÜN GÖREVLERİ pagination sayfası
   currentCategoryFilter: '',  // BUGÜNÜN GÖREVLERİ kategori filtresi
+
+  // ── 2c-1: Çekirdek veri state'i (collision'sız cluster) ──
+  currentUser: {},   // /api/me — audit.js + managed-firms.js de okur
+  USERS: [],         // /api/admin/users
+  firmUsers: [],     // v4.2 — kapsamdaki kullanıcılar; audit.js de okur
+  INVITATIONS: [],   // /api/admin/invitations
+  boardCards: [],    // /api/board/cards
+  boardUsers: [],    // board kullanıcı listesi
 };
 
 // Klasik app.js (ve inline handler'lar) için global köprü.

@@ -3,7 +3,7 @@
 //
 //  app.js modülerleştirmesi 3. adım: bütün bir FEATURE alanı ayrı dosyaya.
 //  app.js'ten SONRA yüklenir. Dış bağımlılıklar: escapeHtml (utils.js),
-//  showToast + firmUsers (app.js). Inline onclick (setAuditRange/resetAuditFilters/
+//  showToast + state.firmUsers (app.js). Inline onclick (setAuditRange/resetAuditFilters/
 //  exportAuditCsv) ve app.js çağrıları (initAuditPage/loadAuditLog) için tanımlar
 //  global kalır. Davranış birebir aynı.
 // ══════════════════════════════════════════════════════════
@@ -33,11 +33,11 @@ const AUDIT_ACTION_COLORS = {
 };
 
 function initAuditPage() {
-  // Hedef kullanıcı dropdown'u firmUsers'tan doldur
+  // Hedef kullanıcı dropdown'u state.firmUsers'tan doldur
   const sel = document.getElementById('audit-target-user');
-  if (sel && firmUsers.length) {
+  if (sel && state.firmUsers.length) {
     sel.innerHTML = '<option value="">Tümü</option>' +
-      firmUsers.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+      state.firmUsers.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
   }
   // Varsayılan: son 30 gün
   const start = document.getElementById('audit-start');

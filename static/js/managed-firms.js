@@ -3,7 +3,7 @@
 //
 //  app.js modülerleştirmesi 4. adım: ikinci alan-bazlı modül (audit.js gibi).
 //  app.js'ten SONRA yüklenir. Dış bağımlılıklar: escapeHtml (utils.js),
-//  showPage + currentUser (app.js), typeof-guard'lı filterFullByFirm/
+//  showPage + state.currentUser (app.js), typeof-guard'lı filterFullByFirm/
 //  updateTeamOptions. Inline onclick (setMfPeriod/expandManagedFirms/_mfGoto*)
 //  ve app.js'in showPage('managed-firms')→loadManagedFirmsPage çağrısı global
 //  tanımlarla çalışır. Davranış birebir aynı.
@@ -13,7 +13,7 @@ let _mfData = null;        // son fetch sonucu
 let _mfShowAll = false;    // 6+ firma için expand state
 
 async function loadManagedFirmsPage() {
-  const lvl = (currentUser && currentUser.permission_level) || 'junior';
+  const lvl = (state.currentUser && state.currentUser.permission_level) || 'junior';
   if (lvl !== 'super_admin' && lvl !== 'it_director') {
     // Yetki guard — bu sayfa zaten sadece director+ için. Defensif.
     return;
