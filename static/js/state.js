@@ -36,6 +36,10 @@ export const state = {
   INVITATIONS: [],   // /api/admin/invitations
   boardCards: [],    // /api/board/cards
   boardUsers: [],    // board kullanıcı listesi
+
+  // ── 2c-2: En yaygın veri (string-collision'lı → lexer ile taşındı) ──
+  tasks: [],         // /api/tasks — en yaygın (50 kullanım)
+  notifications: [], // /api/notifications/preview
 };
 
 // Klasik app.js (ve inline handler'lar) için global köprü.
