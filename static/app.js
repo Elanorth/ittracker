@@ -2291,8 +2291,9 @@ function renderDashUpcoming() {
 //  INIT
 // ══════════════════════════════════════════════════════════
 // TODAY → static/js/utils.js (v5.39)
+// v5.47 — new-start başlangıç değeri yalnız DOMContentLoaded'da (ESM: TODAY main.js
+// expose'undan sonra hazır; eski top-level senkron satır kaldırıldı).
 document.addEventListener('DOMContentLoaded', () => { const s = document.getElementById('new-start'); if (s) s.value = TODAY; });
-const _startEl = document.getElementById('new-start'); if (_startEl) _startEl.value = TODAY;
 
 setDateDisplay('topbar-date-day', 'topbar-date-full');
 loadApp();

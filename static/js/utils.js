@@ -10,7 +10,7 @@
 //  Adım 1 (v5.38): saf helper'lar. Adım 2 (v5.39): TODAY/CAT_LABELS + formatter'lar.
 // ══════════════════════════════════════════════════════════
 
-function escapeHtml(s) {
+export function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -19,7 +19,7 @@ function escapeHtml(s) {
 // v5.0 — Rutin görev için periyot-aware tamamlanma etiketi.
 // Backend Karar 2=B uyarınca server `date.today()` kullanır; frontend bu helper
 // ile kullanıcıya hangi periyot için tamamlandığı/açık olduğu netleşir.
-function _periodCompletionLabel(t) {
+export function _periodCompletionLabel(t) {
   if (!t || t.cat !== 'routine' || t.period === 'Tek Seferlik') return '';
   const Y = new Date().getFullYear();
   if (t.period === 'Günlük')   return t.done ? 'Bugün ✓'   : 'Bugün için tamamlanmamış';
@@ -29,7 +29,7 @@ function _periodCompletionLabel(t) {
   return '';
 }
 // Kısa rozet (UI rozet olarak gösterim için, max 12 karakter)
-function _periodCompletionBadge(t) {
+export function _periodCompletionBadge(t) {
   if (!t || t.cat !== 'routine' || t.period === 'Tek Seferlik') return '';
   if (t.period === 'Günlük')   return t.done ? '· Bugün ✓'   : '';
   if (t.period === 'Haftalık') return t.done ? '· Bu hafta ✓' : '';
@@ -38,15 +38,15 @@ function _periodCompletionBadge(t) {
   return '';
 }
 
-function _cssVar(name) {
+export function _cssVar(name) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || '#888';
 }
-function _chartTheme() {
+export function _chartTheme() {
   return { text: _cssVar('--text'), muted: _cssVar('--text-muted'), grid: _cssVar('--border2') || _cssVar('--border') };
 }
 // Doughnut ortasına % yazan hafif plugin (tema-duyarlı)
-const _centerTextPlugin = {
+export const _centerTextPlugin = {
   id: 'centerText',
   afterDraw(chart, args, opts) {
     if (!opts || opts.text == null) return;
@@ -66,12 +66,12 @@ const _centerTextPlugin = {
 };
 
 // v5.22 — IT ilgisi bekleyen portal case rozeti (yeni case / yeni yanıt)
-function unreadBadge(t) {
+export function unreadBadge(t) {
   if (!t || !t.it_unread || t.source !== 'portal') return '';
   const assigned = t.user_id != null;  // atanmışsa muhtemelen kullanıcı yanıtı
   return ` <span class="unread-badge" title="IT ilgisi bekliyor">${assigned ? '💬 yeni yanıt' : '🆕 yeni'}</span>`;
 }
-function priorityBadge(t) {
+export function priorityBadge(t) {
   if (!t || t.cat !== 'support') return '';
   const p = (t.priority || 'orta').toLowerCase();
   const cls = p === 'yüksek' ? 'high' : (p === 'düşük' ? 'low' : 'med');
@@ -80,7 +80,7 @@ function priorityBadge(t) {
   return ` <span class="prio-badge ${cls}" title="Öncelik">${dot} ${label}</span>`;
 }
 // v4.5 — SLA rozeti (destek talepleri için)
-function slaBadge(t) {
+export function slaBadge(t) {
   if (!t || t.cat !== 'support' || !t.sla) return '';
   const s = t.sla;
   const tgt = s.target_hours;
@@ -105,12 +105,12 @@ function slaBadge(t) {
   return ` <span class="prio-badge ${cls}" title="SLA kalan süre (hedef ${tgt}s)">⏱ SLA ${label}</span>`;
 }
 // v5.15 — portal kaynaklı destek talebi rozeti (case kodu ile)
-function portalBadge(t) {
+export function portalBadge(t) {
   if (!t || t.source !== 'portal' || !t.case_code) return '';
   return ` <span class="prio-badge low" title="İntranet portalından açıldı" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(t.case_code)}</span>`;
 }
 // v5.0 — SLA kalan süreyi insan-okur formatta döndürür ("3s 12dk", "1g 4s", "GECİKTİ")
-function _slaRemainingHuman(t) {
+export function _slaRemainingHuman(t) {
   if (t.cat !== 'support' || !t.sla) return null;
   const rem = t.sla.remaining_hours;
   if (typeof rem !== 'number') return null;
@@ -128,32 +128,32 @@ function _slaRemainingHuman(t) {
 
 // ── Adım 2 (v5.39): sabitler + tarih/etiket formatter'ları ──
 // TODAY: sayfa yükünde bir kez hesaplanan bugünün ISO tarihi (deadline karşılaştırmaları).
-const TODAY = new Date().toISOString().split('T')[0];
-const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Destek',infra:'Altyapı',other:'Diğer'};
+export const TODAY = new Date().toISOString().split('T')[0];
+export const CAT_LABELS = {task:'Anlık',project:'Proje',routine:'Rutin',backup:'Config Backup',support:'Destek',infra:'Altyapı',other:'Diğer'};
 
-function _appVersionSuffix() {
+export function _appVersionSuffix() {
   const el = document.getElementById('logo-sub-text');
   const v = el && el.dataset ? el.dataset.appVersion : '';
   return v ? ' · v' + v : '';
 }
-function _routineOverdueLabel(t) {
+export function _routineOverdueLabel(t) {
   const unit = { 'Günlük':'gün', 'Haftalık':'hafta', 'Aylık':'ay', 'Yıllık':'yıl' }[t.period] || 'dönem';
   const n = t.overdue_periods || 0;
   if (n > 0) return `${n} ${unit} atlandı`;
   return t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor';
 }
-function dlClass(dl, done) {
+export function dlClass(dl, done) {
   if (done) return 'ok'; if (!dl) return null;
   const diff = (new Date(dl) - new Date(TODAY)) / 86400000;
   return diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
 }
-function dlText(dl, done) {
+export function dlText(dl, done) {
   if (!dl) return null; if (done) return 'Tamamlandı';
   const diff = Math.round((new Date(dl) - new Date(TODAY)) / 86400000);
   if (diff < 0) return `${Math.abs(diff)}g gecikti`;
   if (diff === 0) return 'Bugün son!';
   return `${diff}g kaldı`;
 }
-function catLabel(cat) {
+export function catLabel(cat) {
   return `<span class="tag ${cat}">${CAT_LABELS[cat]||cat}</span>`;
 }
