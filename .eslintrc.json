@@ -36,14 +36,19 @@
     "showPage": "readonly",
     "filterFullByFirm": "readonly",
     "updateTeamOptions": "readonly",
-    "state": "readonly"
+    "state": "readonly",
+    "FIRMS": "readonly",
+    "openEditTask": "readonly",
+    "buildNotifications": "readonly",
+    "loadNotificationsPage": "readonly",
+    "closeNotifDropdown": "readonly"
   },
   "rules": {
     "no-undef": "error"
   },
   "overrides": [
     {
-      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js", "static/js/utils.js", "static/js/audit.js", "static/js/managed-firms.js"],
+      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js", "static/js/utils.js", "static/js/audit.js", "static/js/managed-firms.js", "static/js/notifications.js"],
       "parserOptions": { "sourceType": "module" }
     }
   ]
