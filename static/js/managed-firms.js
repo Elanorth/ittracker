@@ -1,18 +1,20 @@
 // ══════════════════════════════════════════════════════════
-//  managed-firms.js — "Yönettiğim Firmalar" sayfası (v5.41)
+//  managed-firms.js — "Yönettiğim Firmalar" sayfası (v5.49, ESM Faz 3c)
 //
-//  app.js modülerleştirmesi 4. adım: ikinci alan-bazlı modül (audit.js gibi).
-//  app.js'ten SONRA yüklenir. Dış bağımlılıklar: escapeHtml (utils.js),
-//  showPage + state.currentUser (app.js), typeof-guard'lı filterFullByFirm/
-//  updateTeamOptions. Inline onclick (setMfPeriod/expandManagedFirms/_mfGoto*)
-//  ve app.js'in showPage('managed-firms')→loadManagedFirmsPage çağrısı global
-//  tanımlarla çalışır. Davranış birebir aynı.
+//  Gerçek ESM modülü. main.js import edip public fonksiyonları exposeAll ile
+//  window'a bağlar (inline onclick + app.js showPage('managed-firms') için).
+//  Bağımlılıklar: escapeHtml (import utils.js), state (import state.js),
+//  showPage + typeof-guard'lı filterFullByFirm/updateTeamOptions (app.js klasik
+//  → global). İç render helper'ları (renderManagedFirms/_mf*Html) modül-private.
 // ══════════════════════════════════════════════════════════
+import { escapeHtml } from './utils.js';
+import { state } from './state.js';
+
 let _mfPeriod = '1m';
 let _mfData = null;        // son fetch sonucu
 let _mfShowAll = false;    // 6+ firma için expand state
 
-async function loadManagedFirmsPage() {
+export async function loadManagedFirmsPage() {
   const lvl = (state.currentUser && state.currentUser.permission_level) || 'junior';
   if (lvl !== 'super_admin' && lvl !== 'it_director') {
     // Yetki guard — bu sayfa zaten sadece director+ için. Defensif.
@@ -68,12 +70,12 @@ function renderManagedFirms() {
   }
 }
 
-function expandManagedFirms() {
+export function expandManagedFirms() {
   _mfShowAll = true;
   renderManagedFirms();
 }
 
-function setMfPeriod(period, btnEl) {
+export function setMfPeriod(period, btnEl) {
   if (period === _mfPeriod) return;
   _mfPeriod = period;
   _mfShowAll = false;
@@ -194,7 +196,7 @@ function _mfUsersHtml(users) {
   </table>`;
 }
 
-function _mfGotoTasks(firmSlug) {
+export function _mfGotoTasks(firmSlug) {
   // Anlık Görevler sayfasına geç + firma filtresini set et
   showPage('tasks');
   const sel = document.getElementById('tasks-firm-filter');
@@ -204,7 +206,7 @@ function _mfGotoTasks(firmSlug) {
   }
 }
 
-function _mfGotoAdd(firmSlug) {
+export function _mfGotoAdd(firmSlug) {
   showPage('add');
   const fSel = document.getElementById('new-firm');
   if (fSel) {

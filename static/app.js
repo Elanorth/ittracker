@@ -2295,8 +2295,11 @@ function renderDashUpcoming() {
 // expose'undan sonra hazır; eski top-level senkron satır kaldırıldı).
 document.addEventListener('DOMContentLoaded', () => { const s = document.getElementById('new-start'); if (s) s.value = TODAY; });
 
-setDateDisplay('topbar-date-day', 'topbar-date-full');
-loadApp();
+// v5.49 (ESM Faz 3c) — Bootstrap (setDateDisplay + loadApp) main.js'e TAŞINDI.
+// Neden: loadApp `await fetch('/api/me')` sonrası state/utils kullanır; app.js
+// top-level'dan çağrılınca, main.js'in (büyüyen) import grafiği window.state'i
+// kurmadan önce /api/me yarışı kazanıp "state is not defined" veriyordu. main.js
+// tüm import+exposeAll bittikten SONRA bootstrap eder → yarış yok.
 
 // ══════════════════════════════════════════════════════════
 //  EDIT TASK MODAL — API bağlı
