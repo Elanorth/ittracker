@@ -1,12 +1,14 @@
 // ══════════════════════════════════════════════════════════
-//  audit.js — Denetim Kayıtları (Audit Log) sayfası (v5.40)
+//  audit.js — Denetim Kayıtları (Audit Log) sayfası (v5.48, ESM Faz 3b)
 //
-//  app.js modülerleştirmesi 3. adım: bütün bir FEATURE alanı ayrı dosyaya.
-//  app.js'ten SONRA yüklenir. Dış bağımlılıklar: escapeHtml (utils.js),
-//  showToast + state.firmUsers (app.js). Inline onclick (setAuditRange/resetAuditFilters/
-//  exportAuditCsv) ve app.js çağrıları (initAuditPage/loadAuditLog) için tanımlar
-//  global kalır. Davranış birebir aynı.
+//  Gerçek ESM modülü. main.js import edip public fonksiyonları exposeAll ile
+//  window'a bağlar (inline onclick + app.js showPage('audit') çağrısı için).
+//  Bağımlılıklar: escapeHtml (import utils.js), state (import state.js),
+//  showToast (app.js klasik → global; app.js modül olunca import olacak).
+//  İç sabitler + _auditFilterParams modül-private (export edilmez).
 // ══════════════════════════════════════════════════════════
+import { escapeHtml } from './utils.js';
+import { state } from './state.js';
 
 const AUDIT_ACTION_LABELS = {
   'task.create':'Görev Oluşturma', 'task.assign':'Görev Atama',
@@ -32,7 +34,7 @@ const AUDIT_ACTION_COLORS = {
   'user.delete':'#f85149',           // kırmızı — silme
 };
 
-function initAuditPage() {
+export function initAuditPage() {
   // Hedef kullanıcı dropdown'u state.firmUsers'tan doldur
   const sel = document.getElementById('audit-target-user');
   if (sel && state.firmUsers.length) {
@@ -47,7 +49,7 @@ function initAuditPage() {
   loadAuditLog();
 }
 
-function setAuditRange(kind) {
+export function setAuditRange(kind) {
   const now = new Date();
   const end = now.toISOString().slice(0,10);
   let start = end;
@@ -59,7 +61,7 @@ function setAuditRange(kind) {
   document.getElementById('audit-end').value   = end;
 }
 
-function resetAuditFilters() {
+export function resetAuditFilters() {
   document.getElementById('audit-start').value = '';
   document.getElementById('audit-end').value   = '';
   document.getElementById('audit-action').value = '';
@@ -80,12 +82,12 @@ function _auditFilterParams() {
   if (t) params.set('target_user_id', t);
   return params;
 }
-function exportAuditCsv() {
+export function exportAuditCsv() {
   window.location.href = '/api/audit/export?' + _auditFilterParams().toString();
   showToast('ok', 'CSV indiriliyor…');
 }
 
-async function loadAuditLog() {
+export async function loadAuditLog() {
   const tbody = document.getElementById('audit-tbody');
   const count = document.getElementById('audit-count');
   if (!tbody) return;

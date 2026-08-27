@@ -43,7 +43,7 @@
   },
   "overrides": [
     {
-      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js", "static/js/utils.js"],
+      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js", "static/js/utils.js", "static/js/audit.js"],
       "parserOptions": { "sourceType": "module" }
     }
   ]
