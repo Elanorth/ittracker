@@ -13,6 +13,7 @@
 import { expose, exposeAll } from './bridge.js';
 import './state.js'; // paylaşılan state'i kurar (window.state) — ESM Faz 2
 import * as utils from './utils.js'; // ESM Faz 3a — leaf modülü
+import * as audit from './audit.js'; // ESM Faz 3b — Denetim Kayıtları modülü
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -22,6 +23,10 @@ window.exposeAll = exposeAll;
 // ve inline onclick'ler için tüm export'ları window'a bağla (escapeHtml, TODAY,
 // catLabel, dlClass/dlText, *Badge, _cssVar/_chartTheme/_centerTextPlugin, ...).
 exposeAll(utils);
+
+// ESM Faz 3b: audit.js public fonksiyonları (initAuditPage/setAuditRange/
+// resetAuditFilters/exportAuditCsv/loadAuditLog) → window (inline + app.js için).
+exposeAll(audit);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;
