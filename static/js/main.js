@@ -15,6 +15,7 @@ import './state.js'; // paylaşılan state'i kurar (window.state) — ESM Faz 2
 import * as utils from './utils.js'; // ESM Faz 3a — leaf modülü
 import * as audit from './audit.js'; // ESM Faz 3b — Denetim Kayıtları modülü
 import * as managedFirms from './managed-firms.js'; // ESM Faz 3c — Yönettiğim Firmalar
+import * as notifications from './notifications.js'; // ESM Faz 4a — bildirim çanı + ayarları
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -32,6 +33,11 @@ exposeAll(audit);
 // ESM Faz 3c: managed-firms public fonksiyonları (loadManagedFirmsPage/setMfPeriod/
 // expandManagedFirms/_mfGotoTasks/_mfGotoAdd) → window. Faz 3 tamamlandı.
 exposeAll(managedFirms);
+
+// ESM Faz 4a: bildirim fonksiyonları (buildNotifications/notifClick/toggleNotifDropdown/
+// clearAllNotifs/closeNotifDropdown/loadNotificationsPage/save/preview/test) → window.
+// Bootstrap'tan ÖNCE: loadApp `setTimeout(buildNotifications)` çağırır.
+exposeAll(notifications);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;
