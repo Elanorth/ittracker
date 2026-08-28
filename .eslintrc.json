@@ -41,14 +41,15 @@
     "openEditTask": "readonly",
     "buildNotifications": "readonly",
     "loadNotificationsPage": "readonly",
-    "closeNotifDropdown": "readonly"
+    "closeNotifDropdown": "readonly",
+    "renderBoard": "readonly"
   },
   "rules": {
     "no-undef": "error"
   },
   "overrides": [
     {
-      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js", "static/js/utils.js", "static/js/audit.js", "static/js/managed-firms.js", "static/js/notifications.js"],
+      "files": ["static/js/main.js", "static/js/bridge.js", "static/js/state.js", "static/js/utils.js", "static/js/audit.js", "static/js/managed-firms.js", "static/js/notifications.js", "static/js/board.js"],
       "parserOptions": { "sourceType": "module" }
     }
   ]
