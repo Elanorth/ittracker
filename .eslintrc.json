@@ -46,7 +46,19 @@
     "loadAndRenderUsers": "readonly",
     "renderUserTable": "readonly",
     "closeModal": "readonly",
-    "firmChip": "readonly"
+    "firmChip": "readonly",
+    "addTask": "readonly",
+    "apiToggleTask": "readonly",
+    "renderFullList": "readonly",
+    "normalizeTask": "readonly",
+    "renderDashboardTaskList": "readonly",
+    "renderDashUpcoming": "readonly",
+    "renderScheduledPage": "readonly",
+    "renderProjectsPage": "readonly",
+    "formatDateTR": "readonly",
+    "_getNewChecklistItems": "readonly",
+    "onCatChange": "readonly",
+    "_addReturnPage": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -62,7 +74,8 @@
         "static/js/managed-firms.js",
         "static/js/notifications.js",
         "static/js/board.js",
-        "static/js/admin.js"
+        "static/js/admin.js",
+        "static/js/tasks.js"
       ],
       "parserOptions": {
         "sourceType": "module"
