@@ -17,6 +17,7 @@ import * as audit from './audit.js'; // ESM Faz 3b — Denetim Kayıtları modü
 import * as managedFirms from './managed-firms.js'; // ESM Faz 3c — Yönettiğim Firmalar
 import * as notifications from './notifications.js'; // ESM Faz 4a — bildirim çanı + ayarları
 import * as board from './board.js'; // ESM Faz 4b — Ortak Alan / Kanban
+import * as admin from './admin.js'; // ESM Faz 4c — kullanıcı yönetimi
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -42,6 +43,9 @@ exposeAll(notifications);
 
 // ESM Faz 4b: board (Kanban) public fonksiyonları → window (inline onclick + app.js).
 exposeAll(board);
+
+// ESM Faz 4c: admin (kullanıcı yönetimi) public fonksiyonları → window.
+exposeAll(admin);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;
