@@ -16,6 +16,7 @@ import * as utils from './utils.js'; // ESM Faz 3a — leaf modülü
 import * as audit from './audit.js'; // ESM Faz 3b — Denetim Kayıtları modülü
 import * as managedFirms from './managed-firms.js'; // ESM Faz 3c — Yönettiğim Firmalar
 import * as notifications from './notifications.js'; // ESM Faz 4a — bildirim çanı + ayarları
+import * as board from './board.js'; // ESM Faz 4b — Ortak Alan / Kanban
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -38,6 +39,9 @@ exposeAll(managedFirms);
 // clearAllNotifs/closeNotifDropdown/loadNotificationsPage/save/preview/test) → window.
 // Bootstrap'tan ÖNCE: loadApp `setTimeout(buildNotifications)` çağırır.
 exposeAll(notifications);
+
+// ESM Faz 4b: board (Kanban) public fonksiyonları → window (inline onclick + app.js).
+exposeAll(board);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;
