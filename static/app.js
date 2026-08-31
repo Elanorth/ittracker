@@ -428,17 +428,17 @@ function showPage(name, opts = {}) {
     loadTasks().then(() => {
       const filterEl = document.getElementById('tasks-cat-filter');
       if (opts.cat === 'support') {
-        _ftCat = 'support';
+        state.ftCat = 'support';
         if (filterEl) filterEl.value = 'support';
         renderFullList(state.tasks.filter(t => t.cat === 'support'));
       } else if (opts.firm !== undefined) {
         // Firma drill-down — kategori bağımsız
-        _ftCat = '';
+        state.ftCat = '';
         if (filterEl) filterEl.value = '';
         renderFullList(state.tasks.filter(t => (t.firm || '') === opts.firm));
       } else if (opts.statusKind) {
         // KPI jump — durum filtresi, kategori bağımsız
-        _ftCat = '';
+        state.ftCat = '';
         if (filterEl) filterEl.value = '';
         const k = opts.statusKind;
         let list = state.tasks;
@@ -448,7 +448,7 @@ function showPage(name, opts = {}) {
         renderFullList(list);
       } else {
         // Varsayılan: Anlık Görevler (task + backup)
-        _ftCat = 'task';
+        state.ftCat = 'task';
         if (filterEl) filterEl.value = 'task';
         renderFullList(state.tasks.filter(t => t.cat === 'task' || t.cat === 'backup'));
       }
@@ -1351,22 +1351,8 @@ function renderProjectsPage() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  FULL TASK LIST
+//  FULL TASK LIST → static/js/tasks.js (ESM Faz 4d-3a)
 // ══════════════════════════════════════════════════════════
-let _ftFirm = '', _ftCat = '', _ftSearch = '';
-function renderFullList(list) {
-  let l = list || state.tasks;
-  if (_ftFirm)   l = l.filter(t => t.firm === _ftFirm);
-  if (_ftCat)    l = l.filter(t => t.cat  === _ftCat);
-  if (_ftSearch) l = l.filter(t => t.title.toLowerCase().includes(_ftSearch));
-  const el = document.getElementById('full-task-list');
-  if (el) el.innerHTML = `<div style="padding:4px 18px">${l.map(taskRow).join('')}</div>`;
-  const cnt = document.getElementById('task-count-label');
-  if (cnt) cnt.textContent = `${l.length} kayıt`;
-}
-function filterFullByFirm(v) { _ftFirm = v; renderFullList(); }
-function filterFullByCat(v)  { _ftCat  = v; renderFullList(); }
-function filterFullList(v)   { _ftSearch = v.toLowerCase(); renderFullList(); }
 
 // ══════════════════════════════════════════════════════════
 //  GÖREV EKLE + TOGGLE → static/js/tasks.js (ESM Faz 4d-1)

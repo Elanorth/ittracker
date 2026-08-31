@@ -504,3 +504,21 @@ export async function uploadBackupToTask() {
     if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
   } catch(e) { showToast('err', e.message); }
 }
+
+// ── ESM Faz 4d-3a: Anlık Görevler (full list) render + filtre ──
+// ══════════════════════════════════════════════════════════
+//  FULL TASK LIST
+// ══════════════════════════════════════════════════════════
+export function renderFullList(list) {
+  let l = list || state.tasks;
+  if (state.ftFirm)   l = l.filter(t => t.firm === state.ftFirm);
+  if (state.ftCat)    l = l.filter(t => t.cat  === state.ftCat);
+  if (state.ftSearch) l = l.filter(t => t.title.toLowerCase().includes(state.ftSearch));
+  const el = document.getElementById('full-task-list');
+  if (el) el.innerHTML = `<div style="padding:4px 18px">${l.map(taskRow).join('')}</div>`;
+  const cnt = document.getElementById('task-count-label');
+  if (cnt) cnt.textContent = `${l.length} kayıt`;
+}
+export function filterFullByFirm(v) { state.ftFirm = v; renderFullList(); }
+export function filterFullByCat(v)  { state.ftCat  = v; renderFullList(); }
+export function filterFullList(v)   { state.ftSearch = v.toLowerCase(); renderFullList(); }
