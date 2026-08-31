@@ -67,8 +67,9 @@
     "renderBars": "readonly",
     "loadWeeklyTrend": "readonly",
     "setWeeklyPeriod": "readonly",
-    "showTasksWithCat": "readonly",
-    "showTasksWithFirm": "readonly"
+    "renderDashboard": "readonly",
+    "updateSupportNavBadge": "readonly",
+    "onFirmUserChange": "readonly"
   },
   "rules": {
     "no-undef": "error"
