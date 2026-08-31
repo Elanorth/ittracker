@@ -69,7 +69,8 @@
     "setWeeklyPeriod": "readonly",
     "renderDashboard": "readonly",
     "updateSupportNavBadge": "readonly",
-    "onFirmUserChange": "readonly"
+    "onFirmUserChange": "readonly",
+    "initReportPage": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -87,7 +88,8 @@
         "static/js/board.js",
         "static/js/admin.js",
         "static/js/tasks.js",
-        "static/js/dashboard.js"
+        "static/js/dashboard.js",
+        "static/js/report.js"
       ],
       "parserOptions": {
         "sourceType": "module"
