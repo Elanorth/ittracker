@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  tasks.js — Görev işlemleri (v5.53, ESM Faz 4d-1: ekle + toggle)
+//  tasks.js — Görev işlemleri (v5.56, ESM Faz 4d: ekle/toggle + edit modal + full list + checklist)
 //
 //  Gerçek ESM modülü (app.js'ten çıkarılıyor; Faz 4d alt-adımlarında büyüyecek).
 //  main.js import edip public fonksiyonları exposeAll ile window'a bağlar.
@@ -522,3 +522,126 @@ export function renderFullList(list) {
 export function filterFullByFirm(v) { state.ftFirm = v; renderFullList(); }
 export function filterFullByCat(v)  { state.ftCat  = v; renderFullList(); }
 export function filterFullList(v)   { state.ftSearch = v.toLowerCase(); renderFullList(); }
+
+// ── ESM Faz 4d-3b: Checklist (yeni görev + edit modal, paylaşımlı) ──
+// ══════════════════════════════════════════════════════════
+//  CHECKLİST FONKSİYONLARI
+// ══════════════════════════════════════════════════════════
+
+// Yeni görev formu — checklist (addTask _getNewChecklistItems'ı okur)
+function _getNewChecklistItems() {
+  const items = [];
+  document.querySelectorAll('#checklist-items .checklist-item').forEach(el => {
+    const lbl = el.querySelector('.checklist-label');
+    if (lbl && lbl.textContent.trim()) items.push(lbl.textContent.trim());
+  });
+  return items;
+}
+
+export function addChecklistItem() {
+  const inp = document.getElementById('new-checklist-item');
+  const val = inp.value.trim(); if (!val) return;
+  _appendChecklistItem('checklist-items', val, false, true);
+  inp.value = '';
+}
+
+function _appendChecklistItem(containerId, label, done, removable) {
+  const container = document.getElementById(containerId); if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'checklist-item';
+  const cb = document.createElement('div');
+  cb.className = 'checklist-cb' + (done ? ' checked' : '');
+  cb.onclick = function() {
+    this.classList.toggle('checked');
+    this.nextElementSibling.classList.toggle('done', this.classList.contains('checked'));
+  };
+  const lbl = document.createElement('span');
+  lbl.className = 'checklist-label' + (done ? ' done' : '');
+  lbl.textContent = label;
+  div.appendChild(cb);
+  div.appendChild(lbl);
+  if (removable) {
+    const rm = document.createElement('span');
+    rm.className = 'checklist-rm';
+    rm.textContent = '×';
+    rm.onclick = function() { this.closest('.checklist-item').remove(); };
+    div.appendChild(rm);
+  }
+  container.appendChild(div);
+}
+function _renderChecklistProgress(containerId, items, doneArr) {
+  const total = items.length;
+  if (!total) return;
+  const done  = doneArr.filter(Boolean).length;
+  const pct   = Math.round(done/total*100);
+  const container = document.getElementById(containerId); if (!container) return;
+  const existing = container.querySelector('.checklist-progress');
+  if (existing) existing.remove();
+  const prog = document.createElement('div');
+  prog.className = 'checklist-progress';
+  prog.innerHTML = `<div class="checklist-progress-fill" style="width:${pct}%"></div>`;
+  container.after(prog);
+}
+
+// Edit modal checklist (openEditTask _loadEditChecklist, saveEditTask _getEditChecklistData okur)
+function _loadEditChecklist(items, doneArr) {
+  const container = document.getElementById('edit-checklist-items'); if (!container) return;
+  container.innerHTML = '';
+  items.forEach((item, i) => _appendEditChecklistRow(container, item, doneArr[i]||false, i));
+  _renderChecklistProgress('edit-checklist-items', items, doneArr);
+}
+
+function _appendEditChecklistRow(container, label, done, idx) {
+  const div = document.createElement('div');
+  div.className = 'checklist-item';
+  div.dataset.idx = idx;
+  const cb = document.createElement('div');
+  cb.className = 'checklist-cb' + (done ? ' checked' : '');
+  cb.onclick = function() { _toggleEditCb(this); };
+  const lbl = document.createElement('span');
+  lbl.className = 'checklist-label' + (done ? ' done' : '');
+  lbl.textContent = label;
+  const rm = document.createElement('span');
+  rm.className = 'checklist-rm';
+  rm.textContent = '×';
+  rm.onclick = function() { this.closest('.checklist-item').remove(); _syncEditChecklistProgress(); };
+  div.appendChild(cb);
+  div.appendChild(lbl);
+  div.appendChild(rm);
+  container.appendChild(div);
+}
+function _toggleEditCb(cbEl) {
+  cbEl.classList.toggle('checked');
+  const label = cbEl.nextElementSibling;
+  label.classList.toggle('done', cbEl.classList.contains('checked'));
+  _syncEditChecklistProgress();
+}
+
+function _syncEditChecklistProgress() {
+  const items   = [...document.querySelectorAll('#edit-checklist-items .checklist-item')];
+  const total   = items.length;
+  const done    = items.filter(el => el.querySelector('.checklist-cb')?.classList.contains('checked')).length;
+  const pct     = total ? Math.round(done/total*100) : 0;
+  const fill    = document.querySelector('.checklist-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+}
+
+export function addEditChecklistItem() {
+  const inp = document.getElementById('edit-new-checklist-item');
+  const val = inp.value.trim(); if (!val) return;
+  const container = document.getElementById('edit-checklist-items');
+  const idx = container.children.length;
+  _appendEditChecklistRow(container, val, false, idx);
+  inp.value = '';
+  _syncEditChecklistProgress();
+}
+
+function _getEditChecklistData() {
+  const items = []; const doneArr = [];
+  document.querySelectorAll('#edit-checklist-items .checklist-item').forEach(el => {
+    const lbl = el.querySelector('.checklist-label');
+    const cb  = el.querySelector('.checklist-cb');
+    if (lbl) { items.push(lbl.textContent.trim()); doneArr.push(cb?.classList.contains('checked')||false); }
+  });
+  return { items, doneArr };
+}
