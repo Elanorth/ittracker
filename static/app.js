@@ -971,114 +971,8 @@ function onFileSelected(input) {
 // ══════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════
-//  DASHBOARD TASK LIST (sayfalı, 5'er)
+//  DASHBOARD TASK LIST + renderDashUpcoming → static/js/dashboard.js (ESM Faz 4e-2b)
 // ══════════════════════════════════════════════════════════
-// currentFilter → state.js (ESM Faz 2b)
-// dashPage → state.js (ESM Faz 2b)
-const DASH_PAGE_SIZE = 5;
-
-function filterTasks(f) {
-  state.currentFilter = f;
-  state.dashPage = 0; // filtre değiştiğinde ilk sayfaya dön
-  // Yalnızca durum tabs'ını güncelle (kategori tabs'ı dokunulmasın)
-  document.querySelectorAll('#tab-all, #tab-open, #tab-done').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-'+f)?.classList.add('active');
-  renderDashboardTaskList();
-}
-
-// v5.2 — Dashboard "Bugünün Görevleri" kategori filtresi (durum filtresiyle birlikte çalışır)
-// currentCategoryFilter → state.js (ESM Faz 2b)
-function filterTasksByCat(cat) {
-  state.currentCategoryFilter = cat;
-  state.dashPage = 0;
-  document.querySelectorAll('#today-cat-tabs .tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`#today-cat-tabs .tab[data-cat="${cat}"]`)?.classList.add('active');
-  renderDashboardTaskList();
-}
-
-function setDashPage(p) {
-  state.dashPage = Math.max(0, p);
-  renderDashboardTaskList();
-}
-
-// v4.7 — akıllı gruplama: geciken → bugün → yarın → ileri → tarihsiz → bitmiş
-const DASH_GROUP_META = {
-  overdue    : { label:'Geciken',        icon:'🔴', color:'var(--danger)' },
-  today      : { label:'Bugün',          icon:'⚡', color:'var(--gold)' },
-  tomorrow   : { label:'Yarın',          icon:'📅', color:'var(--accent2)' },
-  upcoming   : { label:'İleri Tarih',    icon:'⏭', color:'var(--accent3)' },
-  no_deadline: { label:'Tarihsiz',       icon:'—',  color:'var(--text-muted)' },
-  done       : { label:'Tamamlandı',     icon:'✓',  color:'var(--green)' }
-};
-const DASH_GROUP_ORDER = ['overdue','today','tomorrow','upcoming','no_deadline','done'];
-
-// v5.6 — Gruplama + sıralama KANONİK taskTiming()'den (tek kaynak).
-function _dashGroupKey(t) { return taskTiming(t).group; }
-function _dashSortKey(t)  { return taskTiming(t).sortKey; }
-
-function renderDashboardTaskList() {
-  const body = document.getElementById('task-list-body');
-  if (!body) return;
-  let list = state.tasks;
-  // Durum filtresi
-  if (state.currentFilter === 'open') list = list.filter(t => !t.done);
-  if (state.currentFilter === 'done') list = list.filter(t => t.done);
-  // v5.2 — Kategori filtresi (durum filtresiyle çakışmayacak şekilde sonra uygulanır)
-  if (state.currentCategoryFilter) list = list.filter(t => t.cat === state.currentCategoryFilter);
-  if (!list.length) {
-    const emptyMsg = state.currentCategoryFilter
-      ? `Bu kategoride görev yok`
-      : 'Görev yok';
-    body.innerHTML = `<div style="padding:16px;font-size:12px;color:var(--text-muted);text-align:center">${emptyMsg}</div>`;
-    return;
-  }
-
-  // Gruplara göre sırala (group order + group içinde saat hassasiyetinde — destek için SLA kalan süresi)
-  list = [...list].sort((a, b) => {
-    const ka = DASH_GROUP_ORDER.indexOf(_dashGroupKey(a));
-    const kb = DASH_GROUP_ORDER.indexOf(_dashGroupKey(b));
-    if (ka !== kb) return ka - kb;
-    return _dashSortKey(a) - _dashSortKey(b);
-  });
-
-  const total = list.length;
-  const pageCount = Math.ceil(total / DASH_PAGE_SIZE);
-  if (state.dashPage >= pageCount) state.dashPage = pageCount - 1;
-  const start = state.dashPage * DASH_PAGE_SIZE;
-  const slice = list.slice(start, start + DASH_PAGE_SIZE);
-
-  // Grup başlıkları ekleyerek render et (grup değiştiğinde ya da sayfa ilkinde)
-  let lastGroup = null;
-  let html = slice.map(t => {
-    const g = _dashGroupKey(t);
-    let prefix = '';
-    if (g !== lastGroup) {
-      const m = DASH_GROUP_META[g];
-      prefix = `<div style="font-size:9px;color:${m.color};font-weight:700;letter-spacing:1.1px;text-transform:uppercase;padding:8px 4px 4px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);margin-top:${lastGroup?'8px':'0'}"><span>${m.icon}</span><span>${m.label}</span></div>`;
-      lastGroup = g;
-    }
-    return prefix + taskRow(t);
-  }).join('');
-
-  if (pageCount > 1) {
-    const prevDisabled = state.dashPage === 0 ? 'disabled' : '';
-    const nextDisabled = state.dashPage >= pageCount - 1 ? 'disabled' : '';
-    html += `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 6px 2px;border-top:1px solid var(--border);margin-top:auto">
-        <div style="font-size:10px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
-          ${start+1}–${Math.min(start+DASH_PAGE_SIZE, total)} / ${total}
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn btn-outline btn-sm" ${prevDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${state.dashPage-1})">‹ Önceki</button>
-          <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
-            ${state.dashPage+1} / ${pageCount}
-          </span>
-          <button class="btn btn-outline btn-sm" ${nextDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${state.dashPage+1})">Sonraki ›</button>
-        </div>
-      </div>`;
-  }
-  body.innerHTML = html;
-}
 
 // ══════════════════════════════════════════════════════════
 //  PROJELER SAYFASI
@@ -1596,31 +1490,7 @@ function calGoToday() {
   renderCalendar();
 }
 
-function renderDashUpcoming() {
-  // v5.x — KANONİK taskTiming(): rutin gecikmesi donmuş deadline'dan değil
-  // is_overdue/overdue_periods'tan gelir. Geciken önce (sortKey), sonra bekleyenler.
-  const upcoming = state.tasks
-    .filter(t => t.cat === 'routine' && !t.done)
-    .sort((a, b) => {
-      const ta = taskTiming(a), tb = taskTiming(b);
-      const ga = ta.group === 'overdue' ? 0 : 1, gb = tb.group === 'overdue' ? 0 : 1;
-      if (ga !== gb) return ga - gb;
-      return ta.sortKey - tb.sortKey;
-    })
-    .slice(0, 4);
-  const cnt = document.getElementById('dash-sched-count'); if (cnt) cnt.textContent = upcoming.length;
-  const el = document.getElementById('dash-upcoming-list'); if (!el) return;
-  if (!upcoming.length) { el.innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text-muted);text-align:center">Hepsi zamanında 🎉</div>'; return; }
-  el.innerHTML = upcoming.map(t => {
-    const ti = taskTiming(t);
-    const cls = ti.badgeClass || 'ok';
-    const txt = ti.badgeText || (t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor');
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
-      <div style="flex:1;min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.title)}</div><div style="font-size:10px;color:var(--text-muted)">${t.period} · ${escapeHtml(t.team||'')}</div></div>
-      <div class="dl-badge ${cls}" style="margin-left:8px;flex-shrink:0">${txt}</div>
-    </div>`;
-  }).join('');
-}
+// renderDashUpcoming → static/js/dashboard.js (ESM Faz 4e-2b)
 
 // ══════════════════════════════════════════════════════════
 //  INIT
