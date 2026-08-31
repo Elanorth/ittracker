@@ -56,12 +56,9 @@
     "renderScheduledPage": "readonly",
     "renderProjectsPage": "readonly",
     "formatDateTR": "readonly",
-    "_getNewChecklistItems": "readonly",
     "onCatChange": "readonly",
     "_addReturnPage": "readonly",
     "closeEditTaskModal": "readonly",
-    "_loadEditChecklist": "readonly",
-    "_getEditChecklistData": "readonly",
     "renderBackupList": "readonly",
     "taskRow": "readonly"
   },
