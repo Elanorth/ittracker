@@ -61,7 +61,14 @@
     "closeEditTaskModal": "readonly",
     "renderBackupList": "readonly",
     "taskRow": "readonly",
-    "taskTiming": "readonly"
+    "taskTiming": "readonly",
+    "renderCategoryPie": "readonly",
+    "renderFirmBars": "readonly",
+    "renderBars": "readonly",
+    "loadWeeklyTrend": "readonly",
+    "setWeeklyPeriod": "readonly",
+    "showTasksWithCat": "readonly",
+    "showTasksWithFirm": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -78,7 +85,8 @@
         "static/js/notifications.js",
         "static/js/board.js",
         "static/js/admin.js",
-        "static/js/tasks.js"
+        "static/js/tasks.js",
+        "static/js/dashboard.js"
       ],
       "parserOptions": {
         "sourceType": "module"
