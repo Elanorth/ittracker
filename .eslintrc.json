@@ -62,7 +62,8 @@
     "closeEditTaskModal": "readonly",
     "_loadEditChecklist": "readonly",
     "_getEditChecklistData": "readonly",
-    "renderBackupList": "readonly"
+    "renderBackupList": "readonly",
+    "taskRow": "readonly"
   },
   "rules": {
     "no-undef": "error"

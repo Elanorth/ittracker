@@ -40,6 +40,11 @@ export const state = {
   // ── 2c-2: En yaygın veri (string-collision'lı → lexer ile taşındı) ──
   tasks: [],         // /api/tasks — en yaygın (50 kullanım)
   notifications: [], // /api/notifications/preview
+
+  // ── 4d-3: Anlık Görevler (full list) filtre state'i (app.js showPage + tasks.js) ──
+  ftFirm: '',
+  ftCat: '',
+  ftSearch: '',
 };
 
 // Klasik app.js (ve inline handler'lar) için global köprü.
