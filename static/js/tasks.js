@@ -1,12 +1,17 @@
 // ══════════════════════════════════════════════════════════
-//  tasks.js — Görev işlemleri (v5.56, ESM Faz 4d: ekle/toggle + edit modal + full list + checklist)
+//  tasks.js — Görev işlemleri (v5.57, ESM Faz 4d + 4e-1)
+//  ekle/toggle + edit modal + full list + checklist + paylaşımlı satır-render (taskTiming/firmChip/taskRow)
 //
 //  Gerçek ESM modülü (app.js'ten çıkarılıyor; Faz 4d alt-adımlarında büyüyecek).
 //  main.js import edip public fonksiyonları exposeAll ile window'a bağlar.
 //  Bağımlılıklar: state (import). showToast/buildNotifications/renderFullList/
 //  showPage app.js klasik → bare global (app.js modül olunca import'a döner).
 // ══════════════════════════════════════════════════════════
-import { escapeHtml } from './utils.js';
+import {
+  escapeHtml, TODAY, _routineOverdueLabel, _slaRemainingHuman,
+  catLabel, priorityBadge, slaBadge, portalBadge, unreadBadge,
+  _periodCompletionLabel, _periodCompletionBadge,
+} from './utils.js';
 import { state } from './state.js';
 
 // ══════════════════════════════════════════════════════════
@@ -644,4 +649,124 @@ function _getEditChecklistData() {
     if (lbl) { items.push(lbl.textContent.trim()); doneArr.push(cb?.classList.contains('checked')||false); }
   });
   return { items, doneArr };
+}
+
+// ── ESM Faz 4e-1: Paylaşımlı satır-render helper'ları (dashboard + full-list + projeler + scheduler) ──
+// ══════════════════════════════════════════════════════════
+//  TASK HELPERS — taskTiming / firmChip / taskRow
+// ══════════════════════════════════════════════════════════
+// v5.6 — KANONİK görev zamanlama bilgisi (TEK KAYNAK).
+// Gecikme/gruplama/sıralama/badge mantığı SADECE buradan gelir. Dashboard satırı
+// (taskRow), dashboard gruplama (_dashGroupKey) ve sıralama (_dashSortKey) bunu
+// kullanır → mantık tek yerde, bir render yolu atlanamaz.
+//
+// NEDEN: Rutin görev gecikmesi eskiden her render yolunda ayrı ayrı, hep donmuş
+// `deadline` ile hesaplanıyordu. v5.1 rutin SAYFASINI + bildirimleri düzeltti ama
+// DASHBOARD atlandı → "29g gecikti" bug'ı dashboard'da tekrar etti. Tek kaynak
+// bunu kalıcı çözer.
+//
+// Döner: { group, sortKey, badgeText, badgeClass }
+//   group  : 'overdue'|'today'|'tomorrow'|'upcoming'|'no_deadline'|'done'
+//   sortKey: grup içi sıralama (küçük = üstte)
+export function taskTiming(t) {
+  // ── 1) RUTİN (periyodik) — kanonik is_overdue / overdue_periods (donmuş deadline DEĞİL)
+  if (t.cat === 'routine' && t.period !== 'Tek Seferlik') {
+    if (t.done) {
+      return { group:'done', sortKey: Infinity,
+               badgeText: t.current_period_label ? `${t.current_period_label} ✓` : 'Tamamlandı', badgeClass:'ok' };
+    }
+    if (t.is_overdue) {
+      return { group:'overdue', sortKey: -(t.overdue_periods || 1),  // çok atlanan en üstte
+               badgeText: _routineOverdueLabel(t), badgeClass:'late' };
+    }
+    return { group:'today', sortKey: 0,
+             badgeText: t.current_period_label ? `${t.current_period_label} bekliyor` : 'Bekliyor', badgeClass:'warn' };
+  }
+
+  // ── 2) DESTEK (SLA)
+  if (t.cat === 'support' && t.sla) {
+    if (t.done) return { group:'done', sortKey: Infinity, badgeText:'Tamamlandı', badgeClass:'ok' };
+    const rem = t.sla.remaining_hours;
+    const slaRem = _slaRemainingHuman(t);
+    const badgeText = slaRem ? `SLA ${slaRem.txt}` : 'SLA';
+    if (t.sla.breached || (typeof rem === 'number' && rem < 0)) {
+      return { group:'overdue', sortKey: (typeof rem === 'number' ? rem : -999), badgeText, badgeClass:'late' };
+    }
+    if (typeof rem === 'number') {
+      const group = rem <= 24 ? 'today' : rem <= 48 ? 'tomorrow' : 'upcoming';
+      const badgeClass = rem < (t.sla.target_hours || 24) * 0.25 ? 'warn' : 'ok';
+      return { group, sortKey: rem, badgeText, badgeClass };
+    }
+  }
+
+  // ── 3) DİĞER (deadline-bazlı: task/project/backup/infra/other + Tek Seferlik rutin)
+  if (t.done) return { group:'done', sortKey: Infinity, badgeText:'Tamamlandı', badgeClass:'ok' };
+  if (!t.deadline) return { group:'no_deadline', sortKey: Infinity, badgeText:null, badgeClass:null };
+  const today = TODAY;
+  const tomorrow = (() => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })();
+  const diff = Math.round((new Date(t.deadline) - new Date(TODAY)) / 86400000);
+  let group;
+  if (t.deadline < today) group = 'overdue';
+  else if (t.deadline === today) group = 'today';
+  else if (t.deadline === tomorrow) group = 'tomorrow';
+  else group = 'upcoming';
+  const badgeText = diff < 0 ? `${Math.abs(diff)}g gecikti` : diff === 0 ? 'Bugün son!' : `${diff}g kaldı`;
+  const badgeClass = diff < 0 ? 'late' : diff <= 2 ? 'warn' : 'ok';
+  return { group, sortKey: new Date(t.deadline).getTime() / 3600000, badgeText, badgeClass };
+}
+
+export function firmChip(firm) {
+  const f = FIRMS[firm]; if (!f) return firm ? `<span class="firm-chip">${escapeHtml(firm)}</span>` : '';
+  return `<span class="firm-chip ${firm}">${f.label}</span>`;
+}
+
+export function taskRow(t) {
+  // v5.6 — Sol kolon rozeti KANONİK taskTiming()'den (rutin için donmuş deadline
+  // değil is_overdue/overdue_periods; destek için SLA; diğer için deadline).
+  const ti = taskTiming(t);
+  const dl = ti.badgeText
+    ? `<div class="dl-badge ${ti.badgeClass || ''}">${ti.badgeText}</div>`
+    : '<div></div>';
+  // Sağ kolonda destek talepleri için SLA kalan süre metni (aşağıda kullanılır)
+  const slaRem = _slaRemainingHuman(t);
+  // Önceki aydan taşınan görev etiketi
+  const prevBadge = t.from_previous_month
+    ? `<span style="font-size:9px;background:rgba(244,185,66,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:4px;border:1px solid rgba(244,185,66,.25)">⏩ Önceki Aydan</span>`
+    : '';
+  // Checklist ilerleme çubuğu (rutin ve proje görevlerinde)
+  let clProgress = '';
+  if ((t.cat === 'routine' || t.cat === 'project') && t.checklist && t.checklist.length > 0) {
+    const total = t.checklist.length;
+    const done2 = (t.checklist_done||[]).filter(Boolean).length;
+    const pct   = Math.round(done2/total*100);
+    clProgress = `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">
+      Adımlar: ${done2}/${total}
+      <div class="checklist-progress" style="margin-top:3px"><div class="checklist-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  // Son tamamlanma
+  const lcStr = (t.cat === 'routine' && t.last_completed)
+    ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">✓ Son: ${new Date(t.last_completed).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</div>`
+    : '';
+  // v4.3 — IT Müdürü notu (kırmızı kutu)
+  const mnStr = (t.manager_note && t.manager_note.trim())
+    ? `<div style="margin-top:4px;padding:4px 8px;border-left:3px solid #ef4444;background:rgba(239,68,68,.08);font-size:10px;color:#ef4444;font-weight:600;border-radius:3px">🛡️ ${escapeHtml(t.manager_note)}</div>`
+    : '';
+  return `
+  <div class="task-item" id="ti-${t.id}">
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
+    <div>
+      <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
+      <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${unreadBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
+      ${t.source==='portal' && t.reporter_email ? `<div style="font-size:9px;color:var(--accent);margin-top:2px">🌐 Portal talebi · ${escapeHtml(t.reporter_name||'')} &lt;${escapeHtml(t.reporter_email)}&gt;${t.reporter_anydesk ? ` · 🖥 AnyDesk: ${escapeHtml(t.reporter_anydesk)}` : ''}</div>` : ''}
+      ${clProgress}${lcStr}${mnStr}
+    </div>
+    ${dl}
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <div style="font-size:9px;${t.cat==='support'&&slaRem?`color:${slaRem.color};font-weight:700`:'color:var(--text-muted)'};font-family:'IBM Plex Mono',monospace">${
+        t.cat==='support' && slaRem ? `⏱ ${slaRem.txt} kaldı` : (t.deadline ? formatDateTR(t.deadline) : '—')
+      }</div>
+      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; Düzenle</button>
+    </div>
+  </div>`;
 }

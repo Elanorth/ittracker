@@ -60,7 +60,8 @@
     "_addReturnPage": "readonly",
     "closeEditTaskModal": "readonly",
     "renderBackupList": "readonly",
-    "taskRow": "readonly"
+    "taskRow": "readonly",
+    "taskTiming": "readonly"
   },
   "rules": {
     "no-undef": "error"
