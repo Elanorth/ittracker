@@ -71,7 +71,8 @@
     "updateSupportNavBadge": "readonly",
     "onFirmUserChange": "readonly",
     "initReportPage": "readonly",
-    "setDateDisplay": "readonly"
+    "setDateDisplay": "readonly",
+    "loadKb": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -91,7 +92,8 @@
         "static/js/tasks.js",
         "static/js/dashboard.js",
         "static/js/report.js",
-        "static/js/scheduled.js"
+        "static/js/scheduled.js",
+        "static/js/kb.js"
       ],
       "parserOptions": {
         "sourceType": "module"
