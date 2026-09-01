@@ -2,6 +2,10 @@
 // templates/app.html içinden çıkarıldı (v5.0 madde #17). Davranış değişmedi.
 import { state } from './js/state.js';
 import { TODAY, _appVersionSuffix, escapeHtml } from './js/utils.js';
+import { onClick } from './js/events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — Sidebar/genel navigasyon: <... data-click="nav" data-page="X">
+onClick('nav', el => showPage(el.dataset.page));
 
 
 // ══════════════════════════════════════════════════════════
