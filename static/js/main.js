@@ -23,6 +23,7 @@ import * as dashboard from './dashboard.js'; // ESM Faz 4e — dashboard (grafik
 import * as report from './report.js'; // ESM Faz 4f-1 — rapor sayfası
 import * as scheduled from './scheduled.js'; // ESM Faz 4f-2 — zamanlanmış görevler + takvim
 import * as kb from './kb.js'; // ESM Faz 4f-3 — bilgi bankası
+import * as settings from './settings.js'; // ESM Faz 4f-4 — ayarlar (portal/teams/smtp)
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -66,6 +67,9 @@ exposeAll(scheduled);
 
 // ESM Faz 4f-3: bilgi bankası (loadKb + editör CRUD) → window.
 exposeAll(kb);
+
+// ESM Faz 4f-4: ayarlar sayfası (portal auto-assign + teams + smtp/kullanıcı) → window.
+exposeAll(settings);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;

@@ -72,7 +72,10 @@
     "onFirmUserChange": "readonly",
     "initReportPage": "readonly",
     "setDateDisplay": "readonly",
-    "loadKb": "readonly"
+    "loadKb": "readonly",
+    "loadAutoAssign": "readonly",
+    "loadTeamsSettings": "readonly",
+    "loadSettingsFromServer": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -93,7 +96,8 @@
         "static/js/dashboard.js",
         "static/js/report.js",
         "static/js/scheduled.js",
-        "static/js/kb.js"
+        "static/js/kb.js",
+        "static/js/settings.js"
       ],
       "parserOptions": {
         "sourceType": "module"
