@@ -70,7 +70,8 @@
     "renderDashboard": "readonly",
     "updateSupportNavBadge": "readonly",
     "onFirmUserChange": "readonly",
-    "initReportPage": "readonly"
+    "initReportPage": "readonly",
+    "setDateDisplay": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -89,7 +90,8 @@
         "static/js/admin.js",
         "static/js/tasks.js",
         "static/js/dashboard.js",
-        "static/js/report.js"
+        "static/js/report.js",
+        "static/js/scheduled.js"
       ],
       "parserOptions": {
         "sourceType": "module"
