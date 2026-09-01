@@ -57,7 +57,6 @@
     "renderProjectsPage": "readonly",
     "formatDateTR": "readonly",
     "onCatChange": "readonly",
-    "_addReturnPage": "readonly",
     "closeEditTaskModal": "readonly",
     "renderBackupList": "readonly",
     "taskRow": "readonly",
@@ -88,6 +87,7 @@
   "overrides": [
     {
       "files": [
+        "static/app.js",
         "static/js/main.js",
         "static/js/bridge.js",
         "static/js/state.js",

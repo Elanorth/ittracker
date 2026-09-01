@@ -12,6 +12,7 @@
 // ══════════════════════════════════════════════════════════
 import { expose, exposeAll } from './bridge.js';
 import './state.js'; // paylaşılan state'i kurar (window.state) — ESM Faz 2
+import * as appCore from '../app.js'; // ESM Faz 4f-son — app.js ÇEKİRDEK (artık module, static/ altında)
 import * as utils from './utils.js'; // ESM Faz 3a — leaf modülü
 import * as audit from './audit.js'; // ESM Faz 3b — Denetim Kayıtları modülü
 import * as managedFirms from './managed-firms.js'; // ESM Faz 3c — Yönettiğim Firmalar
@@ -32,6 +33,11 @@ import * as archive from './archive.js'; // ESM Faz 4f-6 — case arşivi
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
 window.exposeAll = exposeAll;
+
+// ESM Faz 4f-son: app.js ÇEKİRDEK artık module. Public API'sini (showPage/loadApp/
+// showToast/loadTasks/FIRMS/... 22 export) window'a bağla — inline handler'lar +
+// diğer modüller (window bridge) kullanır. Bootstrap (aşağıda) window.loadApp çağırır.
+exposeAll(appCore);
 
 // ESM Faz 3a: utils artık gerçek ESM modülü. Klasik app.js/audit.js/managed-firms.js
 // ve inline onclick'ler için tüm export'ları window'a bağla (escapeHtml, TODAY,
