@@ -75,7 +75,10 @@
     "loadKb": "readonly",
     "loadAutoAssign": "readonly",
     "loadTeamsSettings": "readonly",
-    "loadSettingsFromServer": "readonly"
+    "loadSettingsFromServer": "readonly",
+    "loadTasks": "readonly",
+    "updatePoolBadge": "readonly",
+    "loadPoolPage": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -97,7 +100,8 @@
         "static/js/report.js",
         "static/js/scheduled.js",
         "static/js/kb.js",
-        "static/js/settings.js"
+        "static/js/settings.js",
+        "static/js/pool.js"
       ],
       "parserOptions": {
         "sourceType": "module"
