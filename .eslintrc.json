@@ -89,6 +89,7 @@
       "files": [
         "static/app.js",
         "static/js/main.js",
+        "static/js/events.js",
         "static/js/bridge.js",
         "static/js/state.js",
         "static/js/utils.js",
