@@ -134,7 +134,7 @@ export async function addTask() {
     // v5.21 — Kullanıcının 'Yeni Görev'e girmeden önce olduğu menüye geri dön
     // (eskiden kategori ne olursa olsun hep 'Anlık Görevler'e atıyordu). Config
     // backup yeni eklendiyse dosya listesini görmek mantıklı → 'backups'.
-    showPage(cat === 'backup' ? 'backups' : (_addReturnPage || 'tasks'));
+    showPage(cat === 'backup' ? 'backups' : (state.addReturnPage || 'tasks'));
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
   } finally {

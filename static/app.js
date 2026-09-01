@@ -1,5 +1,8 @@
 ﻿// IT Tracker — main client bundle (v5.0)
 // templates/app.html içinden çıkarıldı (v5.0 madde #17). Davranış değişmedi.
+import { state } from './js/state.js';
+import { TODAY, _appVersionSuffix, escapeHtml } from './js/utils.js';
+
 
 // ══════════════════════════════════════════════════════════
 //  KULLANICI FİRMA BAZLI TEMA (v3)
@@ -119,7 +122,7 @@ const JUNIOR_ALLOWED_PAGES = ['dashboard', 'tasks', 'add', 'board', 'pool', 'arc
 //  SABİT VERİLER
 // ══════════════════════════════════════════════════════════
 // FIRMS objesi — başlangıçta sabit, loadFirmsFromDB() ile DB'den güncellenir
-const FIRMS = {
+export const FIRMS = {
   inventist: { id: null, label: 'İnventist', cls: 'inventist', teams: [], teamIds: {} },
   assos:     { id: null, label: 'Assos',     cls: 'assos',     teams: [], teamIds: {} }
 };
@@ -151,18 +154,17 @@ const STATUS_LABELS = {active:'Aktif', pending:'Bekliyor', inactive:'Pasif'};
 // currentUser → state.js (ESM Faz 2c-1, window.state)
 // selectedUserId → state.js (ESM Faz 2b, window.state)
 // firmUsers → state.js (ESM Faz 2c-1, window.state)
-let _addReturnPage = 'tasks';  // v5.21 — 'Yeni Görev'e girmeden önceki sayfa; kayıt sonrası buraya dön
 
 // ══════════════════════════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════════════════════════
-function showLoginScreen() { document.getElementById('login-screen').style.display = 'flex'; }
-function o365Login() {
+export function showLoginScreen() { document.getElementById('login-screen').style.display = 'flex'; }
+export function o365Login() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('sb-o365').style.display = 'inline-flex';
   showToast('ok','Microsoft 365 hesabı başarıyla bağlandı');
 }
-function manualLogin() {
+export function manualLogin() {
   const u = document.getElementById('login-user').value;
   const p = document.getElementById('login-pass').value;
   fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u,password:p}) })
@@ -175,7 +177,7 @@ function manualLogin() {
 // ══════════════════════════════════════════════════════════
 //  UYGULAMA YÜKLEME — API'den tüm veriyi çek
 // ══════════════════════════════════════════════════════════
-async function loadApp() {
+export async function loadApp() {
   try {
     const me = await fetch('/api/me').then(r => r.json());
     state.currentUser = me;
@@ -198,7 +200,7 @@ async function loadApp() {
 }
 
 // ── v4.2: Director+ kullanıcı filtresi ──
-async function initFirmUserFilter() {
+export async function initFirmUserFilter() {
   const level = state.currentUser.permission_level || 'junior';
   if (level !== 'super_admin' && level !== 'it_director') return;
   try {
@@ -217,7 +219,7 @@ async function initFirmUserFilter() {
   } catch(e) { console.warn('firm users yüklenemedi', e); }
 }
 
-async function onFirmUserChange() {
+export async function onFirmUserChange() {
   const val = document.getElementById('firm-user-filter').value;
   state.selectedUserId = val ? parseInt(val) : null;
   refreshAssignModeUI();
@@ -261,7 +263,7 @@ function refreshAssignModeUI() {
   if (mnGroup) mnGroup.classList.toggle('hidden', !isDirectorUp);
 }
 
-async function loadTasks(month, year) {
+export async function loadTasks(month, year) {
   try {
     const now = new Date();
     const m = month || now.getMonth() + 1;
@@ -291,7 +293,7 @@ function isReadOnlyScope() { return !!state.selectedUserId && state.selectedUser
 // ══════════════════════════════════════════════════════════
 
 // API to_dict() → frontend format dönüşümü
-function normalizeTask(t) {
+export function normalizeTask(t) {
   return {
     id:       t.id,
     user_id:  t.user_id,       // v5.18 — havuz (null = atanmamış)
@@ -344,7 +346,7 @@ function normalizeTask(t) {
 // v5.0 BUG-2 — Mobil sidebar hamburger toggle.
 // Desktop/tablet'te etkisi yok (>720px CSS sidebar her zaman görünür).
 // Mobil'de .open class'ı sidebar'ı slide-in yapar, backdrop ile kapatılabilir.
-function toggleSidebar(forceClose) {
+export function toggleSidebar(forceClose) {
   const sb = document.getElementById('sidebar');
   const bd = document.getElementById('sidebar-backdrop');
   const btn = document.getElementById('sidebar-toggle-btn');
@@ -356,7 +358,7 @@ function toggleSidebar(forceClose) {
   btn?.setAttribute('aria-label', willOpen ? 'Menüyü kapat' : 'Menüyü aç');
 }
 
-function showPage(name, opts = {}) {
+export function showPage(name, opts = {}) {
   // v5.4 — opts: { cat, firm, statusKind, activeNav }
   //   cat        → tasks sayfasında kategori filtresi ('support' vb.)
   //   firm       → tasks sayfasında firma filtresi (drill-down)
@@ -380,7 +382,7 @@ function showPage(name, opts = {}) {
   if (name === 'add') {
     const curEl = document.querySelector('.page-section.active');
     const cur = curEl ? curEl.id.replace('page-', '') : '';
-    if (cur && cur !== 'add') _addReturnPage = cur;
+    if (cur && cur !== 'add') state.addReturnPage = cur;
   }
 
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
@@ -498,7 +500,7 @@ function showPage(name, opts = {}) {
 // ══════════════════════════════════════════════════════════
 //  CASCADING FIRM → TEAM
 // ══════════════════════════════════════════════════════════
-function updateTeamOptions() {
+export function updateTeamOptions() {
   const firm = document.getElementById('new-firm').value;
   const teamSel = document.getElementById('new-team');
   teamSel.innerHTML = '';
@@ -510,7 +512,7 @@ function updateTeamOptions() {
 // ══════════════════════════════════════════════════════════
 //  BACKUP SECTION TOGGLE
 // ══════════════════════════════════════════════════════════
-function onCatChange() {
+export function onCatChange() {
   const cat       = document.getElementById('new-cat').value;
   const isBackup  = cat === 'backup';
   const isRoutine = cat === 'routine';
@@ -593,7 +595,7 @@ document.addEventListener('change', e => {
 });
 function toggleBackupSection() { onCatChange(); }
 function triggerUpload() { /* input[type=file] zaten tüm alanı kaplıyor */ }
-function onFileSelected(input) {
+export function onFileSelected(input) {
   const file = input.files[0]; if (!file) return;
   const el = document.getElementById('upload-filename');
   el.textContent = '💾 ' + file.name; el.style.display = 'block';
@@ -642,7 +644,7 @@ function renderSettingsTeams() {
   });
   renderBackupTypes();
 }
-async function addTeam(firm) {
+export async function addTeam(firm) {
   const inp = document.getElementById(`${firm}-new-team`); const val = inp.value.trim(); if (!val) return;
   if (FIRMS[firm].teams.includes(val)) { inp.value = ''; return; }
   const fid = FIRMS[firm].id;
@@ -657,7 +659,7 @@ async function addTeam(firm) {
   } catch(e) { showToast('err','Hata: '+e.message); }
   inp.value = ''; renderSettingsTeams();
 }
-async function removeTeam(firm, team, tid) {
+export async function removeTeam(firm, team, tid) {
   if (!tid) { showToast('err','Ekip ID bulunamadı'); return; }
   if (!confirm(`"${team}" ekibini silmek istediğinize emin misiniz?\nBu ekibe atanmış görevlerden ekip bilgisi kaldırılır.`)) return;
   try {
@@ -672,18 +674,18 @@ async function removeTeam(firm, team, tid) {
 function renderBackupTypes() {
   document.getElementById('backup-types-display').innerHTML = BACKUP_TYPES.map(t => `<span class="pill-tag" onclick="removeBackupType('${t}')">${t} <span class="rm">×</span></span>`).join('');
 }
-function addBackupType() {
+export function addBackupType() {
   const inp = document.getElementById('backup-new-type'); let val = inp.value.trim(); if (!val) return;
   if (!val.startsWith('.')) val = '.' + val;
   if (!BACKUP_TYPES.includes(val)) { BACKUP_TYPES.push(val); showToast('ok',`${val} eklendi`); }
   inp.value = ''; renderBackupTypes();
 }
-function removeBackupType(t) { const idx = BACKUP_TYPES.indexOf(t); if (idx > -1) BACKUP_TYPES.splice(idx,1); renderBackupTypes(); }
+export function removeBackupType(t) { const idx = BACKUP_TYPES.indexOf(t); if (idx > -1) BACKUP_TYPES.splice(idx,1); renderBackupTypes(); }
 
 // ══════════════════════════════════════════════════════════
 //  TOAST
 // ══════════════════════════════════════════════════════════
-function showToast(type, msg) {
+export function showToast(type, msg) {
   const wrap = document.getElementById('toast-wrap');
   const t = document.createElement('div'); t.className = `toast ${type}`;
   t.innerHTML = `<span>${type==='ok'?'✓':'✗'}</span> ${escapeHtml(msg)}`;
@@ -693,13 +695,13 @@ function showToast(type, msg) {
 // ══════════════════════════════════════════════════════════
 //  TARİH YARDIMCILARI
 // ══════════════════════════════════════════════════════════
-function formatDateTR(dateStr) {
+export function formatDateTR(dateStr) {
   if (!dateStr) return '—';
   const [y, m, d] = dateStr.split('-');
   const aylar = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   return `${parseInt(d)} ${aylar[parseInt(m)-1]} ${y}`;
 }
-function setDateDisplay(dayId, fullId) {
+export function setDateDisplay(dayId, fullId) {
   const now = new Date();
   const gunler = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const aylar  = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
@@ -784,7 +786,7 @@ document.addEventListener('DOMContentLoaded', () => { const s = document.getElem
 
 // CHECKLİST FONKSİYONLARI → static/js/tasks.js (ESM Faz 4d-3b)
 
-function saveTeams() { showToast('ok', 'Ekip değişiklikleri otomatik kaydedildi.'); }
+export function saveTeams() { showToast('ok', 'Ekip değişiklikleri otomatik kaydedildi.'); }
 
 // ══════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════

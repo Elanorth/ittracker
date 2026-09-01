@@ -2329,9 +2329,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div class="toast-wrap" id="toast-wrap"></div>
 
 <script defer src="/static/vendor/chart.umd.min.js?v={{ version }}"></script>
-<!-- utils.js artık ESM (main.js import eder) — klasik tag kaldırıldı (ESM Faz 3a) -->
-<script defer src="/static/app.js?v={{ version }}"></script>
-<!-- audit.js + managed-firms.js artık ESM (main.js import eder) — klasik tag'ler kaldırıldı (ESM Faz 3b/3c) -->
+<!-- app.js ÇEKİRDEK artık ESM (main.js import eder) — klasik tag kaldırıldı (ESM Faz 4f-son) -->
+<!-- utils/audit/managed-firms + tüm feature modülleri main.js üzerinden yüklenir -->
 <!-- ESM Faz 1 (v5.42): ES-module giriş kanalı — klasik script'lerin yanında. Bkz. docs/js-esm-migration-plan.md -->
 <script type="module" src="/static/js/main.js?v={{ version }}"></script>
 </body>
