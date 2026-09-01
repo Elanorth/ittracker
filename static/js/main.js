@@ -22,6 +22,7 @@ import * as tasks from './tasks.js'; // ESM Faz 4d — görev işlemleri
 import * as dashboard from './dashboard.js'; // ESM Faz 4e — dashboard (grafikler)
 import * as report from './report.js'; // ESM Faz 4f-1 — rapor sayfası
 import * as scheduled from './scheduled.js'; // ESM Faz 4f-2 — zamanlanmış görevler + takvim
+import * as kb from './kb.js'; // ESM Faz 4f-3 — bilgi bankası
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -62,6 +63,9 @@ exposeAll(report);
 
 // ESM Faz 4f-2: zamanlanmış görevler + takvim (renderScheduledPage/renderCalendar/...) → window.
 exposeAll(scheduled);
+
+// ESM Faz 4f-3: bilgi bankası (loadKb + editör CRUD) → window.
+exposeAll(kb);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;
