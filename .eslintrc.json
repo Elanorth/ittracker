@@ -78,7 +78,9 @@
     "loadSettingsFromServer": "readonly",
     "loadTasks": "readonly",
     "updatePoolBadge": "readonly",
-    "loadPoolPage": "readonly"
+    "loadPoolPage": "readonly",
+    "loadArchivePage": "readonly",
+    "downloadBackup": "readonly"
   },
   "rules": {
     "no-undef": "error"
@@ -101,7 +103,10 @@
         "static/js/scheduled.js",
         "static/js/kb.js",
         "static/js/settings.js",
-        "static/js/pool.js"
+        "static/js/pool.js",
+        "static/js/projects.js",
+        "static/js/backup.js",
+        "static/js/archive.js"
       ],
       "parserOptions": {
         "sourceType": "module"

@@ -25,6 +25,9 @@ import * as scheduled from './scheduled.js'; // ESM Faz 4f-2 — zamanlanmış g
 import * as kb from './kb.js'; // ESM Faz 4f-3 — bilgi bankası
 import * as settings from './settings.js'; // ESM Faz 4f-4 — ayarlar (portal/teams/smtp)
 import * as pool from './pool.js'; // ESM Faz 4f-5 — destek havuzu
+import * as projects from './projects.js'; // ESM Faz 4f-6 — projeler sayfası
+import * as backup from './backup.js'; // ESM Faz 4f-6 — yedekler sayfası
+import * as archive from './archive.js'; // ESM Faz 4f-6 — case arşivi
 
 // Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
 window.expose = expose;
@@ -74,6 +77,11 @@ exposeAll(settings);
 
 // ESM Faz 4f-5: destek havuzu (loadPoolPage/claimCase/releaseCase/resolveCase) → window.
 exposeAll(pool);
+
+// ESM Faz 4f-6: projeler + yedekler + case arşivi sayfaları → window.
+exposeAll(projects);
+exposeAll(backup);
+exposeAll(archive);
 
 // ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
 window.__esmReady = true;
