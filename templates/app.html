@@ -815,8 +815,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
 </div>
 
 <!-- v5.0 BUG-2 — mobil hamburger butonu + backdrop (>720px gizli) -->
-<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false" id="sidebar-toggle-btn">☰</button>
-<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(true)" aria-hidden="true"></div>
+<button class="sidebar-toggle" data-click="toggleSidebar" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false" id="sidebar-toggle-btn">☰</button>
+<div class="sidebar-backdrop" id="sidebar-backdrop" data-click="toggleSidebar" data-close="true" aria-hidden="true"></div>
 
 <!-- ╔══════════════════════════════════════╗
      ║              SIDEBAR                 ║
@@ -844,7 +844,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <a class="nav-item active" data-perm="all" data-click="nav" data-page="dashboard"><span class="nav-icon">⬡</span>Dashboard</a>
     <a class="nav-item" data-perm="director" data-click="nav" data-page="managed-firms"><span class="nav-icon">⬡</span>Yönettiğim Firmalar</a>
     <a class="nav-item" data-nav="tasks" data-perm="all" data-click="nav" data-page="tasks"><span class="nav-icon">⚡</span>Anlık Görevler</a>
-    <a class="nav-item" data-nav="support" data-perm="all" onclick="showTasksWithCat('support')"><span class="nav-icon">🆘</span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" data-nav="support" data-perm="all" data-click="showTasksWithCat" data-cat="support"><span class="nav-icon">🆘</span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
     <a class="nav-item" data-perm="all" data-click="nav" data-page="pool"><span class="nav-icon">🫧</span>Havuz<span class="nav-badge" id="pool-nav-badge" style="display:none;background:var(--accent);color:#06231d">0</span></a>
     <a class="nav-item" data-perm="all" data-click="nav" data-page="archive"><span class="nav-icon">🗄️</span>Arşiv</a>
     <a class="nav-item" data-perm="manager" data-click="nav" data-page="projects"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
@@ -917,11 +917,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
   </div>
 
   <div class="kpi-row">
-    <div class="kpi c-teal kpi-clickable" title="Tüm görevleri göster" onclick="kpiJump('all')"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
-    <div class="kpi c-green kpi-clickable" title="Tamamlanan görevleri göster" onclick="kpiJump('done')"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
-    <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" onclick="kpiJump('open')"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
-    <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" onclick="kpiJump('overdue')"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
-    <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" onclick="kpiJump('backup')"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+    <div class="kpi c-teal kpi-clickable" title="Tüm görevleri göster" data-click="kpiJump" data-kind="all"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
+    <div class="kpi c-green kpi-clickable" title="Tamamlanan görevleri göster" data-click="kpiJump" data-kind="done"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
+    <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" data-click="kpiJump" data-kind="open"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
+    <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" data-click="kpiJump" data-kind="overdue"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
+    <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" data-click="kpiJump" data-kind="backup"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
   </div>
 
   <!-- v4.9 firma şeridi v4.10'da kaldırıldı: artık ayrı "Yönettiğim Firmalar" sayfası var. -->
@@ -940,18 +940,18 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card-header">
         <div class="card-title">BUGÜNÜN GÖREVLERİ</div>
         <div class="tabs" style="border:none;margin:0">
-          <div class="tab active" id="tab-all" onclick="filterTasks('all')">Tümü</div>
-          <div class="tab" id="tab-open" onclick="filterTasks('open')">Açık</div>
-          <div class="tab" id="tab-done" onclick="filterTasks('done')">Bitti</div>
+          <div class="tab active" id="tab-all" data-click="filterTasks" data-filter="all">Tümü</div>
+          <div class="tab" id="tab-open" data-click="filterTasks" data-filter="open">Açık</div>
+          <div class="tab" id="tab-done" data-click="filterTasks" data-filter="done">Bitti</div>
         </div>
       </div>
       <!-- v5.2 — kategori filtre satırı (durum filtresiyle birlikte çalışır) -->
       <div class="tabs" id="today-cat-tabs" style="border:none;padding:0 18px;margin:2px 0 4px 0;gap:4px;flex-wrap:wrap">
-        <div class="tab active" data-cat="" onclick="filterTasksByCat('')" style="font-size:10px;padding:4px 10px">Tüm Kategoriler</div>
-        <div class="tab" data-cat="task" onclick="filterTasksByCat('task')" style="font-size:10px;padding:4px 10px">Anlık</div>
-        <div class="tab" data-cat="project" onclick="filterTasksByCat('project')" style="font-size:10px;padding:4px 10px">Proje</div>
-        <div class="tab" data-cat="routine" onclick="filterTasksByCat('routine')" style="font-size:10px;padding:4px 10px">Rutin</div>
-        <div class="tab" data-cat="support" onclick="filterTasksByCat('support')" style="font-size:10px;padding:4px 10px">Destek</div>
+        <div class="tab active" data-cat="" data-click="filterTasksByCat" data-cat="" style="font-size:10px;padding:4px 10px">Tüm Kategoriler</div>
+        <div class="tab" data-cat="task" data-click="filterTasksByCat" data-cat="task" style="font-size:10px;padding:4px 10px">Anlık</div>
+        <div class="tab" data-cat="project" data-click="filterTasksByCat" data-cat="project" style="font-size:10px;padding:4px 10px">Proje</div>
+        <div class="tab" data-cat="routine" data-click="filterTasksByCat" data-cat="routine" style="font-size:10px;padding:4px 10px">Rutin</div>
+        <div class="tab" data-cat="support" data-click="filterTasksByCat" data-cat="support" style="font-size:10px;padding:4px 10px">Destek</div>
       </div>
       <div class="card-body" style="padding-top:6px;display:flex;flex-direction:column;flex:1;min-height:0" id="task-list-body"></div>
     </div>
@@ -1173,7 +1173,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title" id="tasks-page-title">Anlık <span>Görevler</span></div>
       <div class="page-sub" id="tasks-page-sub">Tek seferlik işler — destek, kurulum, ayar, bakım</div>
     </div>
-    <button class="btn btn-primary" id="tasks-add-btn" onclick="addTaskFromTasksView()">＋ Anlık Görev Ekle</button>
+    <button class="btn btn-primary" id="tasks-add-btn" data-click="addTaskFromTasksView">＋ Anlık Görev Ekle</button>
   </div>
   <div class="card">
     <div class="card-header">
