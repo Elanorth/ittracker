@@ -10,6 +10,15 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — ayarlar sayfası aksiyonları (inline onclick → data-click)
+onClick('addAssignRule',      () => addAssignRule());
+onClick('saveUserSettings',   () => saveUserSettings());
+onClick('saveSmtpSettings',   () => saveSmtpSettings());
+onClick('testSmtp',           () => testSmtp());
+onClick('saveTeamsSettings',  () => saveTeamsSettings());
+onClick('testTeams',          () => testTeams());
 
 // ══════════════════════════════════════════════════════════
 //  PORTAL OTOMATİK ATAMA (v5.19 — Havuz D2)

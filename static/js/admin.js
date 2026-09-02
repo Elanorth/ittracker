@@ -9,6 +9,13 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — kullanıcı yönetimi aksiyonları (inline onclick → data-click)
+onClick('openInviteModal',    () => openInviteModal());
+onClick('sendInvite',         () => sendInvite());
+onClick('saveEditUser',       () => saveEditUser());
+onClick('closeEditUserModal', () => closeEditUserModal());
 
 //  ADMIN — KULLANICI TABLOSU (API'den)
 // ══════════════════════════════════════════════════════════
