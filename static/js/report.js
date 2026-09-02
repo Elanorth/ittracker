@@ -10,6 +10,12 @@
 // ══════════════════════════════════════════════════════════
 import { CAT_LABELS } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — rapor sayfası aksiyonları (inline onclick → data-click)
+onClick('sendReportMail',   () => sendReportMail());
+onClick('previewReportPdf', () => previewReportPdf());
+onClick('exportTasksCsv',   () => exportTasksCsv());
 
 const MONTH_TR_JS = {1:'Ocak',2:'Şubat',3:'Mart',4:'Nisan',5:'Mayıs',6:'Haziran',
                      7:'Temmuz',8:'Ağustos',9:'Eylül',10:'Ekim',11:'Kasım',12:'Aralık'};

@@ -1159,7 +1159,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title">Destek <span>Havuzu</span></div>
       <div class="page-sub">Atanmamış (henüz sahiplenilmemiş) portal talepleri — "Üstlen" ile kendinize çekin</div>
     </div>
-    <button class="btn btn-outline btn-sm" onclick="loadPoolPage()">↻ Yenile</button>
+    <button class="btn btn-outline btn-sm" data-click="loadPoolPage">↻ Yenile</button>
   </div>
   <div class="card">
     <div class="card-header"><div class="card-title">HAVUZDAKİ TALEPLER</div><div class="card-sub" id="pool-count-label">—</div></div>
@@ -1421,7 +1421,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div class="topbar-right">
       <select class="form-control" style="width:160px;font-size:12px" id="report-month-sel" onchange="onReportMonthChange()"></select>
-      <button class="btn btn-primary" onclick="sendReportMail()">📧 PDF Mail Gönder</button>
+      <button class="btn btn-primary" data-click="sendReportMail">📧 PDF Mail Gönder</button>
     </div>
   </div>
   <div class="grid-2">
@@ -1443,9 +1443,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <label>CC (Yönetici)</label>
           <input class="form-control" id="report-cc" placeholder="yonetici@sirket.com (opsiyonel)">
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="previewReportPdf()">&#8595; PDF Önizle / İndir</button>
-        <button class="btn btn-outline" style="width:100%;font-size:11px;margin-bottom:10px" onclick="sendReportMail()">📧 Seçili Aya Ait PDF'i Gönder</button>
-        <button class="btn btn-outline" style="width:100%;font-size:11px" onclick="exportTasksCsv()">&#8595; CSV İndir (Excel)</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:10px" data-click="previewReportPdf">&#8595; PDF Önizle / İndir</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px;margin-bottom:10px" data-click="sendReportMail">📧 Seçili Aya Ait PDF'i Gönder</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px" data-click="exportTasksCsv">&#8595; CSV İndir (Excel)</button>
       </div>
     </div>
   </div>
@@ -1613,7 +1613,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title">Kullanıcı <span>Yönetimi</span></div>
       <div class="page-sub">Sisteme kayıtlı tüm IT personeli · Admin yetkisi gerektirir</div>
     </div>
-    <button class="btn btn-gold" onclick="openInviteModal()">✉ Kullanıcı Davet Et</button>
+    <button class="btn btn-gold" data-click="openInviteModal">✉ Kullanıcı Davet Et</button>
   </div>
 
   <div class="grid-3r">
@@ -1704,7 +1704,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Hesabınızı Microsoft 365 ile senkronize edin</div>
           <button class="btn btn-outline btn-sm" onclick="showToast('ok','O365 OAuth sayfasına yönlendiriliyorsunuz...')">Microsoft ile Bağlan</button>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="saveUserSettings()">Kaydet</button>
+        <button class="btn btn-primary btn-sm" data-click="saveUserSettings">Kaydet</button>
       </div>
     </div>
 
@@ -1746,8 +1746,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row"><div class="form-group"><label>SMTP Port</label><input class="form-control" id="smtp-port" value="587"></div><div class="form-group"><label>Gönderen Mail</label><input class="form-control" id="smtp-user" placeholder="it@inventist.com"></div></div>
         <div class="form-group" style="margin-bottom:12px"><label>Şifre / App Password</label><input class="form-control" id="smtp-pass" type="password" placeholder="••••••••"></div>
         <div style="display:flex;gap:8px;margin-top:14px">
-          <button class="btn btn-primary btn-sm" onclick="saveSmtpSettings()">Kaydet</button>
-          <button class="btn btn-outline btn-sm" onclick="testSmtp()">Bağlantıyı Test Et</button>
+          <button class="btn btn-primary btn-sm" data-click="saveSmtpSettings">Kaydet</button>
+          <button class="btn btn-outline btn-sm" data-click="testSmtp">Bağlantıyı Test Et</button>
         </div>
       </div>
     </div>
@@ -1775,7 +1775,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div class="form-group" style="margin:0"><label>Anahtar Kelime (opsiyonel)</label><input class="form-control" id="aa-kw" placeholder="ör. yazıcı, vpn"></div>
           <div class="form-group" style="margin:0"><label>Atanacak Kişi</label><select class="form-control" id="aa-target"></select></div>
           <div class="form-group" style="margin:0"><label>Sıra</label><input class="form-control" id="aa-prio" type="number" value="100"></div>
-          <div style="display:flex;align-items:end"><button class="btn btn-primary btn-sm" onclick="addAssignRule()" style="width:100%">＋ Kural Ekle</button></div>
+          <div style="display:flex;align-items:end"><button class="btn btn-primary btn-sm" data-click="addAssignRule" style="width:100%">＋ Kural Ekle</button></div>
         </div>
       </div>
     </div>
@@ -1792,8 +1792,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <input class="form-control" id="teams-url" type="url" placeholder="https://outlook.office.com/webhook/...">
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-primary btn-sm" onclick="saveTeamsSettings()">Kaydet</button>
-          <button class="btn btn-outline btn-sm" onclick="testTeams()">Test Kartı Gönder</button>
+          <button class="btn btn-primary btn-sm" data-click="saveTeamsSettings">Kaydet</button>
+          <button class="btn btn-outline btn-sm" data-click="testTeams">Test Kartı Gönder</button>
         </div>
       </div>
     </div>
@@ -1934,7 +1934,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Portal self-service çözüm makaleleri — yayınlananlar kullanıcıya görünür, talep sayısını azaltır</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-primary btn-sm" onclick="openKbEditor()">＋ Yeni Makale</button>
+      <button class="btn btn-primary btn-sm" data-click="openKbEditor">＋ Yeni Makale</button>
     </div>
   </div>
   <div id="kb-admin-list" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px"></div>
@@ -1959,10 +1959,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <input type="checkbox" id="kb-edit-published"> <span>Yayınla (portalda kullanıcıya görünür olsun)</span>
     </label>
     <div class="modal-actions">
-      <button class="btn btn-danger btn-sm" id="kb-edit-delete" onclick="deleteKbArticle()" style="display:none">Sil</button>
+      <button class="btn btn-danger btn-sm" id="kb-edit-delete" data-click="deleteKbArticle" style="display:none">Sil</button>
       <div style="flex:1"></div>
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('kb-editor-modal').classList.add('hidden')">İptal</button>
-      <button class="btn btn-primary btn-sm" onclick="saveKbArticle()">Kaydet</button>
+      <button class="btn btn-primary btn-sm" data-click="saveKbArticle">Kaydet</button>
     </div>
   </div>
 </div>
@@ -2212,8 +2212,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <span>🌐 PORTAL · <span id="edit-case-code" class="mono" style="color:var(--accent)"></span></span>
         <span style="display:flex;align-items:center;gap:10px">
           <span id="edit-case-reporter" style="font-size:10px;color:var(--text-muted);font-weight:400"></span>
-          <button id="edit-case-release" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px;display:none" onclick="releaseCase(parseInt(document.getElementById('edit-task-id').value))">🫧 Havuza Bırak</button>
-          <button id="edit-case-resolve" class="btn btn-primary btn-sm" style="padding:2px 10px;font-size:9px" onclick="resolveCase(parseInt(document.getElementById('edit-task-id').value))">✓ Çözüldü &amp; Kapat</button>
+          <button id="edit-case-release" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px;display:none" data-click="releaseCase">🫧 Havuza Bırak</button>
+          <button id="edit-case-resolve" class="btn btn-primary btn-sm" style="padding:2px 10px;font-size:9px" data-click="resolveCase">✓ Çözüldü &amp; Kapat</button>
         </span>
       </div>
       <div style="display:flex;border-bottom:1px solid var(--border)">
@@ -2299,8 +2299,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </label>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="closeEditUserModal()">İptal</button>
-      <button class="btn btn-primary btn-sm" onclick="saveEditUser()">Kaydet</button>
+      <button class="btn btn-outline btn-sm" data-click="closeEditUserModal">İptal</button>
+      <button class="btn btn-primary btn-sm" data-click="saveEditUser">Kaydet</button>
     </div>
   </div>
 </div>
@@ -2320,7 +2320,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" onclick="closeModal()">İptal</button>
-      <button class="btn btn-gold btn-sm" onclick="sendInvite()">✉ Davet Gönder</button>
+      <button class="btn btn-gold btn-sm" data-click="sendInvite">✉ Davet Gönder</button>
     </div>
   </div>
 </div>

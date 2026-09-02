@@ -9,6 +9,13 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — bilgi bankası aksiyonları (inline onclick → data-click)
+// openKbEditor: statik "yeni makale" (data-id yok → null); liste satırı data-id verir.
+onClick('openKbEditor',    el => openKbEditor(el.dataset.id ? +el.dataset.id : null));
+onClick('saveKbArticle',   () => saveKbArticle());
+onClick('deleteKbArticle', () => deleteKbArticle());
 
 const KB_CAT_LABELS = { genel:'Genel', 'ağ':'Ağ/İnternet', 'donanım':'Donanım', 'yazılım':'Yazılım', hesap:'Hesap/Erişim', 'diğer':'Diğer' };
 let _kbArticles = [];

@@ -12,6 +12,14 @@
 import { escapeHtml, catLabel, priorityBadge, slaBadge, unreadBadge } from './utils.js';
 import { firmChip } from './tasks.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — destek havuzu aksiyonları (inline onclick → data-click)
+// releaseCase/resolveCase edit-task modalından çağrılır → aktif görev id'sini oku.
+const _editTaskId = () => parseInt(document.getElementById('edit-task-id').value, 10);
+onClick('loadPoolPage', () => loadPoolPage());
+onClick('releaseCase',  () => releaseCase(_editTaskId()));
+onClick('resolveCase',  () => resolveCase(_editTaskId()));
 
 let _poolCases = [];
 
