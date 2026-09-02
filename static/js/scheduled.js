@@ -13,6 +13,14 @@
 import { TODAY, escapeHtml, _routineOverdueLabel, _periodCompletionLabel } from './utils.js';
 import { firmChip } from './tasks.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — zamanlanmış görevler + takvim aksiyonları (inline onclick → data-click)
+onClick('toggleSchedView',    el => toggleSchedView(el.dataset.view));
+onClick('toggleSchedSection', el => toggleSchedSection(el.dataset.section));
+onClick('setWeeklyPeriod',    el => setWeeklyPeriod(+el.dataset.weeks, el));
+onClick('calNavMonth',        el => calNavMonth(+el.dataset.dir));
+onClick('calGoToday',         () => calGoToday());
 
 export function renderScheduledPage() {
   setDateDisplay('sched-date-day', 'sched-date-full');

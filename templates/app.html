@@ -994,9 +994,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card-header">
         <div class="card-title">HAFTALIK AKIŞ</div>
         <div class="tabs" id="weekly-period-tabs" role="tablist" aria-label="Hafta aralığı" style="border:none;margin:0">
-          <div class="tab active" role="tab" aria-selected="true" data-weeks="8" onclick="setWeeklyPeriod(8, this)">8 Hafta</div>
-          <div class="tab" role="tab" aria-selected="false" data-weeks="12" onclick="setWeeklyPeriod(12, this)">12 Hafta</div>
-          <div class="tab" role="tab" aria-selected="false" data-weeks="26" onclick="setWeeklyPeriod(26, this)">26 Hafta</div>
+          <div class="tab active" role="tab" aria-selected="true" data-weeks="8" data-click="setWeeklyPeriod" data-weeks="8">8 Hafta</div>
+          <div class="tab" role="tab" aria-selected="false" data-weeks="12" data-click="setWeeklyPeriod" data-weeks="12">12 Hafta</div>
+          <div class="tab" role="tab" aria-selected="false" data-weeks="26" data-click="setWeeklyPeriod" data-weeks="26">26 Hafta</div>
         </div>
       </div>
       <div class="card-body">
@@ -1016,8 +1016,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div class="topbar-right">
       <div class="view-toggle">
-        <button class="view-toggle-btn active" id="sched-btn-list" onclick="toggleSchedView('list')">☰ Liste</button>
-        <button class="view-toggle-btn" id="sched-btn-cal"  onclick="toggleSchedView('calendar')">📅 Takvim</button>
+        <button class="view-toggle-btn active" id="sched-btn-list" data-click="toggleSchedView" data-view="list">☰ Liste</button>
+        <button class="view-toggle-btn" id="sched-btn-cal"  data-click="toggleSchedView" data-view="calendar">📅 Takvim</button>
       </div>
       <div class="date-display">
         <div class="date-day" id="sched-date-day"></div>
@@ -1084,7 +1084,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
       <!-- AKTİF DÖNEM -->
       <div class="card">
-        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('active')">
+        <div class="card-header" style="cursor:pointer" data-click="toggleSchedSection" data-section="active">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="color:var(--accent)">▶</span> AKTİF DÖNEM
             <span id="sched-badge-active" style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
@@ -1101,7 +1101,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
       <!-- TAMAMLANDI -->
       <div class="card">
-        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('done')">
+        <div class="card-header" style="cursor:pointer" data-click="toggleSchedSection" data-section="done">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="color:var(--green)">✓</span> BU PERİYOT TAMAMLANDI
             <span id="sched-badge-done" style="background:var(--green);color:#000;border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
@@ -1114,7 +1114,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
       <!-- GELECEK DÖNEM -->
       <div class="card">
-        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('upcoming')">
+        <div class="card-header" style="cursor:pointer" data-click="toggleSchedSection" data-section="upcoming">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="color:var(--text-muted)">📅</span> GELECEK DÖNEM
             <span id="sched-badge-upcoming" style="background:var(--surface3);color:var(--text-muted);border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
@@ -1134,10 +1134,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="card cal-wrap">
       <div class="cal-nav">
         <div class="cal-nav-center">
-          <button class="cal-nav-btn" onclick="calNavMonth(-1)">&#8249;</button>
+          <button class="cal-nav-btn" data-click="calNavMonth" data-dir="-1">&#8249;</button>
           <div class="cal-nav-title" id="cal-month-title"></div>
-          <button class="cal-nav-btn" onclick="calNavMonth(1)">&#8250;</button>
-          <button class="cal-today-btn" onclick="calGoToday()">Bugün</button>
+          <button class="cal-nav-btn" data-click="calNavMonth" data-dir="1">&#8250;</button>
+          <button class="cal-today-btn" data-click="calGoToday">Bugün</button>
         </div>
         <div class="cal-legend">
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent2)"></div>Gecikti</div>
