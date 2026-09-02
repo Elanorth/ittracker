@@ -9,6 +9,16 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml, _routineOverdueLabel } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — bildirim çanı + ayarları aksiyonları (inline onclick → data-click)
+onClick('toggleNotifDropdown',      () => toggleNotifDropdown());
+onClick('clearAllNotifs',           () => clearAllNotifs());
+onClick('saveNotificationSettings', () => saveNotificationSettings());
+onClick('previewNotifications',     () => previewNotifications());
+onClick('runNotificationTest',      () => runNotificationTest());
+// Bildirim önizleme footer'ı → Zamanlanmış Görevler + dropdown'u kapat
+onClick('notifGoScheduled',         () => { showPage('scheduled'); closeNotifDropdown(); });
 
 // ══════════════════════════════════════════════════════════
 //  BİLDİRİM SİSTEMİ
