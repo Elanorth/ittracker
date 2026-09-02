@@ -18,6 +18,14 @@
 import { _chartTheme, _cssVar, _centerTextPlugin, escapeHtml } from './utils.js';
 import { state } from './state.js';
 import { taskTiming, taskRow } from './tasks.js'; // KANONİK satır-render (ESM Faz 4e-1)
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — dashboard/topbar aksiyonları (inline onclick → data-click)
+onClick('kpiJump',             el => kpiJump(el.dataset.kind));
+onClick('filterTasks',        el => filterTasks(el.dataset.filter));
+onClick('filterTasksByCat',   el => filterTasksByCat(el.dataset.cat));
+onClick('showTasksWithCat',   el => showTasksWithCat(el.dataset.cat));
+onClick('addTaskFromTasksView', () => addTaskFromTasksView());
 
 // Chart nesneleri modül-local (yalnız aşağıdaki render fonksiyonları kullanır).
 let _catChart = null, _firmChart = null, _activityChart = null, _weeklyChart = null;

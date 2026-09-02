@@ -6,6 +6,8 @@ import { onClick } from './js/events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Sidebar/genel navigasyon: <... data-click="nav" data-page="X">
 onClick('nav', el => showPage(el.dataset.page));
+// ESM Faz 5 — Sidebar aç/kapa (mobil): data-click="toggleSidebar" [data-close]
+onClick('toggleSidebar', el => toggleSidebar(el.dataset.close === 'true'));
 
 
 // ══════════════════════════════════════════════════════════
