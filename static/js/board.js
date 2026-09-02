@@ -9,6 +9,17 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — Ortak Alan (Kanban) aksiyonları (inline onclick → data-click)
+onClick('openNewCardModal',     el => openNewCardModal(el.dataset.col));
+onClick('setBCardCol',          el => setBCardCol(el.dataset.col));
+onClick('setBCardColor',        el => setBCardColor(el.dataset.color));
+onClick('addBCardChecklistItem', () => addBCardChecklistItem());
+onClick('addBCardComment',      () => addBCardComment());
+onClick('closeBoardCardModal',  () => closeBoardCardModal());
+onClick('deleteBoardCard',      () => deleteBoardCard());
+onClick('saveBoardCard',        () => saveBoardCard());
 
 //  ORTAK ALAN (BOARD) — Trello Kanban
 // ══════════════════════════════════════════════════════════

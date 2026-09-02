@@ -1999,23 +1999,23 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div id="page-board" class="page-section">
   <div class="board-header">
     <h1>📋 Ortak Alan</h1>
-    <button class="btn btn-primary btn-new-task" onclick="openNewCardModal('todo')">＋ Yeni Kart</button>
+    <button class="btn btn-primary btn-new-task" data-click="openNewCardModal" data-col="todo">＋ Yeni Kart</button>
   </div>
   <div class="board-container" id="board-container">
     <div class="board-column" data-col="todo">
       <div class="board-column-header">Yapılacak <span class="board-column-count" id="bc-todo">0</span></div>
       <div class="board-cards" id="board-col-todo"></div>
-      <button class="board-add-btn" onclick="openNewCardModal('todo')">＋ Kart Ekle</button>
+      <button class="board-add-btn" data-click="openNewCardModal" data-col="todo">＋ Kart Ekle</button>
     </div>
     <div class="board-column" data-col="in_progress">
       <div class="board-column-header">Devam Eden <span class="board-column-count" id="bc-in_progress">0</span></div>
       <div class="board-cards" id="board-col-in_progress"></div>
-      <button class="board-add-btn" onclick="openNewCardModal('in_progress')">＋ Kart Ekle</button>
+      <button class="board-add-btn" data-click="openNewCardModal" data-col="in_progress">＋ Kart Ekle</button>
     </div>
     <div class="board-column" data-col="review">
       <div class="board-column-header">İnceleme <span class="board-column-count" id="bc-review">0</span></div>
       <div class="board-cards" id="board-col-review"></div>
-      <button class="board-add-btn" onclick="openNewCardModal('review')">＋ Kart Ekle</button>
+      <button class="board-add-btn" data-click="openNewCardModal" data-col="review">＋ Kart Ekle</button>
     </div>
     <div class="board-column" data-col="done">
       <div class="board-column-header">Tamamlandı <span class="board-column-count" id="bc-done">0</span></div>
@@ -2044,10 +2044,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="bd-section" style="flex:1">
         <div class="bd-label">Kolon</div>
         <div class="bd-move-btns" id="bcard-col-btns">
-          <button data-col="todo" onclick="setBCardCol('todo')">Yapılacak</button>
-          <button data-col="in_progress" onclick="setBCardCol('in_progress')">Devam Eden</button>
-          <button data-col="review" onclick="setBCardCol('review')">İnceleme</button>
-          <button data-col="done" onclick="setBCardCol('done')">Tamamlandı</button>
+          <button data-col="todo" data-click="setBCardCol" data-col="todo">Yapılacak</button>
+          <button data-col="in_progress" data-click="setBCardCol" data-col="in_progress">Devam Eden</button>
+          <button data-col="review" data-click="setBCardCol" data-col="review">İnceleme</button>
+          <button data-col="done" data-click="setBCardCol" data-col="done">Tamamlandı</button>
         </div>
       </div>
     </div>
@@ -2055,11 +2055,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="bd-section" style="flex:1">
         <div class="bd-label">Renk</div>
         <div style="display:flex;gap:8px;" id="bcard-colors">
-          <div class="color-pick active" data-c="yellow" onclick="setBCardColor('yellow')"></div>
-          <div class="color-pick" data-c="green" onclick="setBCardColor('green')"></div>
-          <div class="color-pick" data-c="blue" onclick="setBCardColor('blue')"></div>
-          <div class="color-pick" data-c="pink" onclick="setBCardColor('pink')"></div>
-          <div class="color-pick" data-c="orange" onclick="setBCardColor('orange')"></div>
+          <div class="color-pick active" data-c="yellow" data-click="setBCardColor" data-color="yellow"></div>
+          <div class="color-pick" data-c="green" data-click="setBCardColor" data-color="green"></div>
+          <div class="color-pick" data-c="blue" data-click="setBCardColor" data-color="blue"></div>
+          <div class="color-pick" data-c="pink" data-click="setBCardColor" data-color="pink"></div>
+          <div class="color-pick" data-c="orange" data-click="setBCardColor" data-color="orange"></div>
         </div>
       </div>
       <div class="bd-section" style="flex:1">
@@ -2074,7 +2074,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div id="bcard-checklist"></div>
       <div style="display:flex;gap:6px;margin-top:6px;">
         <input class="form-control" id="bcard-cl-new" placeholder="Yeni madde..." style="font-size:12px;flex:1;">
-        <button class="btn btn-outline btn-sm" onclick="addBCardChecklistItem()">Ekle</button>
+        <button class="btn btn-outline btn-sm" data-click="addBCardChecklistItem">Ekle</button>
       </div>
     </div>
     <div class="bd-section" id="bcard-comments-section" style="display:none">
@@ -2082,14 +2082,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div id="bcard-comments-list"></div>
       <div style="display:flex;gap:6px;margin-top:8px;">
         <input class="form-control" id="bcard-comment-input" placeholder="Yorum yazın..." style="font-size:12px;flex:1;">
-        <button class="btn btn-outline btn-sm" onclick="addBCardComment()">Gönder</button>
+        <button class="btn btn-outline btn-sm" data-click="addBCardComment">Gönder</button>
       </div>
     </div>
     <div class="modal-actions" style="justify-content:space-between;">
-      <button class="btn btn-outline btn-sm" id="bcard-delete-btn" style="color:var(--danger);border-color:var(--danger);display:none" onclick="deleteBoardCard()">Sil</button>
+      <button class="btn btn-outline btn-sm" id="bcard-delete-btn" style="color:var(--danger);border-color:var(--danger);display:none" data-click="deleteBoardCard">Sil</button>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-outline btn-sm" onclick="closeBoardCardModal()">Kapat</button>
-        <button class="btn btn-primary btn-sm" onclick="saveBoardCard()">Kaydet</button>
+        <button class="btn btn-outline btn-sm" data-click="closeBoardCardModal">Kapat</button>
+        <button class="btn btn-primary btn-sm" data-click="saveBoardCard">Kaydet</button>
       </div>
     </div>
   </div>
