@@ -9,6 +9,11 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — yönettiğim firmalar aksiyonları (inline onclick → data-click)
+onClick('setMfPeriod',        el => setMfPeriod(el.dataset.period, el));
+onClick('expandManagedFirms', () => expandManagedFirms());
 
 let _mfPeriod = '1m';
 let _mfData = null;        // son fetch sonucu

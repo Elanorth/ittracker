@@ -1527,9 +1527,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Kim, ne zaman, ne yaptı · <span id="audit-scope-hint">Firmanız için tüm işlemler</span></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-outline btn-sm" onclick="exportAuditCsv()">&#8595; CSV</button>
-      <button class="btn btn-outline btn-sm" onclick="resetAuditFilters()">Sıfırla</button>
-      <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Yenile</button>
+      <button class="btn btn-outline btn-sm" data-click="exportAuditCsv">&#8595; CSV</button>
+      <button class="btn btn-outline btn-sm" data-click="resetAuditFilters">Sıfırla</button>
+      <button class="btn btn-primary btn-sm" data-click="loadAuditLog">Yenile</button>
     </div>
   </div>
 
@@ -1570,11 +1570,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('today')">Bugün</button>
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('7d')">Son 7 Gün</button>
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('30d')">Son 30 Gün</button>
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('month')">Bu Ay</button>
-        <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Uygula</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="today">Bugün</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="7d">Son 7 Gün</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="30d">Son 30 Gün</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="month">Bu Ay</button>
+        <button class="btn btn-primary btn-sm" data-click="loadAuditLog">Uygula</button>
       </div>
     </div>
   </div>
@@ -1976,9 +1976,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div class="topbar-right">
       <div class="tabs mf-period-tabs" role="tablist" aria-label="Zaman aralığı">
-        <div class="tab active" role="tab" aria-selected="true" data-period="1m" onclick="setMfPeriod('1m', this)">Bu Ay</div>
-        <div class="tab" role="tab" aria-selected="false" data-period="3m" onclick="setMfPeriod('3m', this)">Son 3 Ay</div>
-        <div class="tab" role="tab" aria-selected="false" data-period="1y" onclick="setMfPeriod('1y', this)">Bu Yıl</div>
+        <div class="tab active" role="tab" aria-selected="true" data-period="1m" data-click="setMfPeriod" data-period="1m">Bu Ay</div>
+        <div class="tab" role="tab" aria-selected="false" data-period="3m" data-click="setMfPeriod" data-period="3m">Son 3 Ay</div>
+        <div class="tab" role="tab" aria-selected="false" data-period="1y" data-click="setMfPeriod" data-period="1y">Bu Yıl</div>
       </div>
     </div>
   </div>
@@ -1986,7 +1986,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="mf-loading" id="mf-loading">Yükleniyor…</div>
   </div>
   <!-- "X firma daha" expand butonu (super_admin için 6+ firma) -->
-  <button id="mf-expand-btn" class="mf-expand-btn" style="display:none" onclick="expandManagedFirms()">— firma daha göster</button>
+  <button id="mf-expand-btn" class="mf-expand-btn" style="display:none" data-click="expandManagedFirms">— firma daha göster</button>
   <!-- Boş durum -->
   <div id="mf-empty" class="mf-empty" style="display:none">
     <div class="mf-empty-glyph">⬡</div>

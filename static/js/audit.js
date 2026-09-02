@@ -9,6 +9,13 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — denetim kayıtları aksiyonları (inline onclick → data-click)
+onClick('setAuditRange',     el => setAuditRange(el.dataset.range));
+onClick('loadAuditLog',      () => loadAuditLog());
+onClick('resetAuditFilters', () => resetAuditFilters());
+onClick('exportAuditCsv',    () => exportAuditCsv());
 
 const AUDIT_ACTION_LABELS = {
   'task.create':'Görev Oluşturma', 'task.assign':'Görev Atama',
