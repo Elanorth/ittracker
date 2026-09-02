@@ -895,17 +895,17 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </select>
       </div>
       <div class="notif-wrap" id="notif-wrap">
-        <div class="notif-btn" onclick="toggleNotifDropdown()" title="Bildirimler">
+        <div class="notif-btn" data-click="toggleNotifDropdown" title="Bildirimler">
           🔔
           <div class="notif-dot" id="notif-dot" style="display:none"></div>
         </div>
         <div class="notif-dropdown hidden" id="notif-dropdown">
           <div class="notif-header">
             <span class="notif-title-label">BİLDİRİMLER</span>
-            <span class="notif-clear-btn" onclick="clearAllNotifs()">Tümünü temizle</span>
+            <span class="notif-clear-btn" data-click="clearAllNotifs">Tümünü temizle</span>
           </div>
           <div class="notif-list" id="notif-list"></div>
-          <div class="notif-footer-link" onclick="showPage('scheduled');closeNotifDropdown()">Zamanlanmış Görevlere Git →</div>
+          <div class="notif-footer-link" data-click="notifGoScheduled">Zamanlanmış Görevlere Git →</div>
         </div>
       </div>
       <div class="date-display">
@@ -1881,7 +1881,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="saveNotificationSettings()">Kaydet</button>
+          <button class="btn btn-primary btn-sm" data-click="saveNotificationSettings">Kaydet</button>
         </div>
       </div>
     </div>
@@ -1893,8 +1893,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
           Şu an kaç göreviniz bildirim eşiğinde? Test maili atarak kendinize deneme yapabilirsiniz.
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-          <button class="btn btn-outline btn-sm" onclick="previewNotifications()">👁 Kapsamı Göster</button>
-          <button class="btn btn-primary btn-sm" onclick="runNotificationTest()">🔔 Test Mailini Gönder</button>
+          <button class="btn btn-outline btn-sm" data-click="previewNotifications">👁 Kapsamı Göster</button>
+          <button class="btn btn-primary btn-sm" data-click="runNotificationTest">🔔 Test Mailini Gönder</button>
         </div>
         <div id="notify-preview" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:11px;color:var(--text-muted);max-height:320px;overflow:auto;line-height:1.6"></div>
       </div>
