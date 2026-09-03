@@ -13,6 +13,18 @@ import {
   _periodCompletionLabel, _periodCompletionBadge,
 } from './utils.js';
 import { state } from './state.js';
+import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — görev ekle + edit modal + case aksiyonları (inline onclick → data-click)
+onClick('addTask',             () => addTask());
+onClick('saveEditTask',        () => saveEditTask());
+onClick('saveAndCompleteTask', () => saveAndCompleteTask());
+onClick('deleteTask',          () => deleteTask());
+onClick('closeEditTaskModal',  () => closeEditTaskModal());
+onClick('caseTab',             el => caseTab(el.dataset.tab));
+onClick('sendCaseMessage',     () => sendCaseMessage());
+onClick('addChecklistItem',    () => addChecklistItem());
+onClick('addEditChecklistItem', () => addEditChecklistItem());
 
 // ══════════════════════════════════════════════════════════
 //  API — GÖREV TOGGLE (checkbox)

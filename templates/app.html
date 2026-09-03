@@ -794,7 +794,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="login-title">Hoş Geldiniz</div>
     <div class="login-sub">Devam etmek için Office 365 hesabınızla giriş yapın veya kullanıcı adı & şifrenizi kullanın.</div>
 
-    <button class="o365-btn" onclick="o365Login()">
+    <button class="o365-btn" data-click="o365Login">
       <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
         <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
         <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -809,7 +809,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="login-form">
       <input class="form-control" id="login-user" placeholder="Kullanıcı adı" style="margin-bottom:10px;">
       <input class="form-control" id="login-pass" type="password" placeholder="Şifre" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter')manualLogin()">
-      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="manualLogin()">Giriş Yap</button>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" data-click="manualLogin">Giriş Yap</button>
     </div>
   </div>
 </div>
@@ -1023,7 +1023,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="date-day" id="sched-date-day"></div>
         <div class="date-full" id="sched-date-full"></div>
       </div>
-      <button class="btn btn-primary btn-new-task" onclick="showPage('add');document.getElementById('new-cat').value='routine';onCatChange()">＋ Rutin Görev Ekle</button>
+      <button class="btn btn-primary btn-new-task" data-click="newTaskCat" data-cat="routine">＋ Rutin Görev Ekle</button>
     </div>
   </div>
 
@@ -1202,7 +1202,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Deadline'lı, çok günlü görevler ve durum notları</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-primary" onclick="showPage('add');document.getElementById('new-cat').value='project';onCatChange()">＋ Yeni Proje</button>
+      <button class="btn btn-primary" data-click="newTaskCat" data-cat="project">＋ Yeni Proje</button>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
@@ -1372,7 +1372,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div id="checklist-section" class="hidden" style="margin-bottom:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <label style="margin:0">Kontrol Listesi <span style="font-size:10px;color:var(--text-muted)">(opsiyonel)</span></label>
-            <button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:10px" onclick="addChecklistItem()">＋ Adım Ekle</button>
+            <button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:10px" data-click="addChecklistItem">＋ Adım Ekle</button>
           </div>
           <div id="checklist-items" style="display:flex;flex-direction:column;gap:6px"></div>
           <div style="display:flex;gap:6px;margin-top:8px">
@@ -1404,7 +1404,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </div>
 
         <div style="display:flex;gap:10px">
-          <button class="btn btn-primary" onclick="addTask()">Görevi Kaydet</button>
+          <button class="btn btn-primary" data-click="addTask">Görevi Kaydet</button>
           <button class="btn btn-outline" data-click="nav" data-page="dashboard">İptal</button>
         </div>
       </div>
@@ -1458,8 +1458,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div id="mail-error-body" style="font-size:13px;line-height:1.7;margin-bottom:16px;white-space:pre-wrap"></div>
     <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text-muted)" id="mail-error-hint" style="display:none"></div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('mail-error-modal').classList.add('hidden')">Kapat</button>
-      <button class="btn btn-primary btn-sm" onclick="showPage('settings');document.getElementById('mail-error-modal').classList.add('hidden')">⚙ SMTP Ayarlarına Git</button>
+      <button class="btn btn-outline btn-sm" data-click="hideModal" data-modal="mail-error-modal">Kapat</button>
+      <button class="btn btn-primary btn-sm" data-click="navHideModal" data-page="settings" data-modal="mail-error-modal">⚙ SMTP Ayarlarına Git</button>
     </div>
   </div>
 </div>
@@ -1472,7 +1472,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title">Config <span>Yedekler</span></div>
       <div class="page-sub">Yüklenen tüm config backup dosyaları · İndirme ve yönetim</div>
     </div>
-    <button class="btn btn-gold" onclick="showPage('add');document.getElementById('new-cat').value='backup';onCatChange()">💾 Yeni Backup Ekle</button>
+    <button class="btn btn-gold" data-click="newTaskCat" data-cat="backup">💾 Yeni Backup Ekle</button>
   </div>
 
   <div class="grid-3r" style="margin-bottom:18px">
@@ -1702,7 +1702,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px">
           <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent3);margin-bottom:4px">⬡ Office 365 Entegrasyonu</div>
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Hesabınızı Microsoft 365 ile senkronize edin</div>
-          <button class="btn btn-outline btn-sm" onclick="showToast('ok','O365 OAuth sayfasına yönlendiriliyorsunuz...')">Microsoft ile Bağlan</button>
+          <button class="btn btn-outline btn-sm" data-click="toast" data-type="ok" data-msg="O365 OAuth sayfasına yönlendiriliyorsunuz...">Microsoft ile Bağlan</button>
         </div>
         <button class="btn btn-primary btn-sm" data-click="saveUserSettings">Kaydet</button>
       </div>
@@ -1719,7 +1719,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="inventist-teams-display"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
             <input class="form-control" id="inventist-new-team" placeholder="Yeni ekip adı..." style="font-size:12px;padding:6px 10px">
-            <button class="btn btn-outline btn-sm" onclick="addTeam('inventist')">＋ Ekle</button>
+            <button class="btn btn-outline btn-sm" data-click="addTeam" data-firm="inventist">＋ Ekle</button>
           </div>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:14px">
@@ -1729,11 +1729,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="assos-teams-display"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
             <input class="form-control" id="assos-new-team" placeholder="Yeni ekip adı..." style="font-size:12px;padding:6px 10px">
-            <button class="btn btn-outline btn-sm" onclick="addTeam('assos')">＋ Ekle</button>
+            <button class="btn btn-outline btn-sm" data-click="addTeam" data-firm="assos">＋ Ekle</button>
           </div>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-          <button class="btn btn-primary btn-sm" onclick="saveTeams()">Değişiklikleri Kaydet</button>
+          <button class="btn btn-primary btn-sm" data-click="saveTeams">Değişiklikleri Kaydet</button>
         </div>
       </div>
     </div>
@@ -1808,14 +1808,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="backup-types-display" style="margin:6px 0"></div>
           <div style="display:flex;gap:8px;margin-top:6px">
             <input class="form-control" id="backup-new-type" placeholder=".cfg" style="font-size:12px;padding:6px 10px;width:100px">
-            <button class="btn btn-outline btn-sm" onclick="addBackupType()">＋</button>
+            <button class="btn btn-outline btn-sm" data-click="addBackupType">＋</button>
           </div>
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label>Maks. Dosya Boyutu (MB)</label>
           <input class="form-control" value="50" type="number">
         </div>
-        <button class="btn btn-primary btn-sm" onclick="showToast('ok','Backup ayarları kaydedildi')">Kaydet</button>
+        <button class="btn btn-primary btn-sm" data-click="toast" data-type="ok" data-msg="Backup ayarları kaydedildi">Kaydet</button>
       </div>
     </div>
 
@@ -1961,7 +1961,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="modal-actions">
       <button class="btn btn-danger btn-sm" id="kb-edit-delete" data-click="deleteKbArticle" style="display:none">Sil</button>
       <div style="flex:1"></div>
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('kb-editor-modal').classList.add('hidden')">İptal</button>
+      <button class="btn btn-outline btn-sm" data-click="hideModal" data-modal="kb-editor-modal">İptal</button>
       <button class="btn btn-primary btn-sm" data-click="saveKbArticle">Kaydet</button>
     </div>
   </div>
@@ -2199,7 +2199,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div id="edit-checklist-section" class="hidden" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <label style="margin:0;font-size:12px">Kontrol Listesi</label>
-        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:10px" onclick="addEditChecklistItem()">＋ Adım</button>
+        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:10px" data-click="addEditChecklistItem">＋ Adım</button>
       </div>
       <div id="edit-checklist-items" style="display:flex;flex-direction:column;gap:5px"></div>
       <input class="form-control" id="edit-new-checklist-item" placeholder="Yeni adım..." style="font-size:11px;margin-top:6px"
@@ -2217,25 +2217,25 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </span>
       </div>
       <div style="display:flex;border-bottom:1px solid var(--border)">
-        <div class="case-tab" id="case-tab-internal" onclick="caseTab('internal')" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent">📝 İç Notlar</div>
-        <div class="case-tab active" id="case-tab-it" onclick="caseTab('it')" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">💬 Kullanıcıya Yanıt <span id="case-it-badge" style="font-size:9px"></span></div>
+        <div class="case-tab" id="case-tab-internal" data-click="caseTab" data-tab="internal" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent">📝 İç Notlar</div>
+        <div class="case-tab active" id="case-tab-it" data-click="caseTab" data-tab="it" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">💬 Kullanıcıya Yanıt <span id="case-it-badge" style="font-size:9px"></span></div>
       </div>
       <div style="padding:12px">
         <div id="case-thread" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:flex-end">
           <textarea id="case-msg-input" placeholder="Mesaj yazın…" style="flex:1;min-height:44px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:9px;font-size:12px;font-family:inherit;resize:vertical"></textarea>
-          <button class="btn btn-primary btn-sm" onclick="sendCaseMessage()">Gönder</button>
+          <button class="btn btn-primary btn-sm" data-click="sendCaseMessage">Gönder</button>
         </div>
         <div id="case-tab-hint" style="font-size:9.5px;color:var(--text-muted);margin-top:6px"></div>
       </div>
     </div>
     </div><!-- /#edit-cols -->
     <div class="modal-actions">
-      <button class="btn btn-danger btn-sm" onclick="deleteTask()">Sil</button>
-      <button class="btn btn-outline btn-sm" onclick="closeEditTaskModal()">İptal</button>
-      <button class="btn btn-sm" id="edit-complete-btn" onclick="saveAndCompleteTask()"
+      <button class="btn btn-danger btn-sm" data-click="deleteTask">Sil</button>
+      <button class="btn btn-outline btn-sm" data-click="closeEditTaskModal">İptal</button>
+      <button class="btn btn-sm" id="edit-complete-btn" data-click="saveAndCompleteTask"
         style="background:var(--green-dim);border:1px solid rgba(52,208,88,.3);color:var(--green)">✓ Tamamlandı</button>
-      <button class="btn btn-primary btn-sm" onclick="saveEditTask()">Kaydet</button>
+      <button class="btn btn-primary btn-sm" data-click="saveEditTask">Kaydet</button>
     </div>
   </div>
 </div>
@@ -2319,7 +2319,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       Kullanıcıya davet maili gönderilecek. Giriş için Microsoft 365 veya şifre oluşturabilecekler.
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="closeModal()">İptal</button>
+      <button class="btn btn-outline btn-sm" data-click="closeInviteModal">İptal</button>
       <button class="btn btn-gold btn-sm" data-click="sendInvite">✉ Davet Gönder</button>
     </div>
   </div>
