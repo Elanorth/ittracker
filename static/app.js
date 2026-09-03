@@ -2,7 +2,7 @@
 // templates/app.html içinden çıkarıldı (v5.0 madde #17). Davranış değişmedi.
 import { state } from './js/state.js';
 import { TODAY, _appVersionSuffix, escapeHtml } from './js/utils.js';
-import { onClick } from './js/events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange, onEnter } from './js/events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Sidebar/genel navigasyon: <... data-click="nav" data-page="X">
 onClick('nav', el => showPage(el.dataset.page));
@@ -22,6 +22,12 @@ onClick('hideModal', el => { const m = document.getElementById(el.dataset.modal)
 onClick('navHideModal', el => { showPage(el.dataset.page); const m = document.getElementById(el.dataset.modal); if (m) m.classList.add('hidden'); });
 // Yeni Görev sayfasına git + kategori ön-seç (data-cat) → onCatChange
 onClick('newTaskCat', el => { showPage('add'); const c = document.getElementById('new-cat'); if (c) { c.value = el.dataset.cat; onCatChange(); } });
+// ESM Faz 5 — onchange (data-change) + Enter (data-enter) aksiyonları
+onChange('onCatChange',      () => onCatChange());
+onChange('onFileSelected',   el => onFileSelected(el));
+onChange('onFirmUserChange', () => onFirmUserChange());
+onChange('updateTeamOptions', () => updateTeamOptions());
+onEnter('manualLogin',       () => manualLogin());
 
 
 // ══════════════════════════════════════════════════════════

@@ -8,6 +8,10 @@
 import { escapeHtml, _periodCompletionLabel } from './utils.js';
 import { firmChip } from './tasks.js';
 import { state } from './state.js';
+import { onChange } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — proje firma filtresi (onchange → data-change)
+onChange('renderProjectsPage', () => renderProjectsPage());
 
 export function renderProjectsPage() {
   const firmFilter = document.getElementById('proj-filter-firm')?.value || '';

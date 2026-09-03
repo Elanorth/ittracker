@@ -10,10 +10,11 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
-import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — ayarlar sayfası aksiyonları (inline onclick → data-click)
 onClick('addAssignRule',      () => addAssignRule());
+onChange('toggleAutoAssign',  el => toggleAutoAssign(el.checked)); // master toggle checkbox
 onClick('saveUserSettings',   () => saveUserSettings());
 onClick('saveSmtpSettings',   () => saveSmtpSettings());
 onClick('testSmtp',           () => testSmtp());
