@@ -9,7 +9,7 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
-import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Ortak Alan (Kanban) aksiyonları (inline onclick → data-click)
 onClick('openNewCardModal',     el => openNewCardModal(el.dataset.col));
@@ -20,6 +20,10 @@ onClick('addBCardComment',      () => addBCardComment());
 onClick('closeBoardCardModal',  () => closeBoardCardModal());
 onClick('deleteBoardCard',      () => deleteBoardCard());
 onClick('saveBoardCard',        () => saveBoardCard());
+// generated-string (kart + kart-içi checklist)
+onClick('openBoardCardModal', el => openBoardCardModal(+el.dataset.id));
+onClick('removeBCardCL',      el => removeBCardCL(+el.dataset.idx));
+onChange('toggleBCardCL',     el => toggleBCardCL(+el.dataset.idx));
 
 //  ORTAK ALAN (BOARD) — Trello Kanban
 // ══════════════════════════════════════════════════════════
@@ -54,7 +58,7 @@ export async function renderBoard() {
       const cmtText = c.comment_count ? `<span class="bc-tag">💬 ${c.comment_count}</span>` : '';
       const assignText = c.assignee_name ? `<span class="bc-tag">@${c.assignee_name.split(' ')[0]}</span>` : '';
       const desc = c.description ? `<div class="board-card-desc">${esc(c.description)}</div>` : '';
-      return `<div class="board-card" data-color="${c.color}" onclick="openBoardCardModal(${c.id})">
+      return `<div class="board-card" data-color="${c.color}" data-click="openBoardCardModal" data-id="${c.id}">
         <div class="board-card-title">${esc(c.title)}</div>
         ${desc}
         <div class="board-card-footer">${clText}${cmtText}${assignText}</div>
@@ -146,9 +150,9 @@ function renderBCardChecklist() {
     const done = _bCardChecklistDone[i] ? 'done' : '';
     const checked = _bCardChecklistDone[i] ? 'checked' : '';
     return `<div class="bd-checklist-item ${done}">
-      <input type="checkbox" ${checked} onchange="toggleBCardCL(${i})">
+      <input type="checkbox" ${checked} data-change="toggleBCardCL" data-idx="${i}">
       <span>${esc(item)}</span>
-      <button style="margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;" onclick="removeBCardCL(${i})">×</button>
+      <button style="margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;" data-click="removeBCardCL" data-idx="${i}">×</button>
     </div>`;
   }).join('');
 }

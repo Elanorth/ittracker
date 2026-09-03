@@ -14,6 +14,9 @@ import { onClick } from './events.js'; // ESM Faz 5 — event delegation
 // ESM Faz 5 — yönettiğim firmalar aksiyonları (inline onclick → data-click)
 onClick('setMfPeriod',        el => setMfPeriod(el.dataset.period, el));
 onClick('expandManagedFirms', () => expandManagedFirms());
+// generated-string (firma kartı butonları)
+onClick('_mfGotoTasks', el => _mfGotoTasks(el.dataset.slug));
+onClick('_mfGotoAdd',   el => _mfGotoAdd(el.dataset.slug));
 
 let _mfPeriod = '1m';
 let _mfData = null;        // son fetch sonucu
@@ -131,8 +134,8 @@ function _mfCardHtml(f) {
       <div class="mf-card-foot">
         <div class="mf-updated">${updated ? 'Son güncelleme · ' + updated : ''}</div>
         <div class="mf-actions">
-          <button class="btn btn-outline btn-sm" onclick="_mfGotoTasks('${escapeHtml(f.slug)}')">Anlık Görevler →</button>
-          <button class="btn btn-primary btn-sm" onclick="_mfGotoAdd('${escapeHtml(f.slug)}')">＋ Görev Ekle</button>
+          <button class="btn btn-outline btn-sm" data-click="_mfGotoTasks" data-slug="${escapeHtml(f.slug)}">Anlık Görevler →</button>
+          <button class="btn btn-primary btn-sm" data-click="_mfGotoAdd" data-slug="${escapeHtml(f.slug)}">＋ Görev Ekle</button>
         </div>
       </div>
     </div>

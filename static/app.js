@@ -28,6 +28,9 @@ onChange('onFileSelected',   el => onFileSelected(el));
 onChange('onFirmUserChange', () => onFirmUserChange());
 onChange('updateTeamOptions', () => updateTeamOptions());
 onEnter('manualLogin',       () => manualLogin());
+// generated-string (ekip / backup-type pill "×" ile sil)
+onClick('removeTeam',       el => removeTeam(el.dataset.firm, el.dataset.team, +el.dataset.tid));
+onClick('removeBackupType', el => removeBackupType(el.dataset.type));
 
 
 // ══════════════════════════════════════════════════════════
@@ -665,7 +668,7 @@ function renderSettingsTeams() {
     if (!el) return;
     el.innerHTML = FIRMS[firm].teams.map(t => {
       const tid = FIRMS[firm].teamIds[t] || '';
-      return `<span class="pill-tag" onclick="removeTeam('${firm}','${t}',${tid})">${t} <span class="rm">×</span></span>`;
+      return `<span class="pill-tag" data-click="removeTeam" data-firm="${firm}" data-team="${t}" data-tid="${tid}">${t} <span class="rm">×</span></span>`;
     }).join('');
   });
   renderBackupTypes();
@@ -698,7 +701,7 @@ export async function removeTeam(firm, team, tid) {
   renderSettingsTeams();
 }
 function renderBackupTypes() {
-  document.getElementById('backup-types-display').innerHTML = BACKUP_TYPES.map(t => `<span class="pill-tag" onclick="removeBackupType('${t}')">${t} <span class="rm">×</span></span>`).join('');
+  document.getElementById('backup-types-display').innerHTML = BACKUP_TYPES.map(t => `<span class="pill-tag" data-click="removeBackupType" data-type="${t}">${t} <span class="rm">×</span></span>`).join('');
 }
 export function addBackupType() {
   const inp = document.getElementById('backup-new-type'); let val = inp.value.trim(); if (!val) return;

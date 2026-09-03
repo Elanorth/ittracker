@@ -40,7 +40,7 @@ function renderKbAdminList() {
     const pub = a.published
       ? '<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">✓ Yayında</span>'
       : '<span class="prio-badge" style="background:var(--surface2);color:var(--text-muted);border-color:var(--border2)">Taslak</span>';
-    return `<div class="task-item" style="align-items:center;cursor:pointer" onclick="openKbEditor(${a.id})">
+    return `<div class="task-item" style="align-items:center;cursor:pointer" data-click="openKbEditor" data-id="${a.id}">
       <div style="font-size:16px">📄</div>
       <div>
         <div class="task-title">${escapeHtml(a.title)}</div>
@@ -48,7 +48,7 @@ function renderKbAdminList() {
           <span style="color:var(--text-muted);font-size:10px">· 👁 ${a.view_count} · 👍 ${a.helpful_yes} 👎 ${a.helpful_no}</span></div>
       </div>
       <div></div>
-      <div><button class="btn btn-outline btn-sm" style="padding:2px 10px;font-size:10px" onclick="event.stopPropagation();openKbEditor(${a.id})">&#9998; Düzenle</button></div>
+      <div><button class="btn btn-outline btn-sm" style="padding:2px 10px;font-size:10px" data-click="openKbEditor" data-id="${a.id}">&#9998; Düzenle</button></div>
     </div>`;
   }).join('');
 }

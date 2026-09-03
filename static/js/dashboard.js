@@ -27,6 +27,7 @@ onClick('filterTasksByCat',   el => filterTasksByCat(el.dataset.cat));
 onClick('showTasksWithCat',   el => showTasksWithCat(el.dataset.cat));
 onClick('addTaskFromTasksView', () => addTaskFromTasksView());
 onClick('setDashPage', el => setDashPage(+el.dataset.page)); // BUGÜNÜN GÖREVLERİ pager (generated)
+onClick('onFirmStripClick', el => onFirmStripClick(el.dataset.slug, el)); // firma-şeridi kartı (generated)
 
 // Chart nesneleri modül-local (yalnız aşağıdaki render fonksiyonları kullanır).
 let _catChart = null, _firmChart = null, _activityChart = null, _weeklyChart = null;
@@ -559,8 +560,7 @@ async function loadDirectorFirmsStrip() {
       return `
         <div class="firm-card ${themeClass}" role="listitem" tabindex="0"
              data-firm-slug="${slugAttr}"
-             onclick="onFirmStripClick('${slugAttr}', this)"
-             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();onFirmStripClick('${slugAttr}', this)}"
+             data-click="onFirmStripClick" data-slug="${slugAttr}"
              aria-label="${escapeHtml(aria)}">
           ${slaTag}
           <div class="firm-card-top">

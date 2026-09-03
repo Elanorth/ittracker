@@ -15,6 +15,9 @@ import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegati
 // ESM Faz 5 — ayarlar sayfası aksiyonları (inline onclick → data-click)
 onClick('addAssignRule',      () => addAssignRule());
 onChange('toggleAutoAssign',  el => toggleAutoAssign(el.checked)); // master toggle checkbox
+// generated-string (atama kuralı satırı)
+onClick('deleteAssignRule', el => deleteAssignRule(+el.dataset.id));
+onChange('patchAssignRule', el => patchAssignRule(+el.dataset.id, { enabled: el.checked }));
 onClick('saveUserSettings',   () => saveUserSettings());
 onClick('saveSmtpSettings',   () => saveSmtpSettings());
 onClick('testSmtp',           () => testSmtp());
@@ -94,8 +97,8 @@ function renderAssignRules(rules) {
       <span class="aa-arrow">→</span>
       <span>${escapeHtml(r.target_name || '?')}</span>
       <div class="aa-actions">
-        <label class="aa-switch" style="width:36px;height:20px"><input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="patchAssignRule(${r.id}, { enabled: this.checked })"><span></span></label>
-        <button class="aa-x" title="Sil" onclick="deleteAssignRule(${r.id})">✕</button>
+        <label class="aa-switch" style="width:36px;height:20px"><input type="checkbox" ${r.enabled ? 'checked' : ''} data-change="patchAssignRule" data-id="${r.id}"><span></span></label>
+        <button class="aa-x" title="Sil" data-click="deleteAssignRule" data-id="${r.id}">✕</button>
       </div>
     </div>`;
   }).join('');
