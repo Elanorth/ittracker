@@ -8,6 +8,20 @@ import { onClick } from './js/events.js'; // ESM Faz 5 — event delegation
 onClick('nav', el => showPage(el.dataset.page));
 // ESM Faz 5 — Sidebar aç/kapa (mobil): data-click="toggleSidebar" [data-close]
 onClick('toggleSidebar', el => toggleSidebar(el.dataset.close === 'true'));
+// ESM Faz 5 — auth + ekip/backup + genel yardımcı aksiyonlar
+onClick('o365Login',     () => o365Login());
+onClick('manualLogin',   () => manualLogin());
+onClick('addTeam',       el => addTeam(el.dataset.firm));
+onClick('addBackupType', () => addBackupType());
+onClick('saveTeams',     () => saveTeams());
+// Genel: bilgilendirme toast'u (data-type varsayılan 'ok', data-msg metin)
+onClick('toast',    el => showToast(el.dataset.type || 'ok', el.dataset.msg || ''));
+// Genel: bir modalı gizle (data-modal = element id)
+onClick('hideModal', el => { const m = document.getElementById(el.dataset.modal); if (m) m.classList.add('hidden'); });
+// Genel: sayfaya git + bir modalı gizle (data-page + data-modal)
+onClick('navHideModal', el => { showPage(el.dataset.page); const m = document.getElementById(el.dataset.modal); if (m) m.classList.add('hidden'); });
+// Yeni Görev sayfasına git + kategori ön-seç (data-cat) → onCatChange
+onClick('newTaskCat', el => { showPage('add'); const c = document.getElementById('new-cat'); if (c) { c.value = el.dataset.cat; onCatChange(); } });
 
 
 // ══════════════════════════════════════════════════════════

@@ -16,6 +16,7 @@ onClick('openInviteModal',    () => openInviteModal());
 onClick('sendInvite',         () => sendInvite());
 onClick('saveEditUser',       () => saveEditUser());
 onClick('closeEditUserModal', () => closeEditUserModal());
+onClick('closeInviteModal',   () => closeModal());
 
 //  ADMIN — KULLANICI TABLOSU (API'den)
 // ══════════════════════════════════════════════════════════
