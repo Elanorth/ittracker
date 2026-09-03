@@ -10,8 +10,9 @@
 //  renderFullList/closeEditTaskModal app.js/tasks.js → bare global. Inline: openEditTask.
 // ══════════════════════════════════════════════════════════
 import { escapeHtml, catLabel, priorityBadge, slaBadge, unreadBadge } from './utils.js';
-import { firmChip } from './tasks.js';
+import { firmChip, closeEditTaskModal, openEditTask, renderFullList } from './tasks.js';
 import { state } from './state.js';
+import { formatDateTR, loadTasks, normalizeTask, showToast } from '../app.js';
 import { onClick } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — destek havuzu aksiyonları (inline onclick → data-click)

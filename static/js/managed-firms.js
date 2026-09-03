@@ -9,6 +9,8 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { showPage, updateTeamOptions } from '../app.js';
+import { filterFullByFirm } from './tasks.js';
 import { onClick } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — yönettiğim firmalar aksiyonları (inline onclick → data-click)

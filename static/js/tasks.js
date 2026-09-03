@@ -13,6 +13,12 @@ import {
   _periodCompletionLabel, _periodCompletionBadge,
 } from './utils.js';
 import { state } from './state.js';
+import { FIRMS, formatDateTR, normalizeTask, onCatChange, showPage, showToast } from '../app.js';
+import { downloadBackup, renderBackupList } from './backup.js';
+import { renderDashUpcoming, renderDashboardTaskList } from './dashboard.js';
+import { buildNotifications } from './notifications.js';
+import { renderProjectsPage } from './projects.js';
+import { renderScheduledPage } from './scheduled.js';
 import { onClick, onChange, onInput, onEnter } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — görev ekle + edit modal + case aksiyonları (inline onclick → data-click)

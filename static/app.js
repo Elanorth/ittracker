@@ -1,7 +1,22 @@
 ﻿// IT Tracker — main client bundle (v5.0)
 // templates/app.html içinden çıkarıldı (v5.0 madde #17). Davranış değişmedi.
 import { state } from './js/state.js';
-import { TODAY, _appVersionSuffix, escapeHtml } from './js/utils.js';
+import { TODAY, _appVersionSuffix, escapeHtml, CAT_LABELS, _centerTextPlugin, _chartTheme, _cssVar, _periodCompletionBadge, _periodCompletionLabel, _routineOverdueLabel } from './js/utils.js';
+import { loadAndRenderUsers } from './js/admin.js';
+import { loadArchivePage } from './js/archive.js';
+import { initAuditPage, loadAuditLog } from './js/audit.js';
+import { renderBackupList } from './js/backup.js';
+import { renderBoard } from './js/board.js';
+import { renderDashUpcoming, renderDashboard, updateSupportNavBadge } from './js/dashboard.js';
+import { loadKb } from './js/kb.js';
+import { loadManagedFirmsPage } from './js/managed-firms.js';
+import { buildNotifications, closeNotifDropdown, loadNotificationsPage } from './js/notifications.js';
+import { loadPoolPage, updatePoolBadge } from './js/pool.js';
+import { renderProjectsPage } from './js/projects.js';
+import { initReportPage } from './js/report.js';
+import { renderScheduledPage } from './js/scheduled.js';
+import { loadAutoAssign, loadSettingsFromServer, loadTeamsSettings } from './js/settings.js';
+import { firmChip, renderFullList, taskRow, taskTiming } from './js/tasks.js';
 import { onClick, onChange, onEnter } from './js/events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Sidebar/genel navigasyon: <... data-click="nav" data-page="X">

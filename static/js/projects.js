@@ -6,8 +6,9 @@
 //  state. formatDateTR bare global. Inline: apiToggleTask/openEditTask.
 // ══════════════════════════════════════════════════════════
 import { escapeHtml, _periodCompletionLabel } from './utils.js';
-import { firmChip } from './tasks.js';
+import { firmChip, apiToggleTask, openEditTask } from './tasks.js';
 import { state } from './state.js';
+import { formatDateTR } from '../app.js';
 import { onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — proje firma filtresi (onchange → data-change)

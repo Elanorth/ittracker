@@ -11,8 +11,11 @@
 //  (app.js modül olunca import'a döner). Inline onclick: apiToggleTask/openEditTask.
 // ══════════════════════════════════════════════════════════
 import { TODAY, escapeHtml, _routineOverdueLabel, _periodCompletionLabel } from './utils.js';
-import { firmChip } from './tasks.js';
+import { firmChip, apiToggleTask, openEditTask } from './tasks.js';
 import { state } from './state.js';
+import { formatDateTR, setDateDisplay, showToast } from '../app.js';
+import { setWeeklyPeriod } from './dashboard.js';
+import { buildNotifications } from './notifications.js';
 import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — zamanlanmış görevler + takvim aksiyonları (inline onclick → data-click)
