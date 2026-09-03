@@ -19,6 +19,8 @@ onClick('previewNotifications',     () => previewNotifications());
 onClick('runNotificationTest',      () => runNotificationTest());
 // Bildirim önizleme footer'ı → Zamanlanmış Görevler + dropdown'u kapat
 onClick('notifGoScheduled',         () => { showPage('scheduled'); closeNotifDropdown(); });
+// generated-string (bildirim satırı)
+onClick('notifClick', el => notifClick(el.dataset.nid, el.dataset.taskid ? +el.dataset.taskid : null));
 
 // ══════════════════════════════════════════════════════════
 //  BİLDİRİM SİSTEMİ
@@ -115,7 +117,7 @@ function renderNotifList() {
   const el = document.getElementById('notif-list'); if (!el) return;
   if (!state.notifications.length) { el.innerHTML = '<div class="notif-empty">🎉 Tüm rutin görevler zamanında!<br>Gecikme veya uyarı yok.</div>'; return; }
   el.innerHTML = state.notifications.map(n => `
-    <div class="notif-item ${n.read?'':'unread'}" onclick="notifClick('${n.id}',${n.taskId})">
+    <div class="notif-item ${n.read?'':'unread'}" data-click="notifClick" data-nid="${n.id}" data-taskid="${n.taskId}">
       <div class="notif-icon ${n.type==='danger'?'ndanger':n.type==='warn'?'nwarn':'ninfo'}">${n.tag==='new'?(n.tagLabel==='YENİ YANIT'?'💬':'🆕'):n.type==='danger'?'🔴':n.type==='warn'?'⚠️':'🔔'}</div>
       <div style="flex:1">
         <div class="notif-body-title">${escapeHtml(n.title)}</div>

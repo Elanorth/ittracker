@@ -16,6 +16,10 @@ onClick('openInviteModal',    () => openInviteModal());
 onClick('sendInvite',         () => sendInvite());
 onClick('saveEditUser',       () => saveEditUser());
 onClick('closeEditUserModal', () => closeEditUserModal());
+// generated-string (davet/kullanıcı satırı)
+onClick('resendInvite', el => resendInvite(+el.dataset.id));
+onClick('cancelInvite', el => cancelInvite(+el.dataset.id));
+onClick('openEditUser', el => openEditUser(+el.dataset.id));
 onClick('closeInviteModal',   () => closeModal());
 
 //  ADMIN — KULLANICI TABLOSU (API'den)
@@ -69,8 +73,8 @@ function renderInvitations() {
       <td>${firmChip(inv.firm)}</td>
       <td style="font-size:11px">${expLabel}</td>
       <td style="display:flex;gap:6px">
-        <button class="btn btn-outline btn-sm" onclick="resendInvite(${inv.id})" title="Yeniden Gönder">&#8634; Gönder</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="cancelInvite(${inv.id})" title="İptal Et">&#10005; İptal</button>
+        <button class="btn btn-outline btn-sm" data-click="resendInvite" data-id="${inv.id}" title="Yeniden Gönder">&#8634; Gönder</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" data-click="cancelInvite" data-id="${inv.id}" title="İptal Et">&#10005; İptal</button>
       </td>
     </tr>`;
   }).join('');
@@ -91,7 +95,7 @@ export function renderUserTable() {
       <td>${firmChip(u.firm)}</td>
       <td><span class="status-dot ${u.active?'active':'inactive'}"></span><span style="font-size:11px">${u.active?'Aktif':'Pasif'}</span></td>
       <td style="display:flex;gap:6px">
-        <button class="btn btn-outline btn-sm" onclick="openEditUser(${u.id})">&#9998; Düzenle</button>
+        <button class="btn btn-outline btn-sm" data-click="openEditUser" data-id="${u.id}">&#9998; Düzenle</button>
       </td>
     </tr>`).join('');
 }

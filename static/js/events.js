@@ -55,9 +55,11 @@ document.addEventListener('keydown', e => {
   }
 
   const clickEl = e.target.closest('[data-click]');
-  if (clickEl) {
+  if (clickEl && clickEl.tagName !== 'INPUT' && clickEl.tagName !== 'TEXTAREA' && clickEl.tagName !== 'SELECT') {
     const role = clickEl.getAttribute('role');
-    if (role === 'checkbox' || role === 'button' || clickEl.tagName === 'BUTTON') {
+    // klavye ile aktive edilebilir data-click öğeleri: <button>, role=button/checkbox,
+    // veya tabindex ile odaklanabilir (ör. role=listitem firma-kartı).
+    if (role === 'checkbox' || role === 'button' || clickEl.tagName === 'BUTTON' || clickEl.hasAttribute('tabindex')) {
       const fn = registry.click[clickEl.getAttribute('data-click')];
       if (fn) { e.preventDefault(); fn(clickEl, e); }
     }
