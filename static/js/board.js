@@ -9,6 +9,7 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { showToast } from '../app.js';
 import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Ortak Alan (Kanban) aksiyonları (inline onclick → data-click)

@@ -10,6 +10,7 @@
 // ══════════════════════════════════════════════════════════
 import { CAT_LABELS } from './utils.js';
 import { state } from './state.js';
+import { showToast } from '../app.js';
 import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — rapor sayfası aksiyonları (inline onclick → data-click)

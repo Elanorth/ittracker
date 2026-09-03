@@ -1,101 +1,22 @@
 // ══════════════════════════════════════════════════════════
-//  main.js — ES-Module giriş noktası (v5.42, ESM Faz 1)
+//  main.js — ES-Module giriş noktası (v5.79, ESM Faz 5 TAMAM)
 //
 //  static/js/ ES-module dönüşümünün TEK entry'si (`<script type="module">`).
-//  Şu an klasik script'lerin (app.js, utils.js, audit.js, managed-firms.js)
-//  YANINDA yüklenir; sonraki fazlarda o modüller buradan import edilip başlatılır
-//  ve klasik <script> etiketleri kaldırılır.
+//  Tüm frontend artık ESM. Modüller birbirini gerçek `import` ile çağırır;
+//  window köprüsü (bridge.js expose/exposeAll) KALDIRILDI. Etkileşimler
+//  events.js delegation üzerinden (inline on* handler yok).
 //
-//  Faz 1 kapsamı: ESM yükleme kanalını + köprüyü kurmak (CSP/sw.js altında
-//  çalıştığını doğrulamak). Henüz davranış taşınmadı — app.js kendini bootstrap
-//  etmeye devam ediyor. Plan: docs/js-esm-migration-plan.md
+//  main.js'in tek işi: modül grafiğini değerlendirip (import → her modülün
+//  event-delegation register bloğu çalışır) app.js çekirdeğini bootstrap etmek.
 // ══════════════════════════════════════════════════════════
-import { expose, exposeAll } from './bridge.js';
-import './state.js'; // paylaşılan state'i kurar (window.state) — ESM Faz 2
-import * as appCore from '../app.js'; // ESM Faz 4f-son — app.js ÇEKİRDEK (artık module, static/ altında)
-import * as utils from './utils.js'; // ESM Faz 3a — leaf modülü
-import * as audit from './audit.js'; // ESM Faz 3b — Denetim Kayıtları modülü
-import * as managedFirms from './managed-firms.js'; // ESM Faz 3c — Yönettiğim Firmalar
-import * as notifications from './notifications.js'; // ESM Faz 4a — bildirim çanı + ayarları
-import * as board from './board.js'; // ESM Faz 4b — Ortak Alan / Kanban
-import * as admin from './admin.js'; // ESM Faz 4c — kullanıcı yönetimi
-import * as tasks from './tasks.js'; // ESM Faz 4d — görev işlemleri
-import * as dashboard from './dashboard.js'; // ESM Faz 4e — dashboard (grafikler)
-import * as report from './report.js'; // ESM Faz 4f-1 — rapor sayfası
-import * as scheduled from './scheduled.js'; // ESM Faz 4f-2 — zamanlanmış görevler + takvim
-import * as kb from './kb.js'; // ESM Faz 4f-3 — bilgi bankası
-import * as settings from './settings.js'; // ESM Faz 4f-4 — ayarlar (portal/teams/smtp)
-import * as pool from './pool.js'; // ESM Faz 4f-5 — destek havuzu
-import * as projects from './projects.js'; // ESM Faz 4f-6 — projeler sayfası
-import * as backup from './backup.js'; // ESM Faz 4f-6 — yedekler sayfası
-import * as archive from './archive.js'; // ESM Faz 4f-6 — case arşivi
+import * as appCore from '../app.js'; // app.js ÇEKİRDEK (tüm feature modüllerini import eder)
 
-// Köprüyü geçiş boyunca erişilebilir kıl (Faz 3+ modülleri window.expose kullanır).
-window.expose = expose;
-window.exposeAll = exposeAll;
+// app.js zaten tüm feature modüllerini + state/utils/events'i import ettiği için
+// import grafiği burada tam değerlendirilmiş olur (registrasyonlar + state kurulu).
 
-// ESM Faz 4f-son: app.js ÇEKİRDEK artık module. Public API'sini (showPage/loadApp/
-// showToast/loadTasks/FIRMS/... 22 export) window'a bağla — inline handler'lar +
-// diğer modüller (window bridge) kullanır. Bootstrap (aşağıda) window.loadApp çağırır.
-exposeAll(appCore);
+// Uygulama BOOTSTRAP'ı: import grafiği tamam → app.js export'ları hazır.
+appCore.setDateDisplay('topbar-date-day', 'topbar-date-full');
+appCore.loadApp();
 
-// ESM Faz 3a: utils artık gerçek ESM modülü. Klasik app.js/audit.js/managed-firms.js
-// ve inline onclick'ler için tüm export'ları window'a bağla (escapeHtml, TODAY,
-// catLabel, dlClass/dlText, *Badge, _cssVar/_chartTheme/_centerTextPlugin, ...).
-exposeAll(utils);
-
-// ESM Faz 3b: audit.js public fonksiyonları (initAuditPage/setAuditRange/
-// resetAuditFilters/exportAuditCsv/loadAuditLog) → window (inline + app.js için).
-exposeAll(audit);
-
-// ESM Faz 3c: managed-firms public fonksiyonları (loadManagedFirmsPage/setMfPeriod/
-// expandManagedFirms/_mfGotoTasks/_mfGotoAdd) → window. Faz 3 tamamlandı.
-exposeAll(managedFirms);
-
-// ESM Faz 4a: bildirim fonksiyonları (buildNotifications/notifClick/toggleNotifDropdown/
-// clearAllNotifs/closeNotifDropdown/loadNotificationsPage/save/preview/test) → window.
-// Bootstrap'tan ÖNCE: loadApp `setTimeout(buildNotifications)` çağırır.
-exposeAll(notifications);
-
-// ESM Faz 4b: board (Kanban) public fonksiyonları → window (inline onclick + app.js).
-exposeAll(board);
-
-// ESM Faz 4c: admin (kullanıcı yönetimi) public fonksiyonları → window.
-exposeAll(admin);
-
-// ESM Faz 4d: görev fonksiyonları → window.
-exposeAll(tasks);
-
-// ESM Faz 4e: dashboard fonksiyonları (grafikler + renderDashboard/KPI + task-list) → window.
-exposeAll(dashboard);
-
-// ESM Faz 4f-1: rapor sayfası fonksiyonları (initReportPage + PDF/CSV/mail) → window.
-exposeAll(report);
-
-// ESM Faz 4f-2: zamanlanmış görevler + takvim (renderScheduledPage/renderCalendar/...) → window.
-exposeAll(scheduled);
-
-// ESM Faz 4f-3: bilgi bankası (loadKb + editör CRUD) → window.
-exposeAll(kb);
-
-// ESM Faz 4f-4: ayarlar sayfası (portal auto-assign + teams + smtp/kullanıcı) → window.
-exposeAll(settings);
-
-// ESM Faz 4f-5: destek havuzu (loadPoolPage/claimCase/releaseCase/resolveCase) → window.
-exposeAll(pool);
-
-// ESM Faz 4f-6: projeler + yedekler + case arşivi sayfaları → window.
-exposeAll(projects);
-exposeAll(backup);
-exposeAll(archive);
-
-// ESM kanalının yüklendiğini işaretle (doğrulama + ileride bootstrap guard).
+// ESM kanalının yüklendiğini işaretle (doğrulama).
 window.__esmReady = true;
-
-// ESM Faz 3c — Uygulama BOOTSTRAP'ı burada (klasik app.js top-level'dan taşındı).
-// main.js bu noktada çalıştığında import grafiği tamamen değerlendirilmiştir:
-// window.state kurulu + tüm modüller exposeAll edilmiş. Böylece loadApp'ın
-// state/utils kullanımı güvenli (eski "state is not defined" yarışı biter).
-// setDateDisplay/loadApp klasik app.js'te tanımlı globaller (app.js main.js'ten önce çalışır).
-if (typeof window.setDateDisplay === 'function') window.setDateDisplay('topbar-date-day', 'topbar-date-full');
-if (typeof window.loadApp === 'function') window.loadApp();

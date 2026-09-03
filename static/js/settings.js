@@ -10,6 +10,8 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { renderUserTable } from './admin.js';
+import { FIRMS, showToast } from '../app.js';
 import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — ayarlar sayfası aksiyonları (inline onclick → data-click)

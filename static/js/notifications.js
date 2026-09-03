@@ -9,6 +9,8 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml, _routineOverdueLabel } from './utils.js';
 import { state } from './state.js';
+import { FIRMS, showPage, showToast } from '../app.js';
+import { openEditTask } from './tasks.js';
 import { onClick } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — bildirim çanı + ayarları aksiyonları (inline onclick → data-click)

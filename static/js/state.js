@@ -49,6 +49,4 @@ export const state = {
   // ── 4f-son: 'Yeni Görev'e girmeden önceki sayfa (app.js showPage yazar, tasks.js addTask okur) ──
   addReturnPage: 'tasks',
 };
-
-// Klasik app.js (ve inline handler'lar) için global köprü.
-window.state = state;
+// ESM Faz 5 TAMAM: window.state köprüsü kaldırıldı — tüm modüller `import { state }`.

@@ -6,7 +6,7 @@
 //  Inline: openEditTask/downloadBackup. getBackupTasks/formatFileSize modül-private.
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
-import { firmChip } from './tasks.js';
+import { firmChip, openEditTask } from './tasks.js';
 import { state } from './state.js';
 import { onClick, onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
 

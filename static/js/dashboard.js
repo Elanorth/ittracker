@@ -17,6 +17,7 @@
 // ══════════════════════════════════════════════════════════
 import { _chartTheme, _cssVar, _centerTextPlugin, escapeHtml } from './utils.js';
 import { state } from './state.js';
+import { FIRMS, loadTasks, onCatChange, onFirmUserChange, showPage } from '../app.js';
 import { taskTiming, taskRow } from './tasks.js'; // KANONİK satır-render (ESM Faz 4e-1)
 import { onClick } from './events.js'; // ESM Faz 5 — event delegation
 

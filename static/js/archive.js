@@ -7,7 +7,8 @@
 //  pager onclick doğrudan değişken mutasyonundan archGoPage(n)'e çevrildi).
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
-import { firmChip } from './tasks.js';
+import { firmChip, openEditTask } from './tasks.js';
+import { FIRMS, formatDateTR } from '../app.js';
 import { onClick, onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — arşiv filtreleri (firma/durum select → change; arama kutusu → input debounced)
