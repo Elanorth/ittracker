@@ -33,6 +33,11 @@ onChange('updateEditTeamOptions', () => updateEditTeamOptions());
 onChange('uploadBackupToTask', () => uploadBackupToTask());
 onEnter('addChecklistItem',     () => addChecklistItem());
 onEnter('addEditChecklistItem', () => addEditChecklistItem());
+// ESM Faz 5 — generated-string (liste/kart satırı) paylaşımlı handler'lar: TEK register
+// tüm modüllerin taskRow/satır render'ındaki data-click="X" data-id="${id}"'yi karşılar.
+onClick('apiToggleTask',  el => apiToggleTask(+el.dataset.id));
+onClick('openEditTask',   el => openEditTask(+el.dataset.id));
+onClick('deleteBackupFile', el => deleteBackupFile(+el.dataset.id, +el.dataset.taskid));
 
 // ══════════════════════════════════════════════════════════
 //  API — GÖREV TOGGLE (checkbox)
@@ -495,8 +500,8 @@ async function loadTaskBackups(taskId) {
           <div style="font-size:9px;color:var(--text-muted)">${sizeStr}${b.device?' · '+escapeHtml(b.device):''} · ${date}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn btn-sm" style="padding:2px 8px;font-size:9px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" onclick="downloadBackup(${b.id})">&#8595;</button>
-          <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:9px" onclick="deleteBackupFile(${b.id}, ${taskId})">&#10005;</button>
+          <button class="btn btn-sm" style="padding:2px 8px;font-size:9px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" data-click="downloadBackup" data-id="${b.id}">&#8595;</button>
+          <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:9px" data-click="deleteBackupFile" data-id="${b.id}" data-taskid="${taskId}">&#10005;</button>
         </div>
       </div>`;
     }).join('');
@@ -774,7 +779,7 @@ export function taskRow(t) {
     : '';
   return `
   <div class="task-item" id="ti-${t.id}">
-    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}"></div>
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" data-click="apiToggleTask" data-id="${t.id}"></div>
     <div>
       <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}</div>
       <div class="task-meta">${catLabel(t.cat)}${priorityBadge(t)}${slaBadge(t)}${portalBadge(t)}${unreadBadge(t)}${prevBadge} ${firmChip(t.firm)} <span>· ${escapeHtml(t.team||'')}</span> <span>· ${t.period||''}</span>${_periodCompletionBadge(t) ? `<span style="color:var(--green);font-weight:600;margin-left:4px">${_periodCompletionBadge(t)}</span>` : ''}</div>
@@ -786,7 +791,7 @@ export function taskRow(t) {
       <div style="font-size:9px;${t.cat==='support'&&slaRem?`color:${slaRem.color};font-weight:700`:'color:var(--text-muted)'};font-family:'IBM Plex Mono',monospace">${
         t.cat==='support' && slaRem ? `⏱ ${slaRem.txt} kaldı` : (t.deadline ? formatDateTR(t.deadline) : '—')
       }</div>
-      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; Düzenle</button>
+      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" data-click="openEditTask" data-id="${t.id}">&#9998; Düzenle</button>
     </div>
   </div>`;
 }

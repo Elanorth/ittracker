@@ -18,6 +18,7 @@ import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegati
 // ESM Faz 5 — zamanlanmış görevler + takvim aksiyonları (inline onclick → data-click)
 onClick('toggleSchedView',    el => toggleSchedView(el.dataset.view));
 onChange('renderScheduledList', () => renderScheduledList()); // filtre select'leri
+onClick('toggleAlarm', el => toggleAlarm(+el.dataset.id)); // satır alarm toggle (generated)
 onClick('toggleSchedSection', el => toggleSchedSection(el.dataset.section));
 onClick('setWeeklyPeriod',    el => setWeeklyPeriod(+el.dataset.weeks, el));
 onClick('calNavMonth',        el => calNavMonth(+el.dataset.dir));
@@ -142,7 +143,7 @@ export function renderScheduledList() {
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
             <span class="opens-in-chip">📅 ${opensIn}</span>
-            <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998;</button>
+            <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" data-click="openEditTask" data-id="${t.id}">&#9998;</button>
           </div>
         </div>`;
       }).join('');
@@ -189,7 +190,7 @@ function _renderSchedRow(t) {
   const pBg    = {Günlük:'rgba(127,108,247,.15)',Haftalık:'rgba(0,229,192,.12)',Aylık:'rgba(244,185,66,.12)',Yıllık:'rgba(255,95,61,.12)','Tek Seferlik':'var(--surface2)'}[t.period]||'var(--surface2)';
   return `
   <div class="sched-row ${rowClass}" id="sr-${t.id}">
-    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
+    <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" data-click="apiToggleTask" data-id="${t.id}" title="${t.done?'Geri al':'Tamamlandı işaretle'}"></div>
     <div style="min-width:0">
       <div style="font-size:13px;font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted)':''};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.title)}</div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -207,11 +208,11 @@ function _renderSchedRow(t) {
     </div>
     <div><span class="period-badge" style="background:${pBg};color:${pColor}">${t.period}</span></div>
     <div style="display:flex;flex-direction:column;gap:5px">
-      <label class="alarm-toggle" onclick="toggleAlarm(${t.id})">
+      <label class="alarm-toggle" data-click="toggleAlarm" data-id="${t.id}">
         <div class="alarm-switch ${alarmOn?'on':''}"></div>
         <span style="font-size:10px;color:var(--text-muted)">${alarmOn?'Açık':'Kapalı'}</span>
       </label>
-      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; Düzenle</button>
+      <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" data-click="openEditTask" data-id="${t.id}">&#9998; Düzenle</button>
     </div>
   </div>`;
 }
@@ -317,7 +318,7 @@ function renderCalendar() {
     html += `<div class="cal-day-num">${cell.date.getDate()}</div>`;
     const MAX = 3;
     dayTasks.slice(0, MAX).forEach(({ task, chipClass }) => {
-      html += `<div class="cal-task-chip ${chipClass}" onclick="openEditTask(${task.id})" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</div>`;
+      html += `<div class="cal-task-chip ${chipClass}" data-click="openEditTask" data-id="${task.id}" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</div>`;
     });
     if (dayTasks.length > MAX) {
       html += `<div class="cal-more">+${dayTasks.length - MAX} daha</div>`;

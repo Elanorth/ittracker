@@ -8,11 +8,12 @@
 import { escapeHtml } from './utils.js';
 import { firmChip } from './tasks.js';
 import { state } from './state.js';
-import { onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — yedek filtreleri (firma select → change; arama kutusu → input)
 onChange('filterBackups', () => filterBackups());
 onInput('filterBackups',  () => filterBackups());
+onClick('downloadBackup', el => downloadBackup(+el.dataset.id)); // satır "indir" (generated; tasks.js edit-modal da kullanır)
 
 function getBackupTasks() {
   return state.tasks.filter(t => t.cat === 'backup' && t.backup);
@@ -84,8 +85,8 @@ export async function renderBackupList() {
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;min-width:80px">
-        <button class="btn btn-outline btn-sm" style="padding:3px 9px;font-size:10px;width:80px" onclick="openEditTask(${b.task_id})">&#9998; Görev</button>
-        <button class="btn btn-sm" style="padding:3px 9px;font-size:10px;width:80px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" onclick="downloadBackup(${b.id})">&#8595; İndir</button>
+        <button class="btn btn-outline btn-sm" style="padding:3px 9px;font-size:10px;width:80px" data-click="openEditTask" data-id="${b.task_id}">&#9998; Görev</button>
+        <button class="btn btn-sm" style="padding:3px 9px;font-size:10px;width:80px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold)" data-click="downloadBackup" data-id="${b.id}">&#8595; İndir</button>
       </div>
     </div>`;
   }).join('');

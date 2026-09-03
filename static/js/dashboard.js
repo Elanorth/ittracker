@@ -26,6 +26,7 @@ onClick('filterTasks',        el => filterTasks(el.dataset.filter));
 onClick('filterTasksByCat',   el => filterTasksByCat(el.dataset.cat));
 onClick('showTasksWithCat',   el => showTasksWithCat(el.dataset.cat));
 onClick('addTaskFromTasksView', () => addTaskFromTasksView());
+onClick('setDashPage', el => setDashPage(+el.dataset.page)); // BUGÜNÜN GÖREVLERİ pager (generated)
 
 // Chart nesneleri modül-local (yalnız aşağıdaki render fonksiyonları kullanır).
 let _catChart = null, _firmChart = null, _activityChart = null, _weeklyChart = null;
@@ -294,11 +295,11 @@ export function renderDashboardTaskList() {
           ${start+1}–${Math.min(start+DASH_PAGE_SIZE, total)} / ${total}
         </div>
         <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn btn-outline btn-sm" ${prevDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${state.dashPage-1})">‹ Önceki</button>
+          <button class="btn btn-outline btn-sm" ${prevDisabled} style="padding:3px 10px;font-size:11px" data-click="setDashPage" data-page="${state.dashPage-1}">‹ Önceki</button>
           <span style="font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace">
             ${state.dashPage+1} / ${pageCount}
           </span>
-          <button class="btn btn-outline btn-sm" ${nextDisabled} style="padding:3px 10px;font-size:11px" onclick="setDashPage(${state.dashPage+1})">Sonraki ›</button>
+          <button class="btn btn-outline btn-sm" ${nextDisabled} style="padding:3px 10px;font-size:11px" data-click="setDashPage" data-page="${state.dashPage+1}">Sonraki ›</button>
         </div>
       </div>`;
   }

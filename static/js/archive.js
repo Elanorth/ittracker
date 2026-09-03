@@ -8,11 +8,12 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { firmChip } from './tasks.js';
-import { onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — arşiv filtreleri (firma/durum select → change; arama kutusu → input debounced)
 onChange('archSearch',          () => archSearch());
 onInput('archSearchDebounced',  () => archSearchDebounced());
+onClick('archGoPage',           el => archGoPage(+el.dataset.page)); // pager (generated)
 
 let _archPage = 1, _archT = null;
 
@@ -58,7 +59,7 @@ export async function archSearch() {
       const owner = i.owner ? escapeHtml(i.owner) : '<span style="color:var(--text-muted)">🫧 havuz</span>';
       const dt = i.created_at ? formatDateTR(i.created_at.slice(0, 10)) : '';
       const code = i.case_code ? `<span class="prio-badge low" style="background:rgba(0,229,192,.12);color:var(--accent);border-color:rgba(0,229,192,.3)">🌐 ${escapeHtml(i.case_code)}</span>` : '';
-      return `<div class="task-item" style="align-items:center;cursor:pointer" onclick="openEditTask(${i.id})">
+      return `<div class="task-item" style="align-items:center;cursor:pointer" data-click="openEditTask" data-id="${i.id}">
         <div style="font-size:15px">🗄️</div>
         <div>
           <div class="task-title">${escapeHtml(i.title)}</div>
@@ -69,9 +70,9 @@ export async function archSearch() {
       </div>`;
     }).join('');
     pager.innerHTML = d.pages > 1 ? `
-      <button class="btn btn-outline btn-sm" ${d.page <= 1 ? 'disabled' : ''} onclick="archGoPage(${d.page-1})">‹ Önceki</button>
+      <button class="btn btn-outline btn-sm" ${d.page <= 1 ? 'disabled' : ''} data-click="archGoPage" data-page="${d.page-1}">‹ Önceki</button>
       <span>${d.page} / ${d.pages} · ${d.total} kayıt</span>
-      <button class="btn btn-outline btn-sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="archGoPage(${d.page+1})">Sonraki ›</button>` : `<span>${d.total} kayıt</span>`;
+      <button class="btn btn-outline btn-sm" ${d.page >= d.pages ? 'disabled' : ''} data-click="archGoPage" data-page="${d.page+1}">Sonraki ›</button>` : `<span>${d.total} kayıt</span>`;
   } catch (e) {
     box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--danger);font-size:12px">Arşiv yüklenemedi.</div>';
   }
