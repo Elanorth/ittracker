@@ -20,6 +20,7 @@ const _editTaskId = () => parseInt(document.getElementById('edit-task-id').value
 onClick('loadPoolPage', () => loadPoolPage());
 onClick('releaseCase',  () => releaseCase(_editTaskId()));
 onClick('resolveCase',  () => resolveCase(_editTaskId()));
+onClick('claimCase',    el => claimCase(+el.dataset.id)); // havuz satırı "üstlen" (generated)
 
 let _poolCases = [];
 
@@ -72,8 +73,8 @@ function renderPool() {
       </div>
       <div></div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-        <button class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px" onclick="claimCase(${t.id})">✋ Üstlen</button>
-        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998; İncele</button>
+        <button class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px" data-click="claimCase" data-id="${t.id}">✋ Üstlen</button>
+        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" data-click="openEditTask" data-id="${t.id}">&#9998; İncele</button>
       </div>
     </div>`;
   }).join('');

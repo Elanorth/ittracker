@@ -68,8 +68,8 @@ export function renderProjectsPage() {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:80px">
           <div style="font-size:10px;color:${dlColor};font-family:'IBM Plex Mono',monospace">${dlStr}</div>
           <div style="display:flex;gap:4px">
-            <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" onclick="apiToggleTask(${t.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();apiToggleTask(${t.id})}" style="width:16px;height:16px;border-radius:4px"></div>
-            <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" onclick="openEditTask(${t.id})">&#9998;</button>
+            <div class="cb ${t.done?'done':''}" role="checkbox" aria-checked="${t.done?'true':'false'}" aria-label="${t.done?'Geri al':'Tamamla'}: ${escapeHtml(t.title)}${_periodCompletionLabel(t) ? ' — ' + _periodCompletionLabel(t) : ''}" tabindex="0" data-click="apiToggleTask" data-id="${t.id}" style="width:16px;height:16px;border-radius:4px"></div>
+            <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px" data-click="openEditTask" data-id="${t.id}">&#9998;</button>
           </div>
         </div>
       </div>

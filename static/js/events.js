@@ -37,11 +37,29 @@ bind('click',  'data-click');
 bind('change', 'data-change');
 bind('input',  'data-input');
 
-// Enter kanalı ayrı: yalnız Enter tuşunda + preventDefault ile
+// Klavye kanalı:
+//  1) data-enter → yalnız Enter (metin input'ları: Enter ile gönder)
+//  2) data-click + role=checkbox/button (veya <button>) → Enter VEYA Space ile aktive
+//     (a11y: fare tıklamasının klavye eşdeğeri — eski inline onkeydown'ların yerine)
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  const el = e.target.closest('[data-enter]');
-  if (!el) return;
-  const fn = registry.enter[el.getAttribute('data-enter')];
-  if (fn) { e.preventDefault(); fn(el, e); }
+  const isEnter = e.key === 'Enter';
+  const isSpace = e.key === ' ' || e.key === 'Spacebar';
+  if (!isEnter && !isSpace) return;
+
+  if (isEnter) {
+    const el = e.target.closest('[data-enter]');
+    if (el) {
+      const fn = registry.enter[el.getAttribute('data-enter')];
+      if (fn) { e.preventDefault(); fn(el, e); return; }
+    }
+  }
+
+  const clickEl = e.target.closest('[data-click]');
+  if (clickEl) {
+    const role = clickEl.getAttribute('role');
+    if (role === 'checkbox' || role === 'button' || clickEl.tagName === 'BUTTON') {
+      const fn = registry.click[clickEl.getAttribute('data-click')];
+      if (fn) { e.preventDefault(); fn(clickEl, e); }
+    }
+  }
 });
