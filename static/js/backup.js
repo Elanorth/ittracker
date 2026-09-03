@@ -8,6 +8,11 @@
 import { escapeHtml } from './utils.js';
 import { firmChip } from './tasks.js';
 import { state } from './state.js';
+import { onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — yedek filtreleri (firma select → change; arama kutusu → input)
+onChange('filterBackups', () => filterBackups());
+onInput('filterBackups',  () => filterBackups());
 
 function getBackupTasks() {
   return state.tasks.filter(t => t.cat === 'backup' && t.backup);

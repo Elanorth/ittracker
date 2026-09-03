@@ -13,10 +13,11 @@
 import { TODAY, escapeHtml, _routineOverdueLabel, _periodCompletionLabel } from './utils.js';
 import { firmChip } from './tasks.js';
 import { state } from './state.js';
-import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — zamanlanmış görevler + takvim aksiyonları (inline onclick → data-click)
 onClick('toggleSchedView',    el => toggleSchedView(el.dataset.view));
+onChange('renderScheduledList', () => renderScheduledList()); // filtre select'leri
 onClick('toggleSchedSection', el => toggleSchedSection(el.dataset.section));
 onClick('setWeeklyPeriod',    el => setWeeklyPeriod(+el.dataset.weeks, el));
 onClick('calNavMonth',        el => calNavMonth(+el.dataset.dir));

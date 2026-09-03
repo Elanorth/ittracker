@@ -13,7 +13,7 @@ import {
   _periodCompletionLabel, _periodCompletionBadge,
 } from './utils.js';
 import { state } from './state.js';
-import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange, onInput, onEnter } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — görev ekle + edit modal + case aksiyonları (inline onclick → data-click)
 onClick('addTask',             () => addTask());
@@ -25,6 +25,14 @@ onClick('caseTab',             el => caseTab(el.dataset.tab));
 onClick('sendCaseMessage',     () => sendCaseMessage());
 onClick('addChecklistItem',    () => addChecklistItem());
 onClick('addEditChecklistItem', () => addEditChecklistItem());
+// onchange/oninput/Enter (full-list filtre + edit-team + backup upload + checklist Enter)
+onChange('filterFullByCat',   el => filterFullByCat(el.value));
+onChange('filterFullByFirm',  el => filterFullByFirm(el.value));
+onInput('filterFullList',     el => filterFullList(el.value));
+onChange('updateEditTeamOptions', () => updateEditTeamOptions());
+onChange('uploadBackupToTask', () => uploadBackupToTask());
+onEnter('addChecklistItem',     () => addChecklistItem());
+onEnter('addEditChecklistItem', () => addEditChecklistItem());
 
 // ══════════════════════════════════════════════════════════
 //  API — GÖREV TOGGLE (checkbox)

@@ -808,7 +808,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
     <div class="login-form">
       <input class="form-control" id="login-user" placeholder="Kullanıcı adı" style="margin-bottom:10px;">
-      <input class="form-control" id="login-pass" type="password" placeholder="Şifre" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter')manualLogin()">
+      <input class="form-control" id="login-pass" type="password" placeholder="Şifre" style="margin-bottom:14px;" data-enter="manualLogin">
       <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" data-click="manualLogin">Giriş Yap</button>
     </div>
   </div>
@@ -890,7 +890,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <!-- v4.2 — Director+ kullanıcı filtresi -->
       <div id="firm-user-filter-wrap" style="display:none;align-items:center;gap:6px">
         <span style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.5px">👥 GÖRÜNTÜLE</span>
-        <select id="firm-user-filter" class="form-control" style="width:auto;min-width:180px;height:34px;padding:4px 10px;font-size:12px" onchange="onFirmUserChange()">
+        <select id="firm-user-filter" class="form-control" style="width:auto;min-width:180px;height:34px;padding:4px 10px;font-size:12px" data-change="onFirmUserChange">
           <option value="">— Kendim —</option>
         </select>
       </div>
@@ -1043,7 +1043,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="card-body">
           <div style="margin-bottom:10px">
             <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Periyot</label>
-            <select class="form-control" style="font-size:12px" id="sf-period" onchange="renderScheduledList()">
+            <select class="form-control" style="font-size:12px" id="sf-period" data-change="renderScheduledList">
               <option value="">Tümü</option>
               <option value="Günlük">Günlük</option>
               <option value="Haftalık">Haftalık</option>
@@ -1053,7 +1053,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
           <div style="margin-bottom:10px">
             <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Firma</label>
-            <select class="form-control" style="font-size:12px" id="sf-firm" onchange="renderScheduledList()">
+            <select class="form-control" style="font-size:12px" id="sf-firm" data-change="renderScheduledList">
               <option value="">Tümü</option>
               <option value="inventist">İnventist</option>
               <option value="assos">Assos</option>
@@ -1061,7 +1061,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
           <div style="margin-bottom:10px">
             <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Durum</label>
-            <select class="form-control" style="font-size:12px" id="sf-status" onchange="renderScheduledList()">
+            <select class="form-control" style="font-size:12px" id="sf-status" data-change="renderScheduledList">
               <option value="">Tümü</option>
               <option value="overdue">Gecikti</option>
               <option value="due">Bugün / Yakın</option>
@@ -1178,11 +1178,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
   <div class="card">
     <div class="card-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input class="form-control" placeholder="Ara..." style="width:200px;padding:6px 10px;font-size:12px" oninput="filterFullList(this.value)">
-        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" onchange="filterFullByFirm(this.value)">
+        <input class="form-control" placeholder="Ara..." style="width:200px;padding:6px 10px;font-size:12px" data-input="filterFullList">
+        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" data-change="filterFullByFirm">
           <option value="">Tüm Firmalar</option><option value="inventist">İnventist</option><option value="assos">Assos</option>
         </select>
-        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" id="tasks-cat-filter" onchange="filterFullByCat(this.value)">
+        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" id="tasks-cat-filter" data-change="filterFullByCat">
           <option value="task">Anlık Görev</option>
           <option value="backup">Config Backup</option>
           <option value="">Tüm Kategoriler</option>
@@ -1237,7 +1237,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card">
         <div class="card-header"><div class="card-title">FİLTRE</div></div>
         <div class="card-body">
-          <select class="form-control" style="font-size:12px" id="proj-filter-firm" onchange="renderProjectsPage()">
+          <select class="form-control" style="font-size:12px" id="proj-filter-firm" data-change="renderProjectsPage">
             <option value="">Tüm Firmalar</option>
             <option value="inventist">İnventist</option>
             <option value="assos">Assos</option>
@@ -1274,7 +1274,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row">
           <div class="form-group">
             <label>Firma</label>
-            <select class="form-control" id="new-firm" onchange="updateTeamOptions()">
+            <select class="form-control" id="new-firm" data-change="updateTeamOptions">
               <option value="">— Firma Seçin —</option>
               <option value="inventist">İnventist</option>
               <option value="assos">Assos</option>
@@ -1291,7 +1291,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row">
           <div class="form-group">
             <label>Kategori</label>
-            <select class="form-control" id="new-cat" onchange="onCatChange()">
+            <select class="form-control" id="new-cat" data-change="onCatChange">
               <option value="">— Kategori Seçin —</option>
               <option value="task">Anlık Görev</option>
               <option value="support">Destek Talebi</option>
@@ -1377,7 +1377,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="checklist-items" style="display:flex;flex-direction:column;gap:6px"></div>
           <div style="display:flex;gap:6px;margin-top:8px">
             <input class="form-control" id="new-checklist-item" placeholder="Adım ekle... (Enter ile)" style="font-size:12px"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();addChecklistItem()}">
+              data-enter="addChecklistItem">
           </div>
         </div>
 
@@ -1391,7 +1391,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
             </div>
           </div>
           <div class="upload-zone" id="upload-zone">
-            <input type="file" id="backup-file" accept=".cfg,.conf,.txt,.bin,.xml,.json,.tar,.gz,.zip" onchange="onFileSelected(this)">
+            <input type="file" id="backup-file" accept=".cfg,.conf,.txt,.bin,.xml,.json,.tar,.gz,.zip" data-change="onFileSelected">
             <div class="upload-icon">💾</div>
             <div class="upload-label">Dosyayı sürükleyin veya <strong>tıklayın</strong></div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px">.cfg · .conf · .bin · .xml · .txt · .zip</div>
@@ -1420,7 +1420,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub" id="report-sub">Ay seçin ve PDF oluşturun</div>
     </div>
     <div class="topbar-right">
-      <select class="form-control" style="width:160px;font-size:12px" id="report-month-sel" onchange="onReportMonthChange()"></select>
+      <select class="form-control" style="width:160px;font-size:12px" id="report-month-sel" data-change="onReportMonthChange"></select>
       <button class="btn btn-primary" data-click="sendReportMail">📧 PDF Mail Gönder</button>
     </div>
   </div>
@@ -1494,7 +1494,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="card-body">
           <div class="form-group" style="margin-bottom:10px">
             <label>Firma</label>
-            <select class="form-control" style="font-size:12px" onchange="filterBackups()" id="bk-filter-firm">
+            <select class="form-control" style="font-size:12px" data-change="filterBackups" id="bk-filter-firm">
               <option value="">Tümü</option>
               <option value="inventist">İnventist</option>
               <option value="assos">Assos</option>
@@ -1502,7 +1502,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
           <div class="form-group">
             <label>Ara</label>
-            <input class="form-control" style="font-size:12px" placeholder="Cihaz / başlık..." oninput="filterBackups()" id="bk-search">
+            <input class="form-control" style="font-size:12px" placeholder="Cihaz / başlık..." data-input="filterBackups" id="bk-search">
           </div>
         </div>
       </div>
@@ -1761,7 +1761,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
             <div style="font-weight:600;font-size:13px">Otomatik atamayı etkinleştir</div>
             <div style="font-size:9px;color:var(--text-muted);margin-top:2px;max-width:340px">Açıkken portaldan gelen talepler aşağıdaki kurallara göre kişilere atanır. Eşleşme yoksa talep firma havuzuna düşer.</div>
           </div>
-          <label class="aa-switch"><input type="checkbox" id="aa-toggle" onchange="toggleAutoAssign(this.checked)"><span></span></label>
+          <label class="aa-switch"><input type="checkbox" id="aa-toggle" data-change="toggleAutoAssign"><span></span></label>
         </div>
         <div id="aa-toggle-hint" style="font-size:9px;color:var(--text-muted);margin-top:4px"></div>
 
@@ -1912,11 +1912,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:0 2px">
-    <input class="form-control" id="arch-q" placeholder="🔍 INV-XXXXXX, başlık, e-posta…" style="flex:1;min-width:220px" oninput="archSearchDebounced()">
-    <select class="form-control" id="arch-firm" style="width:150px" onchange="archSearch()">
+    <input class="form-control" id="arch-q" placeholder="🔍 INV-XXXXXX, başlık, e-posta…" style="flex:1;min-width:220px" data-input="archSearchDebounced">
+    <select class="form-control" id="arch-firm" style="width:150px" data-change="archSearch">
       <option value="">Tüm firmalar</option>
     </select>
-    <select class="form-control" id="arch-status" style="width:130px" onchange="archSearch()">
+    <select class="form-control" id="arch-status" style="width:130px" data-change="archSearch">
       <option value="all">Tümü</option>
       <option value="open">Açık</option>
       <option value="resolved">Çözülen</option>
@@ -2109,7 +2109,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="form-group">
         <label>Firma</label>
-        <select class="form-control" id="edit-task-firm" onchange="updateEditTeamOptions()">
+        <select class="form-control" id="edit-task-firm" data-change="updateEditTeamOptions">
           <option value="inventist">İnventist</option>
           <option value="assos">Assos</option>
         </select>
@@ -2184,7 +2184,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <span style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.5px">💾 YÜKLÜ DOSYALAR</span>
         <label class="btn btn-sm" style="padding:3px 10px;font-size:10px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold);cursor:pointer">
           ＋ Dosya Ekle
-          <input type="file" id="edit-backup-upload-input" style="display:none" onchange="uploadBackupToTask()">
+          <input type="file" id="edit-backup-upload-input" style="display:none" data-change="uploadBackupToTask">
         </label>
       </div>
       <div id="edit-backup-file-list" style="padding:8px 14px;min-height:36px">
@@ -2203,7 +2203,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </div>
       <div id="edit-checklist-items" style="display:flex;flex-direction:column;gap:5px"></div>
       <input class="form-control" id="edit-new-checklist-item" placeholder="Yeni adım..." style="font-size:11px;margin-top:6px"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();addEditChecklistItem()}">
+        data-enter="addEditChecklistItem">
     </div>
     <!-- v5.15 Faz B — Portal yazışması (yalnız portal kaynaklı case'lerde) -->
     </div><!-- /#edit-main -->

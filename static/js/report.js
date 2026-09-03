@@ -10,10 +10,11 @@
 // ══════════════════════════════════════════════════════════
 import { CAT_LABELS } from './utils.js';
 import { state } from './state.js';
-import { onClick } from './events.js'; // ESM Faz 5 — event delegation
+import { onClick, onChange } from './events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — rapor sayfası aksiyonları (inline onclick → data-click)
 onClick('sendReportMail',   () => sendReportMail());
+onChange('onReportMonthChange', () => onReportMonthChange()); // ay seçici
 onClick('previewReportPdf', () => previewReportPdf());
 onClick('exportTasksCsv',   () => exportTasksCsv());
 

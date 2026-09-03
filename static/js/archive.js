@@ -8,6 +8,11 @@
 // ══════════════════════════════════════════════════════════
 import { escapeHtml } from './utils.js';
 import { firmChip } from './tasks.js';
+import { onChange, onInput } from './events.js'; // ESM Faz 5 — event delegation
+
+// ESM Faz 5 — arşiv filtreleri (firma/durum select → change; arama kutusu → input debounced)
+onChange('archSearch',          () => archSearch());
+onInput('archSearchDebounced',  () => archSearchDebounced());
 
 let _archPage = 1, _archT = null;
 
