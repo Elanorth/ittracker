@@ -162,10 +162,15 @@ export async function addTask() {
       okMsg = `✓ ${u ? u.full_name : 'Kullanıcı'} kişisine görev atandı`;
     } else okMsg = 'Görev eklendi ✓';
     showToast('ok', okMsg);
-    // v5.21 — Kullanıcının 'Yeni Görev'e girmeden önce olduğu menüye geri dön
-    // (eskiden kategori ne olursa olsun hep 'Anlık Görevler'e atıyordu). Config
-    // backup yeni eklendiyse dosya listesini görmek mantıklı → 'backups'.
-    showPage(cat === 'backup' ? 'backups' : (state.addReturnPage || 'tasks'));
+    // v5.80 — Kaydettikten sonra oluşturulan görevin KATEGORİSİNE göre ana listesine
+    // git (kullanıcı yeni kaydını gördüğü yere düşsün). Eski 'addReturnPage' deseni
+    // Destek Talepleri/Anlık Görevler ayrımını yapamadığı (ikisi de page-tasks) için
+    // destek talebi hep Anlık Görevler'e düşüyordu; kaldırıldı.
+    if (cat === 'support')      showPage('tasks', { cat: 'support', activeNav: 'support' });
+    else if (cat === 'routine') showPage('scheduled');   // Rutin Görevler
+    else if (cat === 'project') showPage('projects');    // Projeler
+    else if (cat === 'backup')  showPage('backups');     // Yedekler (dosya listesi)
+    else                        showPage('tasks');       // task / infra / other → Anlık Görevler
   } catch(e) {
     showToast('err', 'Hata: ' + e.message);
   } finally {

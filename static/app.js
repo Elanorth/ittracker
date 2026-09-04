@@ -421,13 +421,8 @@ export function showPage(name, opts = {}) {
   // v5.24 — Bilgi Bankası yönetimi yalnızca director+
   if (name === 'kb' && !(level === 'super_admin' || level === 'it_director')) return;
 
-  // v5.21 — 'Yeni Görev' sayfasına geçerken, GELDİĞİMİZ sayfayı hatırla ki kayıt
-  // sonrası kullanıcı hep 'Anlık Görevler'e değil, açtığı menüye geri dönsün.
-  if (name === 'add') {
-    const curEl = document.querySelector('.page-section.active');
-    const cur = curEl ? curEl.id.replace('page-', '') : '';
-    if (cur && cur !== 'add') state.addReturnPage = cur;
-  }
+  // v5.80 — Kayıt sonrası yönlendirme artık oluşturulan görevin KATEGORİSİNE göre
+  // (bkz. tasks.js addTask). Eski 'addReturnPage' hatırlama mantığı kaldırıldı.
 
   document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
@@ -441,7 +436,12 @@ export function showPage(name, opts = {}) {
   document.querySelectorAll('.nav-item').forEach(n => {
     let isActive;
     if (n.dataset.nav) {
+      // Aynı sayfaya giden ama ayrı item'lar (ör. Destek Talepleri: data-nav="support")
       isActive = n.dataset.nav === activeNav;
+    } else if (n.dataset.page) {
+      // v5.80 — Faz 5 event-delegation nav (data-click="nav" data-page="X").
+      // Eskiden onclick="showPage('X')" idi; delegation'a geçince highlight bozulmuştu.
+      isActive = n.dataset.page === activeNav;
     } else {
       const m = (n.getAttribute('onclick') || '').match(/showPage\(['"]([^'"]+)['"]/);
       isActive = !!(m && m[1] === activeNav);
