@@ -45,8 +45,5 @@ export const state = {
   ftFirm: '',
   ftCat: '',
   ftSearch: '',
-
-  // ── 4f-son: 'Yeni Görev'e girmeden önceki sayfa (app.js showPage yazar, tasks.js addTask okur) ──
-  addReturnPage: 'tasks',
 };
 // ESM Faz 5 TAMAM: window.state köprüsü kaldırıldı — tüm modüller `import { state }`.
