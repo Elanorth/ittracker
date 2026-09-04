@@ -10,31 +10,38 @@
     "sourceType": "script"
   },
   "globals": {
-    "Chart": "readonly",
-    "escapeHtml": "readonly",
-    "_cssVar": "readonly",
-    "_chartTheme": "readonly",
-    "_centerTextPlugin": "readonly",
-    "unreadBadge": "readonly",
-    "priorityBadge": "readonly",
-    "slaBadge": "readonly",
-    "portalBadge": "readonly",
-    "_slaRemainingHuman": "readonly",
-    "_periodCompletionLabel": "readonly",
-    "_periodCompletionBadge": "readonly",
-    "TODAY": "readonly",
-    "CAT_LABELS": "readonly",
-    "dlClass": "readonly",
-    "dlText": "readonly",
-    "catLabel": "readonly",
-    "_routineOverdueLabel": "readonly",
-    "_appVersionSuffix": "readonly",
-    "initAuditPage": "readonly",
-    "loadAuditLog": "readonly",
-    "showToast": "readonly",
-    "firmUsers": "readonly"
+    "Chart": "readonly"
   },
   "rules": {
     "no-undef": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "static/app.js",
+        "static/js/main.js",
+        "static/js/events.js",
+        "static/js/state.js",
+        "static/js/utils.js",
+        "static/js/audit.js",
+        "static/js/managed-firms.js",
+        "static/js/notifications.js",
+        "static/js/board.js",
+        "static/js/admin.js",
+        "static/js/tasks.js",
+        "static/js/dashboard.js",
+        "static/js/report.js",
+        "static/js/scheduled.js",
+        "static/js/kb.js",
+        "static/js/settings.js",
+        "static/js/pool.js",
+        "static/js/projects.js",
+        "static/js/backup.js",
+        "static/js/archive.js"
+      ],
+      "parserOptions": {
+        "sourceType": "module"
+      }
+    }
+  ]
 }

@@ -66,7 +66,14 @@ jobs:
     steps:
       - name: Login to GHCR (self-hosted runner)
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          # Self-hosted runner ghcr.io'ya aralıklı erişemiyor (TLS handshake / token
+          # fetch "context deadline exceeded") → retry ile transient ağ dalgalanmasını yut.
+          for i in 1 2 3 4; do
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin && break
+            echo "GHCR login denemesi $i başarısız (transient ağ); 10s sonra tekrar..."
+            [ "$i" = "4" ] && { echo "GHCR login 4 denemede başarısız"; exit 1; }
+            sleep 10
+          done
 
       - name: DB yedek + pull image + deploy
         env:
@@ -92,8 +99,13 @@ jobs:
           AFTER=$(git rev-parse HEAD)
           echo "Deploying: $BEFORE -> $AFTER"
 
-          # GHCR'dan yeni image'i çek + container'ı yeniden başlat (build yok)
-          docker compose pull
+          # GHCR'dan yeni image'i çek (retry — pull da ghcr.io TLS timeout'a düşebiliyor) + container'ı yeniden başlat (build yok)
+          for i in 1 2 3 4; do
+            docker compose pull && break
+            echo "GHCR pull denemesi $i başarısız (transient ağ); 10s sonra tekrar..."
+            [ "$i" = "4" ] && { echo "GHCR pull 4 denemede başarısız"; exit 1; }
+            sleep 10
+          done
           docker compose up -d
           # Web container recreate olunca yeni IP alır; nginx upstream resolve cache
           # eski IP'yi tutar ve 502 döner. Nginx restart bunu temizler.

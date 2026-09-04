@@ -794,7 +794,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="login-title">Hoş Geldiniz</div>
     <div class="login-sub">Devam etmek için Office 365 hesabınızla giriş yapın veya kullanıcı adı & şifrenizi kullanın.</div>
 
-    <button class="o365-btn" onclick="o365Login()">
+    <button class="o365-btn" data-click="o365Login">
       <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
         <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
         <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
@@ -808,15 +808,15 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
     <div class="login-form">
       <input class="form-control" id="login-user" placeholder="Kullanıcı adı" style="margin-bottom:10px;">
-      <input class="form-control" id="login-pass" type="password" placeholder="Şifre" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter')manualLogin()">
-      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="manualLogin()">Giriş Yap</button>
+      <input class="form-control" id="login-pass" type="password" placeholder="Şifre" style="margin-bottom:14px;" data-enter="manualLogin">
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" data-click="manualLogin">Giriş Yap</button>
     </div>
   </div>
 </div>
 
 <!-- v5.0 BUG-2 — mobil hamburger butonu + backdrop (>720px gizli) -->
-<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false" id="sidebar-toggle-btn">☰</button>
-<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(true)" aria-hidden="true"></div>
+<button class="sidebar-toggle" data-click="toggleSidebar" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false" id="sidebar-toggle-btn">☰</button>
+<div class="sidebar-backdrop" id="sidebar-backdrop" data-click="toggleSidebar" data-close="true" aria-hidden="true"></div>
 
 <!-- ╔══════════════════════════════════════╗
      ║              SIDEBAR                 ║
@@ -841,26 +841,26 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
   <nav>
     <div class="nav-section">Görevler</div>
-    <a class="nav-item active" data-perm="all" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>Dashboard</a>
-    <a class="nav-item" data-perm="director" onclick="showPage('managed-firms')"><span class="nav-icon">⬡</span>Yönettiğim Firmalar</a>
-    <a class="nav-item" data-nav="tasks" data-perm="all" onclick="showPage('tasks')"><span class="nav-icon">⚡</span>Anlık Görevler</a>
-    <a class="nav-item" data-nav="support" data-perm="all" onclick="showTasksWithCat('support')"><span class="nav-icon">🆘</span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
-    <a class="nav-item" data-perm="all" onclick="showPage('pool')"><span class="nav-icon">🫧</span>Havuz<span class="nav-badge" id="pool-nav-badge" style="display:none;background:var(--accent);color:#06231d">0</span></a>
-    <a class="nav-item" data-perm="all" onclick="showPage('archive')"><span class="nav-icon">🗄️</span>Arşiv</a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('projects')"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('scheduled')"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item active" data-perm="all" data-click="nav" data-page="dashboard"><span class="nav-icon">⬡</span>Dashboard</a>
+    <a class="nav-item" data-perm="director" data-click="nav" data-page="managed-firms"><span class="nav-icon">⬡</span>Yönettiğim Firmalar</a>
+    <a class="nav-item" data-nav="tasks" data-perm="all" data-click="nav" data-page="tasks"><span class="nav-icon">⚡</span>Anlık Görevler</a>
+    <a class="nav-item" data-nav="support" data-perm="all" data-click="showTasksWithCat" data-cat="support"><span class="nav-icon">🆘</span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" data-perm="all" data-click="nav" data-page="pool"><span class="nav-icon">🫧</span>Havuz<span class="nav-badge" id="pool-nav-badge" style="display:none;background:var(--accent);color:#06231d">0</span></a>
+    <a class="nav-item" data-perm="all" data-click="nav" data-page="archive"><span class="nav-icon">🗄️</span>Arşiv</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="projects"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="scheduled"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Raporlama</div>
-    <a class="nav-item" data-perm="manager" onclick="showPage('report')"><span class="nav-icon">⬕</span>Aylık Rapor</a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('backups')"><span class="nav-icon">💾</span>Yedekler</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="report"><span class="nav-icon">⬕</span>Aylık Rapor</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="backups"><span class="nav-icon">💾</span>Yedekler</a>
     <div class="nav-section" data-perm="board" style="margin-top:8px">Ortak Çalışma</div>
-    <a class="nav-item" data-perm="board" onclick="showPage('board')"><span class="nav-icon">📋</span>Ortak Alan</a>
+    <a class="nav-item" data-perm="board" data-click="nav" data-page="board"><span class="nav-icon">📋</span>Ortak Alan</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
-    <a class="nav-item admin-item" data-perm="manager" onclick="showPage('admin')"><span class="nav-icon">👥</span>Kullanıcılar</a>
-    <a class="nav-item admin-item" data-perm="director" onclick="showPage('audit')"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
-    <a class="nav-item" data-perm="director" onclick="showPage('kb')"><span class="nav-icon">📚</span>Bilgi Bankası</a>
-    <a class="nav-item" data-perm="manager" onclick="showPage('settings')"><span class="nav-icon">⚙</span>Ayarlar</a>
+    <a class="nav-item admin-item" data-perm="manager" data-click="nav" data-page="admin"><span class="nav-icon">👥</span>Kullanıcılar</a>
+    <a class="nav-item admin-item" data-perm="director" data-click="nav" data-page="audit"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
+    <a class="nav-item" data-perm="director" data-click="nav" data-page="kb"><span class="nav-icon">📚</span>Bilgi Bankası</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="settings"><span class="nav-icon">⚙</span>Ayarlar</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
-    <a class="nav-item" data-perm="manager" onclick="showPage('notifications')"><span class="nav-icon">🔔</span>Bildirim Ayarları</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="notifications"><span class="nav-icon">🔔</span>Bildirim Ayarları</a>
   </nav>
 
   <div class="sidebar-footer">
@@ -890,38 +890,38 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <!-- v4.2 — Director+ kullanıcı filtresi -->
       <div id="firm-user-filter-wrap" style="display:none;align-items:center;gap:6px">
         <span style="font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.5px">👥 GÖRÜNTÜLE</span>
-        <select id="firm-user-filter" class="form-control" style="width:auto;min-width:180px;height:34px;padding:4px 10px;font-size:12px" onchange="onFirmUserChange()">
+        <select id="firm-user-filter" class="form-control" style="width:auto;min-width:180px;height:34px;padding:4px 10px;font-size:12px" data-change="onFirmUserChange">
           <option value="">— Kendim —</option>
         </select>
       </div>
       <div class="notif-wrap" id="notif-wrap">
-        <div class="notif-btn" onclick="toggleNotifDropdown()" title="Bildirimler">
+        <div class="notif-btn" data-click="toggleNotifDropdown" title="Bildirimler">
           🔔
           <div class="notif-dot" id="notif-dot" style="display:none"></div>
         </div>
         <div class="notif-dropdown hidden" id="notif-dropdown">
           <div class="notif-header">
             <span class="notif-title-label">BİLDİRİMLER</span>
-            <span class="notif-clear-btn" onclick="clearAllNotifs()">Tümünü temizle</span>
+            <span class="notif-clear-btn" data-click="clearAllNotifs">Tümünü temizle</span>
           </div>
           <div class="notif-list" id="notif-list"></div>
-          <div class="notif-footer-link" onclick="showPage('scheduled');closeNotifDropdown()">Zamanlanmış Görevlere Git →</div>
+          <div class="notif-footer-link" data-click="notifGoScheduled">Zamanlanmış Görevlere Git →</div>
         </div>
       </div>
       <div class="date-display">
         <div class="date-day" id="topbar-date-day"></div>
         <div class="date-full" id="topbar-date-full"></div>
       </div>
-      <button class="btn btn-primary btn-new-task" onclick="showPage('add')">＋ Yeni Görev</button>
+      <button class="btn btn-primary btn-new-task" data-click="nav" data-page="add">＋ Yeni Görev</button>
     </div>
   </div>
 
   <div class="kpi-row">
-    <div class="kpi c-teal kpi-clickable" title="Tüm görevleri göster" onclick="kpiJump('all')"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
-    <div class="kpi c-green kpi-clickable" title="Tamamlanan görevleri göster" onclick="kpiJump('done')"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
-    <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" onclick="kpiJump('open')"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
-    <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" onclick="kpiJump('overdue')"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
-    <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" onclick="kpiJump('backup')"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+    <div class="kpi c-teal kpi-clickable" title="Tüm görevleri göster" data-click="kpiJump" data-kind="all"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
+    <div class="kpi c-green kpi-clickable" title="Tamamlanan görevleri göster" data-click="kpiJump" data-kind="done"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
+    <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" data-click="kpiJump" data-kind="open"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
+    <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" data-click="kpiJump" data-kind="overdue"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
+    <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" data-click="kpiJump" data-kind="backup"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
   </div>
 
   <!-- v4.9 firma şeridi v4.10'da kaldırıldı: artık ayrı "Yönettiğim Firmalar" sayfası var. -->
@@ -940,18 +940,18 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card-header">
         <div class="card-title">BUGÜNÜN GÖREVLERİ</div>
         <div class="tabs" style="border:none;margin:0">
-          <div class="tab active" id="tab-all" onclick="filterTasks('all')">Tümü</div>
-          <div class="tab" id="tab-open" onclick="filterTasks('open')">Açık</div>
-          <div class="tab" id="tab-done" onclick="filterTasks('done')">Bitti</div>
+          <div class="tab active" id="tab-all" data-click="filterTasks" data-filter="all">Tümü</div>
+          <div class="tab" id="tab-open" data-click="filterTasks" data-filter="open">Açık</div>
+          <div class="tab" id="tab-done" data-click="filterTasks" data-filter="done">Bitti</div>
         </div>
       </div>
       <!-- v5.2 — kategori filtre satırı (durum filtresiyle birlikte çalışır) -->
       <div class="tabs" id="today-cat-tabs" style="border:none;padding:0 18px;margin:2px 0 4px 0;gap:4px;flex-wrap:wrap">
-        <div class="tab active" data-cat="" onclick="filterTasksByCat('')" style="font-size:10px;padding:4px 10px">Tüm Kategoriler</div>
-        <div class="tab" data-cat="task" onclick="filterTasksByCat('task')" style="font-size:10px;padding:4px 10px">Anlık</div>
-        <div class="tab" data-cat="project" onclick="filterTasksByCat('project')" style="font-size:10px;padding:4px 10px">Proje</div>
-        <div class="tab" data-cat="routine" onclick="filterTasksByCat('routine')" style="font-size:10px;padding:4px 10px">Rutin</div>
-        <div class="tab" data-cat="support" onclick="filterTasksByCat('support')" style="font-size:10px;padding:4px 10px">Destek</div>
+        <div class="tab active" data-cat="" data-click="filterTasksByCat" data-cat="" style="font-size:10px;padding:4px 10px">Tüm Kategoriler</div>
+        <div class="tab" data-cat="task" data-click="filterTasksByCat" data-cat="task" style="font-size:10px;padding:4px 10px">Anlık</div>
+        <div class="tab" data-cat="project" data-click="filterTasksByCat" data-cat="project" style="font-size:10px;padding:4px 10px">Proje</div>
+        <div class="tab" data-cat="routine" data-click="filterTasksByCat" data-cat="routine" style="font-size:10px;padding:4px 10px">Rutin</div>
+        <div class="tab" data-cat="support" data-click="filterTasksByCat" data-cat="support" style="font-size:10px;padding:4px 10px">Destek</div>
       </div>
       <div class="card-body" style="padding-top:6px;display:flex;flex-direction:column;flex:1;min-height:0" id="task-list-body"></div>
     </div>
@@ -994,9 +994,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card-header">
         <div class="card-title">HAFTALIK AKIŞ</div>
         <div class="tabs" id="weekly-period-tabs" role="tablist" aria-label="Hafta aralığı" style="border:none;margin:0">
-          <div class="tab active" role="tab" aria-selected="true" data-weeks="8" onclick="setWeeklyPeriod(8, this)">8 Hafta</div>
-          <div class="tab" role="tab" aria-selected="false" data-weeks="12" onclick="setWeeklyPeriod(12, this)">12 Hafta</div>
-          <div class="tab" role="tab" aria-selected="false" data-weeks="26" onclick="setWeeklyPeriod(26, this)">26 Hafta</div>
+          <div class="tab active" role="tab" aria-selected="true" data-weeks="8" data-click="setWeeklyPeriod" data-weeks="8">8 Hafta</div>
+          <div class="tab" role="tab" aria-selected="false" data-weeks="12" data-click="setWeeklyPeriod" data-weeks="12">12 Hafta</div>
+          <div class="tab" role="tab" aria-selected="false" data-weeks="26" data-click="setWeeklyPeriod" data-weeks="26">26 Hafta</div>
         </div>
       </div>
       <div class="card-body">
@@ -1016,14 +1016,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div class="topbar-right">
       <div class="view-toggle">
-        <button class="view-toggle-btn active" id="sched-btn-list" onclick="toggleSchedView('list')">☰ Liste</button>
-        <button class="view-toggle-btn" id="sched-btn-cal"  onclick="toggleSchedView('calendar')">📅 Takvim</button>
+        <button class="view-toggle-btn active" id="sched-btn-list" data-click="toggleSchedView" data-view="list">☰ Liste</button>
+        <button class="view-toggle-btn" id="sched-btn-cal"  data-click="toggleSchedView" data-view="calendar">📅 Takvim</button>
       </div>
       <div class="date-display">
         <div class="date-day" id="sched-date-day"></div>
         <div class="date-full" id="sched-date-full"></div>
       </div>
-      <button class="btn btn-primary btn-new-task" onclick="showPage('add');document.getElementById('new-cat').value='routine';onCatChange()">＋ Rutin Görev Ekle</button>
+      <button class="btn btn-primary btn-new-task" data-click="newTaskCat" data-cat="routine">＋ Rutin Görev Ekle</button>
     </div>
   </div>
 
@@ -1043,7 +1043,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="card-body">
           <div style="margin-bottom:10px">
             <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Periyot</label>
-            <select class="form-control" style="font-size:12px" id="sf-period" onchange="renderScheduledList()">
+            <select class="form-control" style="font-size:12px" id="sf-period" data-change="renderScheduledList">
               <option value="">Tümü</option>
               <option value="Günlük">Günlük</option>
               <option value="Haftalık">Haftalık</option>
@@ -1053,7 +1053,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
           <div style="margin-bottom:10px">
             <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Firma</label>
-            <select class="form-control" style="font-size:12px" id="sf-firm" onchange="renderScheduledList()">
+            <select class="form-control" style="font-size:12px" id="sf-firm" data-change="renderScheduledList">
               <option value="">Tümü</option>
               <option value="inventist">İnventist</option>
               <option value="assos">Assos</option>
@@ -1061,7 +1061,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
           <div style="margin-bottom:10px">
             <label class="form-label" style="font-size:9px;letter-spacing:.8px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px">Durum</label>
-            <select class="form-control" style="font-size:12px" id="sf-status" onchange="renderScheduledList()">
+            <select class="form-control" style="font-size:12px" id="sf-status" data-change="renderScheduledList">
               <option value="">Tümü</option>
               <option value="overdue">Gecikti</option>
               <option value="due">Bugün / Yakın</option>
@@ -1084,7 +1084,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
       <!-- AKTİF DÖNEM -->
       <div class="card">
-        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('active')">
+        <div class="card-header" style="cursor:pointer" data-click="toggleSchedSection" data-section="active">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="color:var(--accent)">▶</span> AKTİF DÖNEM
             <span id="sched-badge-active" style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
@@ -1101,7 +1101,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
       <!-- TAMAMLANDI -->
       <div class="card">
-        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('done')">
+        <div class="card-header" style="cursor:pointer" data-click="toggleSchedSection" data-section="done">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="color:var(--green)">✓</span> BU PERİYOT TAMAMLANDI
             <span id="sched-badge-done" style="background:var(--green);color:#000;border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
@@ -1114,7 +1114,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
       <!-- GELECEK DÖNEM -->
       <div class="card">
-        <div class="card-header" style="cursor:pointer" onclick="toggleSchedSection('upcoming')">
+        <div class="card-header" style="cursor:pointer" data-click="toggleSchedSection" data-section="upcoming">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             <span style="color:var(--text-muted)">📅</span> GELECEK DÖNEM
             <span id="sched-badge-upcoming" style="background:var(--surface3);color:var(--text-muted);border-radius:10px;padding:1px 8px;font-size:10px;display:none">0</span>
@@ -1134,10 +1134,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="card cal-wrap">
       <div class="cal-nav">
         <div class="cal-nav-center">
-          <button class="cal-nav-btn" onclick="calNavMonth(-1)">&#8249;</button>
+          <button class="cal-nav-btn" data-click="calNavMonth" data-dir="-1">&#8249;</button>
           <div class="cal-nav-title" id="cal-month-title"></div>
-          <button class="cal-nav-btn" onclick="calNavMonth(1)">&#8250;</button>
-          <button class="cal-today-btn" onclick="calGoToday()">Bugün</button>
+          <button class="cal-nav-btn" data-click="calNavMonth" data-dir="1">&#8250;</button>
+          <button class="cal-today-btn" data-click="calGoToday">Bugün</button>
         </div>
         <div class="cal-legend">
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent2)"></div>Gecikti</div>
@@ -1159,7 +1159,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title">Destek <span>Havuzu</span></div>
       <div class="page-sub">Atanmamış (henüz sahiplenilmemiş) portal talepleri — "Üstlen" ile kendinize çekin</div>
     </div>
-    <button class="btn btn-outline btn-sm" onclick="loadPoolPage()">↻ Yenile</button>
+    <button class="btn btn-outline btn-sm" data-click="loadPoolPage">↻ Yenile</button>
   </div>
   <div class="card">
     <div class="card-header"><div class="card-title">HAVUZDAKİ TALEPLER</div><div class="card-sub" id="pool-count-label">—</div></div>
@@ -1173,16 +1173,16 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title" id="tasks-page-title">Anlık <span>Görevler</span></div>
       <div class="page-sub" id="tasks-page-sub">Tek seferlik işler — destek, kurulum, ayar, bakım</div>
     </div>
-    <button class="btn btn-primary" id="tasks-add-btn" onclick="addTaskFromTasksView()">＋ Anlık Görev Ekle</button>
+    <button class="btn btn-primary" id="tasks-add-btn" data-click="addTaskFromTasksView">＋ Anlık Görev Ekle</button>
   </div>
   <div class="card">
     <div class="card-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input class="form-control" placeholder="Ara..." style="width:200px;padding:6px 10px;font-size:12px" oninput="filterFullList(this.value)">
-        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" onchange="filterFullByFirm(this.value)">
+        <input class="form-control" placeholder="Ara..." style="width:200px;padding:6px 10px;font-size:12px" data-input="filterFullList">
+        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" data-change="filterFullByFirm">
           <option value="">Tüm Firmalar</option><option value="inventist">İnventist</option><option value="assos">Assos</option>
         </select>
-        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" id="tasks-cat-filter" onchange="filterFullByCat(this.value)">
+        <select class="form-control" style="width:130px;padding:6px 10px;font-size:12px" id="tasks-cat-filter" data-change="filterFullByCat">
           <option value="task">Anlık Görev</option>
           <option value="backup">Config Backup</option>
           <option value="">Tüm Kategoriler</option>
@@ -1202,7 +1202,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Deadline'lı, çok günlü görevler ve durum notları</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-primary" onclick="showPage('add');document.getElementById('new-cat').value='project';onCatChange()">＋ Yeni Proje</button>
+      <button class="btn btn-primary" data-click="newTaskCat" data-cat="project">＋ Yeni Proje</button>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px">
@@ -1237,7 +1237,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="card">
         <div class="card-header"><div class="card-title">FİLTRE</div></div>
         <div class="card-body">
-          <select class="form-control" style="font-size:12px" id="proj-filter-firm" onchange="renderProjectsPage()">
+          <select class="form-control" style="font-size:12px" id="proj-filter-firm" data-change="renderProjectsPage">
             <option value="">Tüm Firmalar</option>
             <option value="inventist">İnventist</option>
             <option value="assos">Assos</option>
@@ -1274,7 +1274,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row">
           <div class="form-group">
             <label>Firma</label>
-            <select class="form-control" id="new-firm" onchange="updateTeamOptions()">
+            <select class="form-control" id="new-firm" data-change="updateTeamOptions">
               <option value="">— Firma Seçin —</option>
               <option value="inventist">İnventist</option>
               <option value="assos">Assos</option>
@@ -1291,7 +1291,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row">
           <div class="form-group">
             <label>Kategori</label>
-            <select class="form-control" id="new-cat" onchange="onCatChange()">
+            <select class="form-control" id="new-cat" data-change="onCatChange">
               <option value="">— Kategori Seçin —</option>
               <option value="task">Anlık Görev</option>
               <option value="support">Destek Talebi</option>
@@ -1372,12 +1372,12 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div id="checklist-section" class="hidden" style="margin-bottom:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <label style="margin:0">Kontrol Listesi <span style="font-size:10px;color:var(--text-muted)">(opsiyonel)</span></label>
-            <button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:10px" onclick="addChecklistItem()">＋ Adım Ekle</button>
+            <button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:10px" data-click="addChecklistItem">＋ Adım Ekle</button>
           </div>
           <div id="checklist-items" style="display:flex;flex-direction:column;gap:6px"></div>
           <div style="display:flex;gap:6px;margin-top:8px">
             <input class="form-control" id="new-checklist-item" placeholder="Adım ekle... (Enter ile)" style="font-size:12px"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();addChecklistItem()}">
+              data-enter="addChecklistItem">
           </div>
         </div>
 
@@ -1391,7 +1391,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
             </div>
           </div>
           <div class="upload-zone" id="upload-zone">
-            <input type="file" id="backup-file" accept=".cfg,.conf,.txt,.bin,.xml,.json,.tar,.gz,.zip" onchange="onFileSelected(this)">
+            <input type="file" id="backup-file" accept=".cfg,.conf,.txt,.bin,.xml,.json,.tar,.gz,.zip" data-change="onFileSelected">
             <div class="upload-icon">💾</div>
             <div class="upload-label">Dosyayı sürükleyin veya <strong>tıklayın</strong></div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px">.cfg · .conf · .bin · .xml · .txt · .zip</div>
@@ -1404,8 +1404,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </div>
 
         <div style="display:flex;gap:10px">
-          <button class="btn btn-primary" onclick="addTask()">Görevi Kaydet</button>
-          <button class="btn btn-outline" onclick="showPage('dashboard')">İptal</button>
+          <button class="btn btn-primary" data-click="addTask">Görevi Kaydet</button>
+          <button class="btn btn-outline" data-click="nav" data-page="dashboard">İptal</button>
         </div>
       </div>
     </div>
@@ -1420,8 +1420,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub" id="report-sub">Ay seçin ve PDF oluşturun</div>
     </div>
     <div class="topbar-right">
-      <select class="form-control" style="width:160px;font-size:12px" id="report-month-sel" onchange="onReportMonthChange()"></select>
-      <button class="btn btn-primary" onclick="sendReportMail()">📧 PDF Mail Gönder</button>
+      <select class="form-control" style="width:160px;font-size:12px" id="report-month-sel" data-change="onReportMonthChange"></select>
+      <button class="btn btn-primary" data-click="sendReportMail">📧 PDF Mail Gönder</button>
     </div>
   </div>
   <div class="grid-2">
@@ -1443,9 +1443,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <label>CC (Yönetici)</label>
           <input class="form-control" id="report-cc" placeholder="yonetici@sirket.com (opsiyonel)">
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="previewReportPdf()">&#8595; PDF Önizle / İndir</button>
-        <button class="btn btn-outline" style="width:100%;font-size:11px;margin-bottom:10px" onclick="sendReportMail()">📧 Seçili Aya Ait PDF'i Gönder</button>
-        <button class="btn btn-outline" style="width:100%;font-size:11px" onclick="exportTasksCsv()">&#8595; CSV İndir (Excel)</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:10px" data-click="previewReportPdf">&#8595; PDF Önizle / İndir</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px;margin-bottom:10px" data-click="sendReportMail">📧 Seçili Aya Ait PDF'i Gönder</button>
+        <button class="btn btn-outline" style="width:100%;font-size:11px" data-click="exportTasksCsv">&#8595; CSV İndir (Excel)</button>
       </div>
     </div>
   </div>
@@ -1458,8 +1458,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div id="mail-error-body" style="font-size:13px;line-height:1.7;margin-bottom:16px;white-space:pre-wrap"></div>
     <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--text-muted)" id="mail-error-hint" style="display:none"></div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('mail-error-modal').classList.add('hidden')">Kapat</button>
-      <button class="btn btn-primary btn-sm" onclick="showPage('settings');document.getElementById('mail-error-modal').classList.add('hidden')">⚙ SMTP Ayarlarına Git</button>
+      <button class="btn btn-outline btn-sm" data-click="hideModal" data-modal="mail-error-modal">Kapat</button>
+      <button class="btn btn-primary btn-sm" data-click="navHideModal" data-page="settings" data-modal="mail-error-modal">⚙ SMTP Ayarlarına Git</button>
     </div>
   </div>
 </div>
@@ -1472,7 +1472,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title">Config <span>Yedekler</span></div>
       <div class="page-sub">Yüklenen tüm config backup dosyaları · İndirme ve yönetim</div>
     </div>
-    <button class="btn btn-gold" onclick="showPage('add');document.getElementById('new-cat').value='backup';onCatChange()">💾 Yeni Backup Ekle</button>
+    <button class="btn btn-gold" data-click="newTaskCat" data-cat="backup">💾 Yeni Backup Ekle</button>
   </div>
 
   <div class="grid-3r" style="margin-bottom:18px">
@@ -1494,7 +1494,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="card-body">
           <div class="form-group" style="margin-bottom:10px">
             <label>Firma</label>
-            <select class="form-control" style="font-size:12px" onchange="filterBackups()" id="bk-filter-firm">
+            <select class="form-control" style="font-size:12px" data-change="filterBackups" id="bk-filter-firm">
               <option value="">Tümü</option>
               <option value="inventist">İnventist</option>
               <option value="assos">Assos</option>
@@ -1502,7 +1502,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
           <div class="form-group">
             <label>Ara</label>
-            <input class="form-control" style="font-size:12px" placeholder="Cihaz / başlık..." oninput="filterBackups()" id="bk-search">
+            <input class="form-control" style="font-size:12px" placeholder="Cihaz / başlık..." data-input="filterBackups" id="bk-search">
           </div>
         </div>
       </div>
@@ -1527,9 +1527,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Kim, ne zaman, ne yaptı · <span id="audit-scope-hint">Firmanız için tüm işlemler</span></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-outline btn-sm" onclick="exportAuditCsv()">&#8595; CSV</button>
-      <button class="btn btn-outline btn-sm" onclick="resetAuditFilters()">Sıfırla</button>
-      <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Yenile</button>
+      <button class="btn btn-outline btn-sm" data-click="exportAuditCsv">&#8595; CSV</button>
+      <button class="btn btn-outline btn-sm" data-click="resetAuditFilters">Sıfırla</button>
+      <button class="btn btn-primary btn-sm" data-click="loadAuditLog">Yenile</button>
     </div>
   </div>
 
@@ -1570,11 +1570,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('today')">Bugün</button>
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('7d')">Son 7 Gün</button>
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('30d')">Son 30 Gün</button>
-        <button class="btn btn-outline btn-sm" onclick="setAuditRange('month')">Bu Ay</button>
-        <button class="btn btn-primary btn-sm" onclick="loadAuditLog()">Uygula</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="today">Bugün</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="7d">Son 7 Gün</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="30d">Son 30 Gün</button>
+        <button class="btn btn-outline btn-sm" data-click="setAuditRange" data-range="month">Bu Ay</button>
+        <button class="btn btn-primary btn-sm" data-click="loadAuditLog">Uygula</button>
       </div>
     </div>
   </div>
@@ -1613,7 +1613,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-title">Kullanıcı <span>Yönetimi</span></div>
       <div class="page-sub">Sisteme kayıtlı tüm IT personeli · Admin yetkisi gerektirir</div>
     </div>
-    <button class="btn btn-gold" onclick="openInviteModal()">✉ Kullanıcı Davet Et</button>
+    <button class="btn btn-gold" data-click="openInviteModal">✉ Kullanıcı Davet Et</button>
   </div>
 
   <div class="grid-3r">
@@ -1702,9 +1702,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:14px">
           <div style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent3);margin-bottom:4px">⬡ Office 365 Entegrasyonu</div>
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Hesabınızı Microsoft 365 ile senkronize edin</div>
-          <button class="btn btn-outline btn-sm" onclick="showToast('ok','O365 OAuth sayfasına yönlendiriliyorsunuz...')">Microsoft ile Bağlan</button>
+          <button class="btn btn-outline btn-sm" data-click="toast" data-type="ok" data-msg="O365 OAuth sayfasına yönlendiriliyorsunuz...">Microsoft ile Bağlan</button>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="saveUserSettings()">Kaydet</button>
+        <button class="btn btn-primary btn-sm" data-click="saveUserSettings">Kaydet</button>
       </div>
     </div>
 
@@ -1719,7 +1719,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="inventist-teams-display"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
             <input class="form-control" id="inventist-new-team" placeholder="Yeni ekip adı..." style="font-size:12px;padding:6px 10px">
-            <button class="btn btn-outline btn-sm" onclick="addTeam('inventist')">＋ Ekle</button>
+            <button class="btn btn-outline btn-sm" data-click="addTeam" data-firm="inventist">＋ Ekle</button>
           </div>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:14px">
@@ -1729,11 +1729,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="assos-teams-display"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
             <input class="form-control" id="assos-new-team" placeholder="Yeni ekip adı..." style="font-size:12px;padding:6px 10px">
-            <button class="btn btn-outline btn-sm" onclick="addTeam('assos')">＋ Ekle</button>
+            <button class="btn btn-outline btn-sm" data-click="addTeam" data-firm="assos">＋ Ekle</button>
           </div>
         </div>
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-          <button class="btn btn-primary btn-sm" onclick="saveTeams()">Değişiklikleri Kaydet</button>
+          <button class="btn btn-primary btn-sm" data-click="saveTeams">Değişiklikleri Kaydet</button>
         </div>
       </div>
     </div>
@@ -1746,8 +1746,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="form-row"><div class="form-group"><label>SMTP Port</label><input class="form-control" id="smtp-port" value="587"></div><div class="form-group"><label>Gönderen Mail</label><input class="form-control" id="smtp-user" placeholder="it@inventist.com"></div></div>
         <div class="form-group" style="margin-bottom:12px"><label>Şifre / App Password</label><input class="form-control" id="smtp-pass" type="password" placeholder="••••••••"></div>
         <div style="display:flex;gap:8px;margin-top:14px">
-          <button class="btn btn-primary btn-sm" onclick="saveSmtpSettings()">Kaydet</button>
-          <button class="btn btn-outline btn-sm" onclick="testSmtp()">Bağlantıyı Test Et</button>
+          <button class="btn btn-primary btn-sm" data-click="saveSmtpSettings">Kaydet</button>
+          <button class="btn btn-outline btn-sm" data-click="testSmtp">Bağlantıyı Test Et</button>
         </div>
       </div>
     </div>
@@ -1761,7 +1761,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
             <div style="font-weight:600;font-size:13px">Otomatik atamayı etkinleştir</div>
             <div style="font-size:9px;color:var(--text-muted);margin-top:2px;max-width:340px">Açıkken portaldan gelen talepler aşağıdaki kurallara göre kişilere atanır. Eşleşme yoksa talep firma havuzuna düşer.</div>
           </div>
-          <label class="aa-switch"><input type="checkbox" id="aa-toggle" onchange="toggleAutoAssign(this.checked)"><span></span></label>
+          <label class="aa-switch"><input type="checkbox" id="aa-toggle" data-change="toggleAutoAssign"><span></span></label>
         </div>
         <div id="aa-toggle-hint" style="font-size:9px;color:var(--text-muted);margin-top:4px"></div>
 
@@ -1775,7 +1775,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div class="form-group" style="margin:0"><label>Anahtar Kelime (opsiyonel)</label><input class="form-control" id="aa-kw" placeholder="ör. yazıcı, vpn"></div>
           <div class="form-group" style="margin:0"><label>Atanacak Kişi</label><select class="form-control" id="aa-target"></select></div>
           <div class="form-group" style="margin:0"><label>Sıra</label><input class="form-control" id="aa-prio" type="number" value="100"></div>
-          <div style="display:flex;align-items:end"><button class="btn btn-primary btn-sm" onclick="addAssignRule()" style="width:100%">＋ Kural Ekle</button></div>
+          <div style="display:flex;align-items:end"><button class="btn btn-primary btn-sm" data-click="addAssignRule" style="width:100%">＋ Kural Ekle</button></div>
         </div>
       </div>
     </div>
@@ -1792,8 +1792,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <input class="form-control" id="teams-url" type="url" placeholder="https://outlook.office.com/webhook/...">
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-primary btn-sm" onclick="saveTeamsSettings()">Kaydet</button>
-          <button class="btn btn-outline btn-sm" onclick="testTeams()">Test Kartı Gönder</button>
+          <button class="btn btn-primary btn-sm" data-click="saveTeamsSettings">Kaydet</button>
+          <button class="btn btn-outline btn-sm" data-click="testTeams">Test Kartı Gönder</button>
         </div>
       </div>
     </div>
@@ -1808,14 +1808,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <div id="backup-types-display" style="margin:6px 0"></div>
           <div style="display:flex;gap:8px;margin-top:6px">
             <input class="form-control" id="backup-new-type" placeholder=".cfg" style="font-size:12px;padding:6px 10px;width:100px">
-            <button class="btn btn-outline btn-sm" onclick="addBackupType()">＋</button>
+            <button class="btn btn-outline btn-sm" data-click="addBackupType">＋</button>
           </div>
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label>Maks. Dosya Boyutu (MB)</label>
           <input class="form-control" value="50" type="number">
         </div>
-        <button class="btn btn-primary btn-sm" onclick="showToast('ok','Backup ayarları kaydedildi')">Kaydet</button>
+        <button class="btn btn-primary btn-sm" data-click="toast" data-type="ok" data-msg="Backup ayarları kaydedildi">Kaydet</button>
       </div>
     </div>
 
@@ -1881,7 +1881,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="saveNotificationSettings()">Kaydet</button>
+          <button class="btn btn-primary btn-sm" data-click="saveNotificationSettings">Kaydet</button>
         </div>
       </div>
     </div>
@@ -1893,8 +1893,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
           Şu an kaç göreviniz bildirim eşiğinde? Test maili atarak kendinize deneme yapabilirsiniz.
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-          <button class="btn btn-outline btn-sm" onclick="previewNotifications()">👁 Kapsamı Göster</button>
-          <button class="btn btn-primary btn-sm" onclick="runNotificationTest()">🔔 Test Mailini Gönder</button>
+          <button class="btn btn-outline btn-sm" data-click="previewNotifications">👁 Kapsamı Göster</button>
+          <button class="btn btn-primary btn-sm" data-click="runNotificationTest">🔔 Test Mailini Gönder</button>
         </div>
         <div id="notify-preview" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;font-size:11px;color:var(--text-muted);max-height:320px;overflow:auto;line-height:1.6"></div>
       </div>
@@ -1912,11 +1912,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:0 2px">
-    <input class="form-control" id="arch-q" placeholder="🔍 INV-XXXXXX, başlık, e-posta…" style="flex:1;min-width:220px" oninput="archSearchDebounced()">
-    <select class="form-control" id="arch-firm" style="width:150px" onchange="archSearch()">
+    <input class="form-control" id="arch-q" placeholder="🔍 INV-XXXXXX, başlık, e-posta…" style="flex:1;min-width:220px" data-input="archSearchDebounced">
+    <select class="form-control" id="arch-firm" style="width:150px" data-change="archSearch">
       <option value="">Tüm firmalar</option>
     </select>
-    <select class="form-control" id="arch-status" style="width:130px" onchange="archSearch()">
+    <select class="form-control" id="arch-status" style="width:130px" data-change="archSearch">
       <option value="all">Tümü</option>
       <option value="open">Açık</option>
       <option value="resolved">Çözülen</option>
@@ -1934,7 +1934,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="page-sub">Portal self-service çözüm makaleleri — yayınlananlar kullanıcıya görünür, talep sayısını azaltır</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-primary btn-sm" onclick="openKbEditor()">＋ Yeni Makale</button>
+      <button class="btn btn-primary btn-sm" data-click="openKbEditor">＋ Yeni Makale</button>
     </div>
   </div>
   <div id="kb-admin-list" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px"></div>
@@ -1959,10 +1959,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <input type="checkbox" id="kb-edit-published"> <span>Yayınla (portalda kullanıcıya görünür olsun)</span>
     </label>
     <div class="modal-actions">
-      <button class="btn btn-danger btn-sm" id="kb-edit-delete" onclick="deleteKbArticle()" style="display:none">Sil</button>
+      <button class="btn btn-danger btn-sm" id="kb-edit-delete" data-click="deleteKbArticle" style="display:none">Sil</button>
       <div style="flex:1"></div>
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('kb-editor-modal').classList.add('hidden')">İptal</button>
-      <button class="btn btn-primary btn-sm" onclick="saveKbArticle()">Kaydet</button>
+      <button class="btn btn-outline btn-sm" data-click="hideModal" data-modal="kb-editor-modal">İptal</button>
+      <button class="btn btn-primary btn-sm" data-click="saveKbArticle">Kaydet</button>
     </div>
   </div>
 </div>
@@ -1976,9 +1976,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
     </div>
     <div class="topbar-right">
       <div class="tabs mf-period-tabs" role="tablist" aria-label="Zaman aralığı">
-        <div class="tab active" role="tab" aria-selected="true" data-period="1m" onclick="setMfPeriod('1m', this)">Bu Ay</div>
-        <div class="tab" role="tab" aria-selected="false" data-period="3m" onclick="setMfPeriod('3m', this)">Son 3 Ay</div>
-        <div class="tab" role="tab" aria-selected="false" data-period="1y" onclick="setMfPeriod('1y', this)">Bu Yıl</div>
+        <div class="tab active" role="tab" aria-selected="true" data-period="1m" data-click="setMfPeriod" data-period="1m">Bu Ay</div>
+        <div class="tab" role="tab" aria-selected="false" data-period="3m" data-click="setMfPeriod" data-period="3m">Son 3 Ay</div>
+        <div class="tab" role="tab" aria-selected="false" data-period="1y" data-click="setMfPeriod" data-period="1y">Bu Yıl</div>
       </div>
     </div>
   </div>
@@ -1986,7 +1986,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="mf-loading" id="mf-loading">Yükleniyor…</div>
   </div>
   <!-- "X firma daha" expand butonu (super_admin için 6+ firma) -->
-  <button id="mf-expand-btn" class="mf-expand-btn" style="display:none" onclick="expandManagedFirms()">— firma daha göster</button>
+  <button id="mf-expand-btn" class="mf-expand-btn" style="display:none" data-click="expandManagedFirms">— firma daha göster</button>
   <!-- Boş durum -->
   <div id="mf-empty" class="mf-empty" style="display:none">
     <div class="mf-empty-glyph">⬡</div>
@@ -1999,23 +1999,23 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div id="page-board" class="page-section">
   <div class="board-header">
     <h1>📋 Ortak Alan</h1>
-    <button class="btn btn-primary btn-new-task" onclick="openNewCardModal('todo')">＋ Yeni Kart</button>
+    <button class="btn btn-primary btn-new-task" data-click="openNewCardModal" data-col="todo">＋ Yeni Kart</button>
   </div>
   <div class="board-container" id="board-container">
     <div class="board-column" data-col="todo">
       <div class="board-column-header">Yapılacak <span class="board-column-count" id="bc-todo">0</span></div>
       <div class="board-cards" id="board-col-todo"></div>
-      <button class="board-add-btn" onclick="openNewCardModal('todo')">＋ Kart Ekle</button>
+      <button class="board-add-btn" data-click="openNewCardModal" data-col="todo">＋ Kart Ekle</button>
     </div>
     <div class="board-column" data-col="in_progress">
       <div class="board-column-header">Devam Eden <span class="board-column-count" id="bc-in_progress">0</span></div>
       <div class="board-cards" id="board-col-in_progress"></div>
-      <button class="board-add-btn" onclick="openNewCardModal('in_progress')">＋ Kart Ekle</button>
+      <button class="board-add-btn" data-click="openNewCardModal" data-col="in_progress">＋ Kart Ekle</button>
     </div>
     <div class="board-column" data-col="review">
       <div class="board-column-header">İnceleme <span class="board-column-count" id="bc-review">0</span></div>
       <div class="board-cards" id="board-col-review"></div>
-      <button class="board-add-btn" onclick="openNewCardModal('review')">＋ Kart Ekle</button>
+      <button class="board-add-btn" data-click="openNewCardModal" data-col="review">＋ Kart Ekle</button>
     </div>
     <div class="board-column" data-col="done">
       <div class="board-column-header">Tamamlandı <span class="board-column-count" id="bc-done">0</span></div>
@@ -2044,10 +2044,10 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="bd-section" style="flex:1">
         <div class="bd-label">Kolon</div>
         <div class="bd-move-btns" id="bcard-col-btns">
-          <button data-col="todo" onclick="setBCardCol('todo')">Yapılacak</button>
-          <button data-col="in_progress" onclick="setBCardCol('in_progress')">Devam Eden</button>
-          <button data-col="review" onclick="setBCardCol('review')">İnceleme</button>
-          <button data-col="done" onclick="setBCardCol('done')">Tamamlandı</button>
+          <button data-col="todo" data-click="setBCardCol" data-col="todo">Yapılacak</button>
+          <button data-col="in_progress" data-click="setBCardCol" data-col="in_progress">Devam Eden</button>
+          <button data-col="review" data-click="setBCardCol" data-col="review">İnceleme</button>
+          <button data-col="done" data-click="setBCardCol" data-col="done">Tamamlandı</button>
         </div>
       </div>
     </div>
@@ -2055,11 +2055,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div class="bd-section" style="flex:1">
         <div class="bd-label">Renk</div>
         <div style="display:flex;gap:8px;" id="bcard-colors">
-          <div class="color-pick active" data-c="yellow" onclick="setBCardColor('yellow')"></div>
-          <div class="color-pick" data-c="green" onclick="setBCardColor('green')"></div>
-          <div class="color-pick" data-c="blue" onclick="setBCardColor('blue')"></div>
-          <div class="color-pick" data-c="pink" onclick="setBCardColor('pink')"></div>
-          <div class="color-pick" data-c="orange" onclick="setBCardColor('orange')"></div>
+          <div class="color-pick active" data-c="yellow" data-click="setBCardColor" data-color="yellow"></div>
+          <div class="color-pick" data-c="green" data-click="setBCardColor" data-color="green"></div>
+          <div class="color-pick" data-c="blue" data-click="setBCardColor" data-color="blue"></div>
+          <div class="color-pick" data-c="pink" data-click="setBCardColor" data-color="pink"></div>
+          <div class="color-pick" data-c="orange" data-click="setBCardColor" data-color="orange"></div>
         </div>
       </div>
       <div class="bd-section" style="flex:1">
@@ -2074,7 +2074,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div id="bcard-checklist"></div>
       <div style="display:flex;gap:6px;margin-top:6px;">
         <input class="form-control" id="bcard-cl-new" placeholder="Yeni madde..." style="font-size:12px;flex:1;">
-        <button class="btn btn-outline btn-sm" onclick="addBCardChecklistItem()">Ekle</button>
+        <button class="btn btn-outline btn-sm" data-click="addBCardChecklistItem">Ekle</button>
       </div>
     </div>
     <div class="bd-section" id="bcard-comments-section" style="display:none">
@@ -2082,14 +2082,14 @@ textarea.form-control{resize:vertical;min-height:64px;}
       <div id="bcard-comments-list"></div>
       <div style="display:flex;gap:6px;margin-top:8px;">
         <input class="form-control" id="bcard-comment-input" placeholder="Yorum yazın..." style="font-size:12px;flex:1;">
-        <button class="btn btn-outline btn-sm" onclick="addBCardComment()">Gönder</button>
+        <button class="btn btn-outline btn-sm" data-click="addBCardComment">Gönder</button>
       </div>
     </div>
     <div class="modal-actions" style="justify-content:space-between;">
-      <button class="btn btn-outline btn-sm" id="bcard-delete-btn" style="color:var(--danger);border-color:var(--danger);display:none" onclick="deleteBoardCard()">Sil</button>
+      <button class="btn btn-outline btn-sm" id="bcard-delete-btn" style="color:var(--danger);border-color:var(--danger);display:none" data-click="deleteBoardCard">Sil</button>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-outline btn-sm" onclick="closeBoardCardModal()">Kapat</button>
-        <button class="btn btn-primary btn-sm" onclick="saveBoardCard()">Kaydet</button>
+        <button class="btn btn-outline btn-sm" data-click="closeBoardCardModal">Kapat</button>
+        <button class="btn btn-primary btn-sm" data-click="saveBoardCard">Kaydet</button>
       </div>
     </div>
   </div>
@@ -2109,7 +2109,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="form-group">
         <label>Firma</label>
-        <select class="form-control" id="edit-task-firm" onchange="updateEditTeamOptions()">
+        <select class="form-control" id="edit-task-firm" data-change="updateEditTeamOptions">
           <option value="inventist">İnventist</option>
           <option value="assos">Assos</option>
         </select>
@@ -2184,7 +2184,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <span style="font-size:11px;font-weight:600;color:var(--gold);letter-spacing:.5px">💾 YÜKLÜ DOSYALAR</span>
         <label class="btn btn-sm" style="padding:3px 10px;font-size:10px;background:var(--gold-dim);border:1px solid rgba(244,185,66,.25);color:var(--gold);cursor:pointer">
           ＋ Dosya Ekle
-          <input type="file" id="edit-backup-upload-input" style="display:none" onchange="uploadBackupToTask()">
+          <input type="file" id="edit-backup-upload-input" style="display:none" data-change="uploadBackupToTask">
         </label>
       </div>
       <div id="edit-backup-file-list" style="padding:8px 14px;min-height:36px">
@@ -2199,11 +2199,11 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div id="edit-checklist-section" class="hidden" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <label style="margin:0;font-size:12px">Kontrol Listesi</label>
-        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:10px" onclick="addEditChecklistItem()">＋ Adım</button>
+        <button class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:10px" data-click="addEditChecklistItem">＋ Adım</button>
       </div>
       <div id="edit-checklist-items" style="display:flex;flex-direction:column;gap:5px"></div>
       <input class="form-control" id="edit-new-checklist-item" placeholder="Yeni adım..." style="font-size:11px;margin-top:6px"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();addEditChecklistItem()}">
+        data-enter="addEditChecklistItem">
     </div>
     <!-- v5.15 Faz B — Portal yazışması (yalnız portal kaynaklı case'lerde) -->
     </div><!-- /#edit-main -->
@@ -2212,30 +2212,30 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <span>🌐 PORTAL · <span id="edit-case-code" class="mono" style="color:var(--accent)"></span></span>
         <span style="display:flex;align-items:center;gap:10px">
           <span id="edit-case-reporter" style="font-size:10px;color:var(--text-muted);font-weight:400"></span>
-          <button id="edit-case-release" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px;display:none" onclick="releaseCase(parseInt(document.getElementById('edit-task-id').value))">🫧 Havuza Bırak</button>
-          <button id="edit-case-resolve" class="btn btn-primary btn-sm" style="padding:2px 10px;font-size:9px" onclick="resolveCase(parseInt(document.getElementById('edit-task-id').value))">✓ Çözüldü &amp; Kapat</button>
+          <button id="edit-case-release" class="btn btn-outline btn-sm" style="padding:2px 8px;font-size:9px;display:none" data-click="releaseCase">🫧 Havuza Bırak</button>
+          <button id="edit-case-resolve" class="btn btn-primary btn-sm" style="padding:2px 10px;font-size:9px" data-click="resolveCase">✓ Çözüldü &amp; Kapat</button>
         </span>
       </div>
       <div style="display:flex;border-bottom:1px solid var(--border)">
-        <div class="case-tab" id="case-tab-internal" onclick="caseTab('internal')" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent">📝 İç Notlar</div>
-        <div class="case-tab active" id="case-tab-it" onclick="caseTab('it')" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">💬 Kullanıcıya Yanıt <span id="case-it-badge" style="font-size:9px"></span></div>
+        <div class="case-tab" id="case-tab-internal" data-click="caseTab" data-tab="internal" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent">📝 İç Notlar</div>
+        <div class="case-tab active" id="case-tab-it" data-click="caseTab" data-tab="it" style="flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">💬 Kullanıcıya Yanıt <span id="case-it-badge" style="font-size:9px"></span></div>
       </div>
       <div style="padding:12px">
         <div id="case-thread" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:flex-end">
           <textarea id="case-msg-input" placeholder="Mesaj yazın…" style="flex:1;min-height:44px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:9px;font-size:12px;font-family:inherit;resize:vertical"></textarea>
-          <button class="btn btn-primary btn-sm" onclick="sendCaseMessage()">Gönder</button>
+          <button class="btn btn-primary btn-sm" data-click="sendCaseMessage">Gönder</button>
         </div>
         <div id="case-tab-hint" style="font-size:9.5px;color:var(--text-muted);margin-top:6px"></div>
       </div>
     </div>
     </div><!-- /#edit-cols -->
     <div class="modal-actions">
-      <button class="btn btn-danger btn-sm" onclick="deleteTask()">Sil</button>
-      <button class="btn btn-outline btn-sm" onclick="closeEditTaskModal()">İptal</button>
-      <button class="btn btn-sm" id="edit-complete-btn" onclick="saveAndCompleteTask()"
+      <button class="btn btn-danger btn-sm" data-click="deleteTask">Sil</button>
+      <button class="btn btn-outline btn-sm" data-click="closeEditTaskModal">İptal</button>
+      <button class="btn btn-sm" id="edit-complete-btn" data-click="saveAndCompleteTask"
         style="background:var(--green-dim);border:1px solid rgba(52,208,88,.3);color:var(--green)">✓ Tamamlandı</button>
-      <button class="btn btn-primary btn-sm" onclick="saveEditTask()">Kaydet</button>
+      <button class="btn btn-primary btn-sm" data-click="saveEditTask">Kaydet</button>
     </div>
   </div>
 </div>
@@ -2299,8 +2299,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
       </label>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="closeEditUserModal()">İptal</button>
-      <button class="btn btn-primary btn-sm" onclick="saveEditUser()">Kaydet</button>
+      <button class="btn btn-outline btn-sm" data-click="closeEditUserModal">İptal</button>
+      <button class="btn btn-primary btn-sm" data-click="saveEditUser">Kaydet</button>
     </div>
   </div>
 </div>
@@ -2319,8 +2319,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
       Kullanıcıya davet maili gönderilecek. Giriş için Microsoft 365 veya şifre oluşturabilecekler.
     </div>
     <div class="modal-actions">
-      <button class="btn btn-outline btn-sm" onclick="closeModal()">İptal</button>
-      <button class="btn btn-gold btn-sm" onclick="sendInvite()">✉ Davet Gönder</button>
+      <button class="btn btn-outline btn-sm" data-click="closeInviteModal">İptal</button>
+      <button class="btn btn-gold btn-sm" data-click="sendInvite">✉ Davet Gönder</button>
     </div>
   </div>
 </div>
@@ -2329,8 +2329,9 @@ textarea.form-control{resize:vertical;min-height:64px;}
 <div class="toast-wrap" id="toast-wrap"></div>
 
 <script defer src="/static/vendor/chart.umd.min.js?v={{ version }}"></script>
-<script defer src="/static/js/utils.js?v={{ version }}"></script>
-<script defer src="/static/app.js?v={{ version }}"></script>
-<script defer src="/static/js/audit.js?v={{ version }}"></script>
+<!-- app.js ÇEKİRDEK artık ESM (main.js import eder) — klasik tag kaldırıldı (ESM Faz 4f-son) -->
+<!-- utils/audit/managed-firms + tüm feature modülleri main.js üzerinden yüklenir -->
+<!-- ESM Faz 1 (v5.42): ES-module giriş kanalı — klasik script'lerin yanında. Bkz. docs/js-esm-migration-plan.md -->
+<script type="module" src="/static/js/main.js?v={{ version }}"></script>
 </body>
 </html>
