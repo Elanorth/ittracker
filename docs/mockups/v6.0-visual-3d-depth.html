@@ -1,0 +1,1643 @@
+<title>IT//TRACKER · Depth Study</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* ─────────────────────────────────────────────
+   Tokens — carries the current IT//TRACKER
+   identity (teal accent, hex mark, mono type)
+   and adds a depth-aware surface stack.
+   ───────────────────────────────────────────── */
+:root {
+  --ink: #eaf1f8;
+  --ink-dim: #8b9aad;
+  --ink-mute: #52627a;
+
+  /* Ground: cool near-black, biased toward the teal accent */
+  --void:      #04070b;
+  --abyss:     #070b12;
+  --surface-1: #0c131c;
+  --surface-2: #131c28;
+  --surface-3: #1a2532;
+
+  /* Accents carried from the product */
+  --teal:      #00e5c0;
+  --teal-lit:  #4ff9d6;
+  --teal-deep: #007a68;
+  --violet:    #7f6cf7;
+  --violet-lit:#a893ff;
+  --amber:     #f4b942;
+  --coral:     #ff5f6d;
+  --lime:      #34d058;
+
+  /* Depth primitives */
+  --rim:       rgba(255,255,255,.10);
+  --rim-hot:   rgba(255,255,255,.22);
+  --shade-lo:  rgba(0,0,0,.35);
+  --shade-hi:  rgba(0,0,0,.75);
+
+  --panel-radius: 22px;
+  --panel-radius-sm: 14px;
+}
+
+:root[data-theme="light"] {
+  --ink: #0a1220;
+  --ink-dim: #4a5769;
+  --ink-mute: #8695a9;
+  --void: #eef2f7;
+  --abyss: #e6ecf3;
+  --surface-1: #ffffff;
+  --surface-2: #f3f6fa;
+  --surface-3: #e8eef5;
+  --rim: rgba(255,255,255,.9);
+  --rim-hot: rgba(255,255,255,1);
+  --shade-lo: rgba(15,25,40,.08);
+  --shade-hi: rgba(15,25,40,.18);
+  --teal-deep: #a9f2e4;
+}
+
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Ambient background — soft radial glows suggesting the accent light
+   sources that the 3D chrome catches. Sits behind everything. */
+.stage-glow {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(60vw 60vw at 12% 10%, rgba(0,229,192,.10), transparent 55%),
+    radial-gradient(50vw 50vw at 92% 32%, rgba(127,108,247,.10), transparent 60%),
+    radial-gradient(80vw 40vw at 50% 100%, rgba(244,185,66,.06), transparent 65%);
+}
+:root[data-theme="light"] .stage-glow {
+  background:
+    radial-gradient(60vw 60vw at 12% 10%, rgba(0,229,192,.22), transparent 55%),
+    radial-gradient(50vw 50vw at 92% 32%, rgba(127,108,247,.18), transparent 60%);
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 1240px; margin: 0 auto; padding: 40px 32px 96px;
+}
+
+/* ─────────────────────────────────────────────
+   Editorial chrome — this page is a pitch, so
+   the wrapper is deliberately quiet. All the
+   noise lives inside the mockup panels.
+   ───────────────────────────────────────────── */
+.masthead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 22px; margin-bottom: 44px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+:root[data-theme="light"] .masthead { border-bottom-color: rgba(10,18,32,.08); }
+.mast-mark {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 700; letter-spacing: 2px;
+  color: var(--teal);
+}
+.mast-mark .hex-3d { width: 26px; height: 26px; }
+.mast-meta {
+  display: flex; gap: 20px; align-items: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.theme-swap {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid rgba(255,255,255,.12);
+  color: var(--ink-dim); font-family: inherit; font-size: 10px;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  letter-spacing: 1.4px; text-transform: uppercase;
+}
+:root[data-theme="light"] .theme-swap { border-color: rgba(10,18,32,.15); }
+.theme-swap:hover { color: var(--teal); border-color: rgba(0,229,192,.4); }
+
+/* Hero — one editorial statement, no giant type circus */
+.thesis {
+  display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px;
+  align-items: end; margin-bottom: 64px;
+}
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 18px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.eyebrow::before {
+  content: ""; width: 24px; height: 1px; background: var(--teal);
+}
+.thesis h1 {
+  font-family: 'Instrument Serif', 'Times New Roman', serif;
+  font-weight: 400; font-style: italic;
+  font-size: clamp(38px, 5.4vw, 68px);
+  line-height: 1.02; letter-spacing: -.5px;
+  text-wrap: balance;
+}
+.thesis h1 em {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-style: normal; font-weight: 600;
+  color: var(--teal);
+}
+.thesis-note {
+  color: var(--ink-dim); font-size: 15px; max-width: 46ch;
+}
+.thesis-note strong { color: var(--ink); font-weight: 600; }
+
+/* Section rhythm */
+.section { margin-top: 88px; }
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 24px; margin-bottom: 24px;
+}
+.section-head h2 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 22px; font-weight: 600; letter-spacing: -.2px;
+}
+.section-head h2 .num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; color: var(--teal); font-weight: 500;
+  margin-right: 10px; letter-spacing: 1px;
+}
+.section-head p {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.section-lead {
+  color: var(--ink-dim); font-size: 14px; max-width: 68ch;
+  margin: 0 0 28px; line-height: 1.6;
+}
+
+/* ─────────────────────────────────────────────
+   The workshop panel — a labeled bench where a
+   before/after or a component study lives. The
+   panel itself is quiet (rule + label + track)
+   so the depth inside reads clearly.
+   ───────────────────────────────────────────── */
+.bench {
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.015), transparent 60%);
+  padding: 24px;
+}
+:root[data-theme="light"] .bench {
+  border-color: rgba(10,18,32,.08);
+  background: linear-gradient(180deg, rgba(10,18,32,.02), transparent 60%);
+}
+.bench-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+.tile {
+  border-radius: var(--panel-radius);
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  min-height: 240px;
+  display: flex; flex-direction: column;
+}
+.tile-old {
+  /* Deliberately flat — mirrors the current product */
+  background: #080c10;
+  border: 1px solid #242d38;
+}
+:root[data-theme="light"] .tile-old { background: #f6f8fb; border-color: #d9e1eb; }
+.tile-new {
+  /* Depth-aware surface: layered gradient + rim + ambient shadow */
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(0,229,192,.10), transparent 55%),
+    linear-gradient(180deg, #16202d 0%, #0a121c 100%);
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 0 0 1px rgba(255,255,255,.02),
+    0 40px 60px -30px rgba(0,229,192,.18),
+    0 22px 40px -18px rgba(0,0,0,.55);
+}
+:root[data-theme="light"] .tile-new {
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(0,229,192,.20), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+  border-color: rgba(10,18,32,.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    0 40px 60px -30px rgba(0,229,192,.35),
+    0 22px 40px -18px rgba(15,25,40,.15);
+}
+.tile-tag {
+  position: absolute; top: 14px; right: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(255,255,255,.05); color: var(--ink-mute);
+  border: 1px solid rgba(255,255,255,.06);
+  z-index: 5;
+}
+:root[data-theme="light"] .tile-tag { background: rgba(10,18,32,.04); border-color: rgba(10,18,32,.08); }
+.tile-tag.now { color: var(--teal); border-color: rgba(0,229,192,.3); background: rgba(0,229,192,.08); }
+
+/* ─────────────────────────────────────────────
+   1. LOGO / BRAND MARK
+   Flat clipped-hex → layered hex with facet
+   shading and a rim highlight.
+   ───────────────────────────────────────────── */
+.brand-row { display: flex; gap: 40px; align-items: center; justify-content: center; margin: 24px 0 6px; }
+.brand-slot { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.brand-caption {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.hex-flat {
+  width: 72px; height: 72px; background: var(--teal);
+  clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+}
+
+/* ─────────────────────────────────────────────
+   2. BUTTONS
+   Flat pill fills → dual-layer buttons with a
+   rim light on top, ambient shadow below, and
+   a live gradient face.
+   ───────────────────────────────────────────── */
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: auto; }
+
+/* Old (current product) */
+.btn-legacy {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: .3px;
+  padding: 8px 16px; border-radius: 7px;
+  border: none; cursor: pointer;
+}
+.btn-legacy.primary { background: var(--teal); color: #080c10; }
+.btn-legacy.outline { background: transparent; border: 1px solid #2e3a47; color: var(--ink-dim); }
+.btn-legacy.ghost   { background: rgba(255,95,109,.1); color: var(--coral); border: 1px solid rgba(255,95,109,.25); }
+
+/* New — 3D depth */
+.btn-3d {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12.5px; font-weight: 600; letter-spacing: .2px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: none; cursor: pointer; position: relative;
+  isolation: isolate;
+  transition: transform .12s ease, box-shadow .18s ease;
+}
+.btn-3d::before {
+  /* Top rim highlight — the "polished edge" of the key */
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none;
+  background: linear-gradient(180deg, var(--rim-hot), transparent 40%, rgba(0,0,0,.35));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  z-index: 2;
+}
+.btn-3d:hover { transform: translateY(-1px); }
+.btn-3d:active { transform: translateY(1px); }
+
+.btn-3d.primary {
+  color: #041712;
+  background:
+    linear-gradient(180deg, #6cffe0 0%, #00e5c0 38%, #00b294 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -8px 14px rgba(0,80,66,.35),
+    0 10px 22px -8px rgba(0,229,192,.60),
+    0 4px 10px -2px rgba(0,0,0,.35);
+}
+.btn-3d.outline {
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 0 0 1px rgba(255,255,255,.06),
+    0 6px 14px -6px rgba(0,0,0,.55);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+.btn-3d.ghost {
+  color: #ffd6db;
+  background: linear-gradient(180deg, #ff8993 0%, #ff5f6d 40%, #c73543 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -8px 14px rgba(120,20,30,.4),
+    0 10px 22px -8px rgba(255,95,109,.55),
+    0 4px 10px -2px rgba(0,0,0,.35);
+}
+:root[data-theme="light"] .btn-3d.outline {
+  color: var(--ink);
+  background: linear-gradient(180deg, #ffffff, #eef2f7);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    inset 0 0 0 1px rgba(10,18,32,.08),
+    0 6px 14px -6px rgba(15,25,40,.2);
+}
+
+/* ─────────────────────────────────────────────
+   3. ICONS
+   Emoji glyphs (🔔 ⚡ 📁 ⚙) → layered SVG marks
+   with a base disk, a face, and a highlight
+   arc. Consistent colour temperature per role.
+   ───────────────────────────────────────────── */
+.icon-strip {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 14px; margin-top: 6px;
+}
+.icon-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.icon-cell .lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 1px; color: var(--ink-mute);
+  text-transform: uppercase;
+}
+.icon-flat {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: #1a2532; color: var(--ink-dim); font-size: 18px;
+}
+.icon-3d {
+  width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+}
+.icon-3d svg { width: 100%; height: 100%; filter: drop-shadow(0 8px 12px rgba(0,0,0,.4)); }
+
+/* ─────────────────────────────────────────────
+   4. SIDEBAR
+   ───────────────────────────────────────────── */
+.side-mock {
+  width: 260px;
+  border-radius: 20px;
+  padding: 16px 0;
+  font-size: 12.5px;
+}
+/* Old */
+.side-old {
+  background: #0f1419; border: 1px solid #242d38;
+  color: var(--ink-dim);
+}
+.side-old .s-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 18px; border-left: 2px solid transparent;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+.side-old .s-item.active {
+  color: var(--teal); background: rgba(0,229,192,.08);
+  border-left-color: var(--teal);
+}
+.side-old .s-item .em { font-size: 14px; opacity: .8; }
+.side-old .s-cat {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: #3d4f61; padding: 8px 18px 4px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+/* New — glass sidebar with pill selection and dimensional icons */
+.side-new {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 30px 60px -20px rgba(0,0,0,.6);
+  backdrop-filter: blur(20px) saturate(1.4);
+  padding: 18px 12px;
+}
+:root[data-theme="light"] .side-new {
+  background: linear-gradient(180deg, #ffffff, #f3f6fa);
+  border-color: rgba(10,18,32,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 30px 60px -20px rgba(15,25,40,.18);
+}
+.side-new .s-cat {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; color: var(--ink-mute); padding: 12px 14px 6px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.side-new .s-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; margin: 2px 4px; border-radius: 12px;
+  color: var(--ink-dim); cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  position: relative;
+}
+.side-new .s-item .glyph {
+  width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.03);
+}
+:root[data-theme="light"] .side-new .s-item .glyph {
+  background: linear-gradient(180deg, #ffffff, #e8eef5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 0 0 1px rgba(10,18,32,.06);
+}
+.side-new .s-item.active {
+  color: #041712;
+  background:
+    linear-gradient(180deg, rgba(108,255,224,.9) 0%, rgba(0,229,192,.85) 60%, rgba(0,178,148,.85) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.6),
+    inset 0 -6px 10px rgba(0,80,66,.25),
+    0 12px 24px -10px rgba(0,229,192,.6),
+    0 4px 10px -2px rgba(0,0,0,.4);
+}
+.side-new .s-item.active .glyph {
+  background: rgba(4,23,18,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+}
+.side-new .s-item .badge {
+  margin-left: auto; font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; font-weight: 700;
+  background: var(--coral); color: #fff;
+  padding: 1px 7px; border-radius: 999px;
+  box-shadow: 0 4px 10px -2px rgba(255,95,109,.6), inset 0 1px 0 rgba(255,255,255,.35);
+}
+
+/* ─────────────────────────────────────────────
+   5. KPI CARDS
+   ───────────────────────────────────────────── */
+.kpi-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 8px;
+}
+/* Old */
+.kpi-old {
+  background: #0f1419; border: 1px solid #242d38; border-radius: 10px;
+  padding: 18px; position: relative; overflow: hidden;
+}
+.kpi-old::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--teal);
+}
+.kpi-old .lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--ink-mute); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.kpi-old .val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 30px; font-weight: 700; color: var(--teal); line-height: 1;
+}
+.kpi-old .sub { font-size: 10px; color: var(--ink-mute); margin-top: 6px; }
+.kpi-old .glyph { position: absolute; top: 14px; right: 14px; font-size: 18px; opacity: .25; }
+
+/* New — 3D depth KPI: floating disk of accent color under number,
+   glass card with rim, orbital badge for trend */
+.kpi-new {
+  position: relative; padding: 20px 20px 24px;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(0,229,192,.16), transparent 55%),
+    linear-gradient(180deg, #182534 0%, #0b131e 100%);
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 26px 50px -22px rgba(0,229,192,.35),
+    0 14px 30px -12px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+:root[data-theme="light"] .kpi-new {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(0,229,192,.28), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #edf2f8 100%);
+  border-color: rgba(10,18,32,.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    0 26px 50px -22px rgba(0,229,192,.35),
+    0 14px 30px -12px rgba(15,25,40,.14);
+}
+.kpi-new.k-coral {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255,95,109,.18), transparent 55%),
+    linear-gradient(180deg, #2a1620 0%, #0b131e 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 26px 50px -22px rgba(255,95,109,.4), 0 14px 30px -12px rgba(0,0,0,.55);
+}
+.kpi-new.k-violet {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(127,108,247,.22), transparent 55%),
+    linear-gradient(180deg, #1a1a35 0%, #0b131e 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 26px 50px -22px rgba(127,108,247,.45), 0 14px 30px -12px rgba(0,0,0,.55);
+}
+:root[data-theme="light"] .kpi-new.k-coral {
+  background: radial-gradient(120% 80% at 50% 0%, rgba(255,95,109,.28), transparent 55%), linear-gradient(180deg, #fff, #ffeef1);
+}
+:root[data-theme="light"] .kpi-new.k-violet {
+  background: radial-gradient(120% 80% at 50% 0%, rgba(127,108,247,.28), transparent 55%), linear-gradient(180deg, #fff, #f0edff);
+}
+.kpi-new .lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute); margin-bottom: 12px;
+}
+.kpi-new .val-wrap { display: flex; align-items: baseline; gap: 10px; }
+.kpi-new .val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 40px; font-weight: 700; line-height: 1;
+  color: var(--teal);
+  text-shadow: 0 0 30px rgba(0,229,192,.35);
+}
+.kpi-new.k-coral .val  { color: #ff8993; text-shadow: 0 0 30px rgba(255,95,109,.35); }
+.kpi-new.k-violet .val { color: var(--violet-lit); text-shadow: 0 0 30px rgba(127,108,247,.35); }
+:root[data-theme="light"] .kpi-new .val  { color: #009e83; text-shadow: none; }
+:root[data-theme="light"] .kpi-new.k-coral .val { color: #d43a48; text-shadow: none; }
+:root[data-theme="light"] .kpi-new.k-violet .val { color: #6653d6; text-shadow: none; }
+
+.kpi-new .trend {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(52,208,88,.25), rgba(52,208,88,.08));
+  color: var(--lime);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(52,208,88,.25);
+}
+.kpi-new .trend.dn {
+  background: linear-gradient(180deg, rgba(255,95,109,.25), rgba(255,95,109,.08));
+  color: #ff8993;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(255,95,109,.25);
+}
+.kpi-new .sub {
+  font-size: 11px; color: var(--ink-mute); margin-top: 8px;
+}
+.kpi-new .orb {
+  position: absolute; top: 14px; right: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%),
+    linear-gradient(160deg, rgba(0,229,192,.45), rgba(0,229,192,.05));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 12px -4px rgba(0,229,192,.5);
+  display: flex; align-items: center; justify-content: center;
+}
+.kpi-new.k-coral .orb {
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%), linear-gradient(160deg, rgba(255,95,109,.5), rgba(255,95,109,.05));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 12px -4px rgba(255,95,109,.5);
+}
+.kpi-new.k-violet .orb {
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%), linear-gradient(160deg, rgba(127,108,247,.5), rgba(127,108,247,.05));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 12px -4px rgba(127,108,247,.5);
+}
+
+/* ─────────────────────────────────────────────
+   6. CHARTS
+   Flat bars / flat pie → gradient bars with a
+   ground shadow + a rim, and a torus donut with
+   depth shading and a floating center dot.
+   ───────────────────────────────────────────── */
+.chart-wrap {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  align-items: stretch;
+}
+.chart-tile { padding: 20px 22px; }
+.chart-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute); margin-bottom: 18px;
+}
+
+/* OLD bars — flat */
+.bar-old {
+  display: flex; align-items: flex-end; gap: 10px; height: 140px;
+  padding-top: 20px;
+}
+.bar-old .col {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.bar-old .b {
+  width: 100%; background: var(--teal); border-radius: 2px;
+}
+.bar-old .n {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--ink-mute);
+}
+
+/* NEW bars — 3D depth */
+.bar-3d {
+  display: flex; align-items: flex-end; gap: 12px; height: 160px;
+  padding: 20px 4px 0;
+  position: relative;
+}
+.bar-3d::before {
+  /* Ground plane / floor line */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+}
+:root[data-theme="light"] .bar-3d::before {
+  background: linear-gradient(90deg, transparent, rgba(10,18,32,.10), transparent);
+}
+.bar-3d .col {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  position: relative;
+}
+.bar-3d .b {
+  width: 100%; border-radius: 8px 8px 4px 4px;
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.4),
+    inset 0 -8px 14px rgba(0,80,66,.35),
+    0 8px 16px -4px rgba(0,229,192,.35);
+}
+.bar-3d .b.teal   { background: linear-gradient(180deg, #6cffe0 0%, #00e5c0 45%, #00b294 100%); }
+.bar-3d .b.violet {
+  background: linear-gradient(180deg, #b19dff 0%, #7f6cf7 45%, #5a49d1 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -8px 14px rgba(50,40,120,.35), 0 8px 16px -4px rgba(127,108,247,.35);
+}
+.bar-3d .n {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-dim);
+  font-weight: 600;
+}
+.bar-3d .dow {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--ink-mute);
+  letter-spacing: .8px;
+}
+
+/* Chart legend */
+.chart-legend {
+  display: flex; gap: 16px; justify-content: center; margin-top: 12px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-mute);
+}
+.chart-legend .dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;
+  vertical-align: middle;
+}
+.chart-legend .dot.teal   { background: var(--teal); box-shadow: 0 0 8px rgba(0,229,192,.7); }
+.chart-legend .dot.violet { background: var(--violet); box-shadow: 0 0 8px rgba(127,108,247,.7); }
+
+/* ─────────────────────────────────────────────
+   7. TASK ROW / TAGS / CHECKBOX
+   ───────────────────────────────────────────── */
+.task-mock { padding: 18px 20px; }
+.task-title-lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute); margin-bottom: 14px;
+}
+
+/* Old */
+.trow-old {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: start;
+  padding: 11px 0; border-bottom: 1px solid #242d38;
+}
+.trow-old:last-child { border-bottom: none; }
+.trow-old .cb {
+  width: 16px; height: 16px; border: 1.5px solid #2e3a47; border-radius: 4px;
+  margin-top: 2px;
+}
+.trow-old .cb.done {
+  background: var(--lime); border-color: var(--lime);
+  display: flex; align-items: center; justify-content: center;
+  color: #051a0a; font-size: 10px; font-weight: 900;
+}
+.trow-old .cb.done::after { content: "✓"; }
+.trow-old .title { font-size: 13px; }
+.trow-old .title.done { text-decoration: line-through; color: var(--ink-mute); }
+.trow-old .meta {
+  font-size: 10px; color: var(--ink-mute); margin-top: 3px;
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+}
+.trow-old .tag-old {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; font-weight: 700; letter-spacing: .6px;
+  padding: 2px 7px; border-radius: 4px;
+}
+.trow-old .tag-old.routine { background: rgba(0,229,192,.10); color: var(--teal); }
+.trow-old .tag-old.support { background: rgba(127,108,247,.10); color: var(--violet); }
+.trow-old .tag-old.infra   { background: rgba(255,95,109,.10); color: var(--coral); }
+.trow-old .prio {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+  background: rgba(244,185,66,.10); color: var(--amber);
+}
+.trow-old .dl {
+  font-size: 9px; padding: 3px 7px; border-radius: 4px;
+  background: rgba(255,95,109,.10); color: var(--coral);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* New */
+.trow-new {
+  display: grid; grid-template-columns: 26px 1fr auto; gap: 14px; align-items: center;
+  padding: 12px 14px; margin: 6px 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+  transition: background .15s ease;
+}
+.trow-new:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+}
+:root[data-theme="light"] .trow-new { background: linear-gradient(180deg, rgba(10,18,32,.02), transparent); }
+:root[data-theme="light"] .trow-new:hover { background: linear-gradient(180deg, rgba(10,18,32,.05), rgba(10,18,32,.01)); }
+.trow-new .cb3 {
+  width: 22px; height: 22px; border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
+  display: flex; align-items: center; justify-content: center;
+}
+:root[data-theme="light"] .trow-new .cb3 {
+  background: linear-gradient(180deg, #fff, #e8eef5);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 0 0 1px rgba(10,18,32,.08);
+}
+.trow-new .cb3.done {
+  background: linear-gradient(180deg, #6cffb0 0%, #34d058 45%, #1d9c3f 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -3px 6px rgba(15,80,30,.4),
+    0 6px 14px -4px rgba(52,208,88,.6);
+  color: #041a0c; font-size: 11px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.trow-new .cb3.done::after { content: "✓"; }
+.trow-new .title {
+  font-size: 13.5px; font-weight: 500;
+}
+.trow-new .title.done { text-decoration: line-through; color: var(--ink-mute); }
+.trow-new .meta {
+  font-size: 11px; color: var(--ink-mute); margin-top: 4px;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.pill3 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .4px;
+  padding: 3px 9px; border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.pill3.routine { background: linear-gradient(180deg, rgba(0,229,192,.35), rgba(0,229,192,.10)); color: var(--teal-lit); }
+.pill3.support { background: linear-gradient(180deg, rgba(127,108,247,.35), rgba(127,108,247,.10)); color: var(--violet-lit); }
+.pill3.infra   { background: linear-gradient(180deg, rgba(255,95,109,.35), rgba(255,95,109,.10)); color: #ffa1a9; }
+.pill3.prio-hi { background: linear-gradient(180deg, rgba(244,185,66,.35), rgba(244,185,66,.10)); color: #ffd06f; }
+:root[data-theme="light"] .pill3.routine { color: #007a68; }
+:root[data-theme="light"] .pill3.support { color: #4432c2; }
+:root[data-theme="light"] .pill3.infra   { color: #a92830; }
+:root[data-theme="light"] .pill3.prio-hi { color: #8a6218; }
+
+.dl3 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  padding: 5px 10px; border-radius: 10px;
+  background: linear-gradient(180deg, #ff8993 0%, #ff5f6d 45%, #c73543 100%);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -3px 6px rgba(120,20,30,.4),
+    0 6px 14px -4px rgba(255,95,109,.5);
+  align-self: center;
+}
+
+/* ─────────────────────────────────────────────
+   Callout — inline commentary between blocks
+   ───────────────────────────────────────────── */
+.note-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  margin-top: 20px;
+}
+.note {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .note {
+  background: linear-gradient(180deg, rgba(10,18,32,.02), rgba(10,18,32,.005));
+  border-color: rgba(10,18,32,.06);
+}
+.note h4 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 8px;
+}
+.note p { font-size: 12.5px; color: var(--ink-dim); line-height: 1.55; }
+
+/* ─────────────────────────────────────────────
+   Foot
+   ───────────────────────────────────────────── */
+.foot {
+  margin-top: 96px; padding-top: 32px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+:root[data-theme="light"] .foot { border-top-color: rgba(10,18,32,.08); }
+.foot .lm { color: var(--teal); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .thesis { grid-template-columns: 1fr; gap: 24px; }
+  .bench-grid { grid-template-columns: 1fr; }
+  .kpi-row { grid-template-columns: 1fr; }
+  .chart-wrap { grid-template-columns: 1fr; }
+  .note-grid { grid-template-columns: 1fr; }
+  .icon-strip { grid-template-columns: repeat(3, 1fr); }
+  .side-mock { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="stage-glow"></div>
+
+<div class="wrap">
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="mast-mark">
+      <svg class="hex-3d" viewBox="0 0 40 40" aria-hidden="true">
+        <defs>
+          <linearGradient id="hex-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6cffe0"/>
+            <stop offset="55%" stop-color="#00e5c0"/>
+            <stop offset="100%" stop-color="#00806b"/>
+          </linearGradient>
+          <linearGradient id="hex-rim" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(255,255,255,.9)"/>
+            <stop offset="55%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+        </defs>
+        <polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/>
+        <polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="none" stroke="url(#hex-rim)" stroke-width="1"/>
+        <polygon points="20,6 33,13 33,27 20,34 7,27 7,13" fill="none" stroke="rgba(4,23,18,.35)" stroke-width=".5"/>
+      </svg>
+      IT//TRACKER · DEPTH STUDY
+    </div>
+    <div class="mast-meta">
+      <span>v5.34 → v6.0 · Görsel Dil Önerisi</span>
+      <button class="theme-swap" id="themeSwap" type="button">☾ Aydınlık</button>
+    </div>
+  </header>
+
+  <!-- Thesis -->
+  <section class="thesis">
+    <div>
+      <div class="eyebrow">Görsel Analiz · Yönlendirilmiş Tez</div>
+      <h1>Terminal estetiğini <em>bırakmadan</em>, arayüze cam, ışık ve derinlik ekleyelim.</h1>
+    </div>
+    <div class="thesis-note">
+      <p>
+        <strong>Mevcut ürün</strong> düz renkli, keskin kenarlı, tek katmanlı bir "operatör konsolu" hissi veriyor —
+        IBM Plex Mono / hex logo / dar aksant paleti bu dili çok iyi kuruyor. Bu kimliği
+        <em>silmeden</em>, iOS 26 <strong>Liquid Glass</strong>, One UI 8 ve
+        Material 3 Expressive'in getirdiği <strong>çok katmanlı derinliği</strong> — cam yüzeyler,
+        ışık dudağı (rim light), yumuşak yer gölgesi, gradyanlı ikonlar — üzerine bindirmek
+        arayüzü <em>modern telefon OS'lerinin</em> okunabilirliğine ve dokunma hissine yaklaştırıyor.
+      </p>
+      <p style="margin-top:10px">
+        Aşağıda mevcut bileşenlerin birebir "önce / sonra" karşılaştırması var. Sağ paneller
+        yalnızca CSS ile üretildi; hiçbir görsel resmi hile değil — hepsi doğrudan
+        <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:12px">app.html</code>
+        stiline geçirilebilir.
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ─── 1. LOGO / MARK ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">01</span>Logo & Marka İşareti</h2>
+      <p>Clip-path hex → çok katmanlı 3B hex</p>
+    </div>
+    <p class="section-lead">
+      Aynı hexagon geometrisi, aynı teal — ama artık üstte kaymış bir <em>ışık dudağı</em>,
+      içte facet çizgisi, altta yumuşak bir gölge var. Marka değişmiyor; sadece
+      "basılabilir bir objeye" dönüşüyor.
+    </p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="tile tile-old">
+          <span class="tile-tag">Mevcut · v5.34</span>
+          <div class="brand-row">
+            <div class="brand-slot">
+              <div class="hex-flat"></div>
+              <div class="brand-caption">Flat clip-path</div>
+            </div>
+          </div>
+          <div style="margin-top:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-mute);letter-spacing:1.2px">
+            .logo-hex { clip-path: polygon(...); background: var(--accent); }
+          </div>
+        </div>
+
+        <div class="tile tile-new">
+          <span class="tile-tag now">Öneri · v6.0</span>
+          <div class="brand-row">
+            <div class="brand-slot">
+              <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden="true">
+                <defs>
+                  <linearGradient id="hex-big-g" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#7dffe4"/>
+                    <stop offset="45%" stop-color="#00e5c0"/>
+                    <stop offset="100%" stop-color="#006b5a"/>
+                  </linearGradient>
+                  <linearGradient id="hex-big-rim" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="rgba(255,255,255,.95)"/>
+                    <stop offset="45%" stop-color="rgba(255,255,255,0)"/>
+                    <stop offset="100%" stop-color="rgba(0,0,0,.4)"/>
+                  </linearGradient>
+                  <filter id="hex-shadow" x="-30%" y="-20%" width="160%" height="160%">
+                    <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                    <feOffset dx="0" dy="6"/>
+                    <feColorMatrix values="0 0 0 0 0   0 0 0 0 0.9  0 0 0 0 0.75   0 0 0 .5 0"/>
+                    <feBlend in="SourceGraphic" mode="normal"/>
+                  </filter>
+                </defs>
+                <polygon points="40,4 73,22 73,58 40,76 7,58 7,22" fill="url(#hex-big-g)" filter="url(#hex-shadow)"/>
+                <polygon points="40,4 73,22 73,58 40,76 7,58 7,22" fill="none" stroke="url(#hex-big-rim)" stroke-width="1.5"/>
+                <polygon points="40,12 66,26 66,54 40,68 14,54 14,26" fill="none" stroke="rgba(255,255,255,.12)" stroke-width=".5"/>
+                <polygon points="40,4 73,22 40,40 7,22" fill="rgba(255,255,255,.08)"/>
+              </svg>
+              <div class="brand-caption">Layered SVG · rim + facet + shadow</div>
+            </div>
+          </div>
+          <div style="margin-top:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-mute);letter-spacing:1.2px">
+            SVG · linear-gradient face · white rim · soft drop-shadow
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── 2. BUTTONS ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">02</span>Düğmeler</h2>
+      <p>Düz dolgu → çift katmanlı 3B düğme</p>
+    </div>
+    <p class="section-lead">
+      Her düğme artık üç katmanlı: (1) alttaki renk gövdesi bir <em>dikey gradyan</em>,
+      (2) üst kenarda parlayan ince bir <em>ışık dudağı</em>, (3) altta rengiyle tonlanmış
+      yumuşak bir <em>halkasal gölge</em>. Hover'da 1px yukarı, basıldığında 1px aşağı —
+      dokunmatik geri bildirim iOS 26'daki gibi.
+    </p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="tile tile-old">
+          <span class="tile-tag">Mevcut · .btn</span>
+          <div style="margin-top:auto">
+            <div class="btn-row">
+              <button class="btn-legacy primary">＋ Yeni Görev</button>
+              <button class="btn-legacy outline">Filtre</button>
+              <button class="btn-legacy ghost">Sil</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tile tile-new">
+          <span class="tile-tag now">Öneri · .btn-3d</span>
+          <div style="margin-top:auto">
+            <div class="btn-row">
+              <button class="btn-3d primary">
+                <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                Yeni Görev
+              </button>
+              <button class="btn-3d outline">
+                <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                Filtre
+              </button>
+              <button class="btn-3d ghost">
+                <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5h10M6 3h4M6 8v4M10 8v4M4 5l1 9h6l1-9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── 3. ICONS ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">03</span>İkonografi</h2>
+      <p>Emoji → hacim kazandırılmış SVG mark seti</p>
+    </div>
+    <p class="section-lead">
+      Mevcut arayüz sidebar ikonlarını doğrudan Unicode emojilerden alıyor
+      (🔔 ⚡ 📁 ⚙ 🛡️ 🔁) — bu emoji setleri tarayıcıdan tarayıcıya bambaşka
+      görünüyor ve markanın rengiyle konuşmuyor. Öneri: her ikon, altta
+      radial-yıkanmış bir <em>disk taban</em> + üstte gradient <em>yüz</em> +
+      üst kenarda <em>ışık dudağı</em> olan tek dilde çizilmiş bir set. Tümü
+      SVG, tümü teal / violet / amber ana palete uygun.
+    </p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="tile tile-old">
+          <span class="tile-tag">Mevcut · sistem emojisi</span>
+          <div class="icon-strip" style="margin-top:auto">
+            <div class="icon-cell"><div class="icon-flat">🔔</div><div class="lbl">Bildirim</div></div>
+            <div class="icon-cell"><div class="icon-flat">⚡</div><div class="lbl">Anlık</div></div>
+            <div class="icon-cell"><div class="icon-flat">📁</div><div class="lbl">Proje</div></div>
+            <div class="icon-cell"><div class="icon-flat">🔁</div><div class="lbl">Rutin</div></div>
+            <div class="icon-cell"><div class="icon-flat">🛡️</div><div class="lbl">Denetim</div></div>
+            <div class="icon-cell"><div class="icon-flat">⚙</div><div class="lbl">Ayarlar</div></div>
+          </div>
+        </div>
+
+        <div class="tile tile-new">
+          <span class="tile-tag now">Öneri · 3B SVG seti</span>
+          <div class="icon-strip" style="margin-top:auto">
+
+            <div class="icon-cell">
+              <div class="icon-3d">
+                <svg viewBox="0 0 52 52">
+                  <defs>
+                    <radialGradient id="g-bell-disk" cx="50%" cy="35%" r="60%">
+                      <stop offset="0%" stop-color="#4ff9d6" stop-opacity=".55"/>
+                      <stop offset="70%" stop-color="#00e5c0" stop-opacity=".08"/>
+                      <stop offset="100%" stop-color="#00e5c0" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="g-bell" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#a8fff0"/>
+                      <stop offset="55%" stop-color="#00e5c0"/>
+                      <stop offset="100%" stop-color="#00806b"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="26" cy="26" r="22" fill="url(#g-bell-disk)"/>
+                  <circle cx="26" cy="26" r="16" fill="url(#g-bell)" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>
+                  <path d="M20 22a6 6 0 0 1 12 0v5l2 3h-16l2-3z" fill="rgba(4,23,18,.55)"/>
+                  <path d="M24 32a2 2 0 0 0 4 0" fill="none" stroke="rgba(4,23,18,.55)" stroke-width="1.4" stroke-linecap="round"/>
+                  <ellipse cx="22" cy="20" rx="6" ry="2.2" fill="rgba(255,255,255,.35)"/>
+                </svg>
+              </div>
+              <div class="lbl">Bildirim</div>
+            </div>
+
+            <div class="icon-cell">
+              <div class="icon-3d">
+                <svg viewBox="0 0 52 52">
+                  <defs>
+                    <radialGradient id="g-bolt-disk" cx="50%" cy="35%" r="60%">
+                      <stop offset="0%" stop-color="#ffd06f" stop-opacity=".55"/>
+                      <stop offset="70%" stop-color="#f4b942" stop-opacity=".08"/>
+                      <stop offset="100%" stop-color="#f4b942" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="g-bolt" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#ffe0a0"/>
+                      <stop offset="55%" stop-color="#f4b942"/>
+                      <stop offset="100%" stop-color="#8a6218"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="26" cy="26" r="22" fill="url(#g-bolt-disk)"/>
+                  <circle cx="26" cy="26" r="16" fill="url(#g-bolt)" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>
+                  <path d="M28 15l-8 13h6l-2 9 9-14h-6z" fill="rgba(30,20,4,.7)"/>
+                  <ellipse cx="22" cy="20" rx="6" ry="2.2" fill="rgba(255,255,255,.35)"/>
+                </svg>
+              </div>
+              <div class="lbl">Anlık</div>
+            </div>
+
+            <div class="icon-cell">
+              <div class="icon-3d">
+                <svg viewBox="0 0 52 52">
+                  <defs>
+                    <radialGradient id="g-folder-disk" cx="50%" cy="35%" r="60%">
+                      <stop offset="0%" stop-color="#a893ff" stop-opacity=".55"/>
+                      <stop offset="70%" stop-color="#7f6cf7" stop-opacity=".08"/>
+                      <stop offset="100%" stop-color="#7f6cf7" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="g-folder" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#c7b9ff"/>
+                      <stop offset="55%" stop-color="#7f6cf7"/>
+                      <stop offset="100%" stop-color="#3d2f9a"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="26" cy="26" r="22" fill="url(#g-folder-disk)"/>
+                  <circle cx="26" cy="26" r="16" fill="url(#g-folder)" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>
+                  <path d="M15 20h8l2 2h12v13H15z" fill="rgba(20,12,60,.7)"/>
+                  <path d="M15 25h22v10H15z" fill="rgba(199,185,255,.35)"/>
+                  <ellipse cx="22" cy="20" rx="6" ry="2.2" fill="rgba(255,255,255,.35)"/>
+                </svg>
+              </div>
+              <div class="lbl">Proje</div>
+            </div>
+
+            <div class="icon-cell">
+              <div class="icon-3d">
+                <svg viewBox="0 0 52 52">
+                  <defs>
+                    <radialGradient id="g-loop-disk" cx="50%" cy="35%" r="60%">
+                      <stop offset="0%" stop-color="#4ff9d6" stop-opacity=".55"/>
+                      <stop offset="70%" stop-color="#00e5c0" stop-opacity=".08"/>
+                      <stop offset="100%" stop-color="#00e5c0" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="g-loop" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#a8fff0"/>
+                      <stop offset="55%" stop-color="#00e5c0"/>
+                      <stop offset="100%" stop-color="#00806b"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="26" cy="26" r="22" fill="url(#g-loop-disk)"/>
+                  <circle cx="26" cy="26" r="16" fill="url(#g-loop)" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>
+                  <path d="M18 24a8 8 0 0 1 14-4l2-2v6h-6l2-2a5 5 0 0 0-9 2M34 28a8 8 0 0 1-14 4l-2 2v-6h6l-2 2a5 5 0 0 0 9-2" fill="rgba(4,23,18,.65)" stroke="rgba(4,23,18,.65)" stroke-width=".4" stroke-linejoin="round"/>
+                  <ellipse cx="22" cy="20" rx="6" ry="2.2" fill="rgba(255,255,255,.35)"/>
+                </svg>
+              </div>
+              <div class="lbl">Rutin</div>
+            </div>
+
+            <div class="icon-cell">
+              <div class="icon-3d">
+                <svg viewBox="0 0 52 52">
+                  <defs>
+                    <radialGradient id="g-shield-disk" cx="50%" cy="35%" r="60%">
+                      <stop offset="0%" stop-color="#ff8993" stop-opacity=".55"/>
+                      <stop offset="70%" stop-color="#ff5f6d" stop-opacity=".08"/>
+                      <stop offset="100%" stop-color="#ff5f6d" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="g-shield" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#ffb2ba"/>
+                      <stop offset="55%" stop-color="#ff5f6d"/>
+                      <stop offset="100%" stop-color="#8a1b28"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="26" cy="26" r="22" fill="url(#g-shield-disk)"/>
+                  <circle cx="26" cy="26" r="16" fill="url(#g-shield)" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>
+                  <path d="M26 15l8 3v8c0 5-4 9-8 10-4-1-8-5-8-10v-8z" fill="rgba(60,10,18,.65)"/>
+                  <path d="M22 26l3 3 6-6" stroke="#ffe0e4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  <ellipse cx="22" cy="20" rx="6" ry="2.2" fill="rgba(255,255,255,.35)"/>
+                </svg>
+              </div>
+              <div class="lbl">Denetim</div>
+            </div>
+
+            <div class="icon-cell">
+              <div class="icon-3d">
+                <svg viewBox="0 0 52 52">
+                  <defs>
+                    <radialGradient id="g-gear-disk" cx="50%" cy="35%" r="60%">
+                      <stop offset="0%" stop-color="#bcc9d8" stop-opacity=".55"/>
+                      <stop offset="70%" stop-color="#8b9aad" stop-opacity=".08"/>
+                      <stop offset="100%" stop-color="#8b9aad" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="g-gear" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#dfe6ee"/>
+                      <stop offset="55%" stop-color="#8b9aad"/>
+                      <stop offset="100%" stop-color="#3a4657"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="26" cy="26" r="22" fill="url(#g-gear-disk)"/>
+                  <circle cx="26" cy="26" r="16" fill="url(#g-gear)" stroke="rgba(255,255,255,.35)" stroke-width=".5"/>
+                  <g transform="translate(26 26)" fill="rgba(20,25,35,.7)">
+                    <path d="M-2 -11h4v4h-4zM-2 7h4v4h-4zM7 -2v4h4v-4zM-11 -2v4h-4v-4z"/>
+                    <path d="M4 -8l3 1-2 3-3-1zM-4 -8l-3 1 2 3 3-1zM4 8l3-1-2-3-3 1zM-4 8l-3-1 2-3 3 1z"/>
+                    <circle r="5"/>
+                    <circle r="2.5" fill="rgba(223,230,238,.7)"/>
+                  </g>
+                  <ellipse cx="22" cy="20" rx="6" ry="2.2" fill="rgba(255,255,255,.35)"/>
+                </svg>
+              </div>
+              <div class="lbl">Ayarlar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note-grid">
+      <div class="note">
+        <h4>01 · Cross-platform tutarlılık</h4>
+        <p>Emoji her sistemde farklı; SVG her yerde tıpatıp aynı. Windows'ta düz-siyah, iOS'ta parlak-renkli olma sorunu ortadan kalkar.</p>
+      </div>
+      <div class="note">
+        <h4>02 · Tema uyumu</h4>
+        <p>Renk gradyanları CSS değişkenlerine bağlanabilir; Assos ve İnventist temaları için ikonlar otomatik renk değiştirir.</p>
+      </div>
+      <div class="note">
+        <h4>03 · Erişilebilirlik</h4>
+        <p>Emojiler ekran okuyucuya "chart-decreasing" gibi okunur; SVG'ye <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal)">&lt;title&gt;</code> koyarak "Bildirimler" diyebiliriz.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── 4. SIDEBAR ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">04</span>Menü (Sidebar)</h2>
+      <p>Düz liste + sol renk şeridi → cam panel + pill seçim</p>
+    </div>
+    <p class="section-lead">
+      Aktif menü öğesi artık kenardaki 2 piksellik teal çizgi ile değil,
+      <em>ışığı yakalamış bir cam pill</em> ile işaretleniyor. Sidebar kendisi
+      <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal)">backdrop-filter: blur(20px)</code>
+      ile ardındaki ambient glow'a hafifçe cevap veriyor — masaüstünde yumuşak bir
+      hareket algısı, mobile'da One UI 8'in scrim davranışı.
+    </p>
+    <div class="bench">
+      <div class="bench-grid" style="align-items:start">
+        <div class="tile tile-old" style="min-height:auto">
+          <span class="tile-tag">Mevcut · .sidebar</span>
+          <div class="side-mock side-old" style="margin:12px auto 6px">
+            <div class="s-cat">GÖREVLER</div>
+            <a class="s-item active"><span class="em">⬡</span>Dashboard</a>
+            <a class="s-item"><span class="em">⚡</span>Anlık Görevler</a>
+            <a class="s-item"><span class="em">🆘</span>Destek Talepleri</a>
+            <a class="s-item"><span class="em">🫧</span>Havuz</a>
+            <a class="s-item"><span class="em">🔁</span>Rutin Görevler</a>
+            <div class="s-cat">YÖNETİM</div>
+            <a class="s-item"><span class="em">👥</span>Kullanıcılar</a>
+            <a class="s-item"><span class="em">⚙</span>Ayarlar</a>
+          </div>
+        </div>
+
+        <div class="tile tile-new" style="min-height:auto">
+          <span class="tile-tag now">Öneri · .side-glass</span>
+          <div class="side-mock side-new" style="margin:12px auto 6px">
+            <div class="s-cat">GÖREVLER</div>
+
+            <div class="s-item active">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><polygon points="8,2 14,5 14,11 8,14 2,11 2,5" fill="currentColor"/></svg>
+              </span>
+              Dashboard
+            </div>
+
+            <div class="s-item">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><path d="M9 2L4 9h4l-1 5 5-7H8z" fill="currentColor"/></svg>
+              </span>
+              Anlık Görevler
+            </div>
+
+            <div class="s-item">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              Destek Talepleri
+              <span class="badge">3</span>
+            </div>
+
+            <div class="s-item">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="5" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="9" r="2.9" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="4" r="1.4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+              </span>
+              Havuz
+            </div>
+
+            <div class="s-item">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><path d="M4 7a4 4 0 0 1 7-2l1-1v3.5H8.5l1-1a2.5 2.5 0 0 0-4.5 1M12 9a4 4 0 0 1-7 2l-1 1V8.5h3.5l-1 1a2.5 2.5 0 0 0 4.5-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              Rutin Görevler
+            </div>
+
+            <div class="s-cat">YÖNETİM</div>
+
+            <div class="s-item">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="5.5" cy="6" r="1.8" fill="currentColor"/><circle cx="10.5" cy="6" r="1.8" fill="currentColor"/><path d="M2 12c.5-2 2-3 3.5-3s3 1 3.5 3zM8 12c.5-2 2-3 3.5-3S14 10 14.5 12z" fill="currentColor"/></svg>
+              </span>
+              Kullanıcılar
+            </div>
+
+            <div class="s-item">
+              <span class="glyph">
+                <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 2l1.8 1.4 2.2-.6.6 2.2L14 6.8 12.6 8.6l.6 2.2-2.2.6-1.4 1.8L8 12.4l-1.8 1.4-2.2-.6-.6-2.2L2 9.2 3.4 7.4 2.8 5.2l2.2-.6z" fill="currentColor"/><circle cx="8" cy="8" r="1.8" fill="rgba(0,0,0,.35)"/></svg>
+              </span>
+              Ayarlar
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── 5. KPI CARDS ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">05</span>KPI Kartları</h2>
+      <p>Düz kart + 2px üst şerit → derinlikli disk + orbital ikon</p>
+    </div>
+    <p class="section-lead">
+      Rakam artık kartın orta-üst noktasından "yayılan" bir <em>renk halkası</em>
+      üzerinde duruyor — kartın açıldığı ilk saniyede gözü kendine çekiyor.
+      Sağ üst köşede parlayan <em>ışık orbı</em>, kategoriye özel emojiye
+      alternatif. Trend rozeti aşağı-yukarı okunabilir bir pill.
+    </p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="tile tile-old">
+          <span class="tile-tag">Mevcut · .kpi</span>
+          <div class="kpi-row" style="margin-top:auto">
+            <div class="kpi-old"><div class="glyph">📋</div><div class="lbl">Toplam Görev</div><div class="val">24</div><div class="sub">Bu ay</div></div>
+            <div class="kpi-old"><div class="glyph">🔴</div><div class="lbl">Geciken</div><div class="val" style="color:var(--coral)">2</div><div class="sub">Müdahale</div></div>
+            <div class="kpi-old"><div class="glyph">💾</div><div class="lbl">Backup</div><div class="val" style="color:var(--amber)">3</div><div class="sub">Yüklendi</div></div>
+          </div>
+        </div>
+
+        <div class="tile tile-new">
+          <span class="tile-tag now">Öneri · .kpi-3d</span>
+          <div class="kpi-row" style="margin-top:auto">
+            <div class="kpi-new">
+              <div class="orb">
+                <svg width="18" height="18" viewBox="0 0 16 16"><path d="M3 3h10v10H3z" fill="none" stroke="rgba(4,23,18,.65)" stroke-width="1.4"/><path d="M5 6h6M5 8.5h6M5 11h4" stroke="rgba(4,23,18,.65)" stroke-width="1.2" stroke-linecap="round"/></svg>
+              </div>
+              <div class="lbl">Toplam Görev</div>
+              <div class="val-wrap">
+                <div class="val">24</div>
+                <span class="trend">↑ 12%</span>
+              </div>
+              <div class="sub">Bu ay · geçen aya göre</div>
+            </div>
+
+            <div class="kpi-new k-coral">
+              <div class="orb">
+                <svg width="18" height="18" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="rgba(60,10,18,.7)" stroke-width="1.4"/><path d="M8 5v3.5M8 10.5v.5" stroke="rgba(60,10,18,.7)" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <div class="lbl">Geciken</div>
+              <div class="val-wrap">
+                <div class="val">2</div>
+                <span class="trend dn">↑ +1</span>
+              </div>
+              <div class="sub">Müdahale gerekli</div>
+            </div>
+
+            <div class="kpi-new k-violet">
+              <div class="orb">
+                <svg width="18" height="18" viewBox="0 0 16 16"><path d="M2 4h12v8H2z" fill="none" stroke="rgba(20,12,60,.7)" stroke-width="1.4"/><path d="M2 8h12" stroke="rgba(20,12,60,.7)" stroke-width="1.2"/><circle cx="5" cy="10.5" r=".8" fill="rgba(20,12,60,.7)"/></svg>
+              </div>
+              <div class="lbl">Config Backup</div>
+              <div class="val-wrap">
+                <div class="val">3</div>
+                <span class="trend">↑ 2</span>
+              </div>
+              <div class="sub">Dosya yüklendi</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── 6. CHARTS ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">06</span>Grafikler</h2>
+      <p>Düz bar / düz pie → gradyan bar + halka gölge + rim</p>
+    </div>
+    <p class="section-lead">
+      Bar grafiği artık üstte parlak, altta koyu bir <em>silindir gövde</em> gibi;
+      altında ince bir <em>zemin çizgisi</em> okunuyor ve her barın altında rengiyle
+      tonlanmış yumuşak bir gölge var. Donut/pie grafiği içi boş bir <em>tor</em>
+      olarak çiziliyor; iç merkezde büyük rakam, dışta segment ışığı.
+    </p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="tile tile-old" style="min-height:auto">
+          <span class="tile-tag">Mevcut · Chart.js flat</span>
+          <div style="margin-top:8px" class="chart-tile">
+            <div class="chart-title">SON 5 GÜN · AÇILAN / TAMAMLANAN</div>
+            <div class="bar-old">
+              <div class="col"><div class="b" style="height:40%"></div><div class="n">Pzt</div></div>
+              <div class="col"><div class="b" style="height:70%"></div><div class="n">Sal</div></div>
+              <div class="col"><div class="b" style="height:55%"></div><div class="n">Çar</div></div>
+              <div class="col"><div class="b" style="height:90%"></div><div class="n">Per</div></div>
+              <div class="col"><div class="b" style="height:65%"></div><div class="n">Cum</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tile tile-new" style="min-height:auto">
+          <span class="tile-tag now">Öneri · gradient bar</span>
+          <div style="margin-top:8px" class="chart-tile">
+            <div class="chart-title">SON 5 GÜN · AÇILAN / TAMAMLANAN</div>
+            <div class="bar-3d">
+              <div class="col"><div class="n">4</div><div class="b teal" style="height:35%"></div><div class="b violet" style="height:22%;margin-top:2px"></div><div class="dow">Pzt</div></div>
+              <div class="col"><div class="n">7</div><div class="b teal" style="height:60%"></div><div class="b violet" style="height:40%;margin-top:2px"></div><div class="dow">Sal</div></div>
+              <div class="col"><div class="n">5</div><div class="b teal" style="height:48%"></div><div class="b violet" style="height:30%;margin-top:2px"></div><div class="dow">Çar</div></div>
+              <div class="col"><div class="n">9</div><div class="b teal" style="height:78%"></div><div class="b violet" style="height:55%;margin-top:2px"></div><div class="dow">Per</div></div>
+              <div class="col"><div class="n">6</div><div class="b teal" style="height:55%"></div><div class="b violet" style="height:38%;margin-top:2px"></div><div class="dow">Cum</div></div>
+            </div>
+            <div class="chart-legend">
+              <span><span class="dot teal"></span>Açılan</span>
+              <span><span class="dot violet"></span>Tamamlanan</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Donut comparison row -->
+      <div class="bench-grid" style="margin-top:20px">
+        <div class="tile tile-old" style="min-height:auto">
+          <span class="tile-tag">Mevcut · Chart.js pie</span>
+          <div style="margin-top:auto;display:flex;justify-content:center;align-items:center;gap:24px;padding:20px 0">
+            <svg width="140" height="140" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="15.9" fill="#0f1419"/>
+              <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#00e5c0" stroke-width="10" stroke-dasharray="45 55" stroke-dashoffset="0"/>
+              <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#7f6cf7" stroke-width="10" stroke-dasharray="30 70" stroke-dashoffset="-45"/>
+              <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#ff5f6d" stroke-width="10" stroke-dasharray="25 75" stroke-dashoffset="-75"/>
+            </svg>
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:2;color:var(--ink-dim)">
+                <div><span style="display:inline-block;width:8px;height:8px;background:var(--teal);border-radius:50%;margin-right:6px"></span>Rutin · 45%</div>
+                <div><span style="display:inline-block;width:8px;height:8px;background:var(--violet);border-radius:50%;margin-right:6px"></span>Destek · 30%</div>
+                <div><span style="display:inline-block;width:8px;height:8px;background:var(--coral);border-radius:50%;margin-right:6px"></span>Proje · 25%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tile tile-new" style="min-height:auto">
+          <span class="tile-tag now">Öneri · depth donut</span>
+          <div style="margin-top:auto;display:flex;justify-content:center;align-items:center;gap:24px;padding:14px 0">
+            <div style="position:relative;width:180px;height:180px">
+              <svg width="180" height="180" viewBox="0 0 100 100" style="filter:drop-shadow(0 20px 30px rgba(0,229,192,.25))">
+                <defs>
+                  <linearGradient id="ring-teal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#7dffe4"/><stop offset="100%" stop-color="#007a68"/>
+                  </linearGradient>
+                  <linearGradient id="ring-violet" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#b19dff"/><stop offset="100%" stop-color="#4a3ab8"/>
+                  </linearGradient>
+                  <linearGradient id="ring-coral" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffb2ba"/><stop offset="100%" stop-color="#a92a35"/>
+                  </linearGradient>
+                  <radialGradient id="ring-shine" cx="50%" cy="35%" r="55%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,.35)"/>
+                    <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                  </radialGradient>
+                </defs>
+                <!-- 45% teal -->
+                <circle cx="50" cy="50" r="36" fill="none" stroke="url(#ring-teal)" stroke-width="14" stroke-dasharray="101.7 226.2" transform="rotate(-90 50 50)" stroke-linecap="butt"/>
+                <!-- 30% violet -->
+                <circle cx="50" cy="50" r="36" fill="none" stroke="url(#ring-violet)" stroke-width="14" stroke-dasharray="67.8 226.2" stroke-dashoffset="-101.7" transform="rotate(-90 50 50)" stroke-linecap="butt"/>
+                <!-- 25% coral -->
+                <circle cx="50" cy="50" r="36" fill="none" stroke="url(#ring-coral)" stroke-width="14" stroke-dasharray="56.5 226.2" stroke-dashoffset="-169.5" transform="rotate(-90 50 50)" stroke-linecap="butt"/>
+                <!-- rim highlight -->
+                <circle cx="50" cy="50" r="43" fill="none" stroke="rgba(255,255,255,.08)" stroke-width=".5"/>
+                <circle cx="50" cy="50" r="29" fill="none" stroke="rgba(0,0,0,.35)" stroke-width=".5"/>
+                <!-- top-left specular -->
+                <ellipse cx="34" cy="30" rx="18" ry="6" fill="url(#ring-shine)"/>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;color:var(--teal);text-shadow:0 0 20px rgba(0,229,192,.5)">24</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.2px;color:var(--ink-mute);text-transform:uppercase;margin-top:2px">GÖREV</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;line-height:2.1">
+                <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(180deg,#7dffe4,#007a68);box-shadow:0 3px 6px -1px rgba(0,229,192,.5)"></span>Rutin · <strong style="color:var(--teal)">45%</strong></div>
+                <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(180deg,#b19dff,#4a3ab8);box-shadow:0 3px 6px -1px rgba(127,108,247,.5)"></span>Destek · <strong style="color:var(--violet-lit)">30%</strong></div>
+                <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(180deg,#ffb2ba,#a92a35);box-shadow:0 3px 6px -1px rgba(255,95,109,.5)"></span>Proje · <strong style="color:#ff8993">25%</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── 7. TASK LIST ROW ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">07</span>Görev Satırı & Etiketler</h2>
+      <p>Border-bottom satır → hover kabaran cam satır</p>
+    </div>
+    <p class="section-lead">
+      Etiketler (rutin / destek / infra / öncelik) artık düz renkli dikdörtgen
+      değil, <em>üstte açık, altta koyu</em> gradyanlı ve içeride ince ışık dudağı
+      taşıyan pill'ler. Onay kutusu tamamlandığında yeşil bir <em>üç boyutlu ışıklı
+      taş</em> gibi kabarıyor. Gecikme rozeti artık kırmızı <em>uyarı taşı</em> —
+      yer gölgesi ile.
+    </p>
+    <div class="bench">
+      <div class="bench-grid">
+        <div class="tile tile-old">
+          <span class="tile-tag">Mevcut · .task-item</span>
+          <div class="task-mock">
+            <div class="task-title-lbl">BUGÜNÜN GÖREVLERİ</div>
+            <div class="trow-old">
+              <div class="cb done"></div>
+              <div>
+                <div class="title done">Firewall config yedeği alındı</div>
+                <div class="meta">
+                  <span class="tag-old routine">RUTİN</span>
+                  <span>İnventist</span>
+                  <span>·</span>
+                  <span>09:15</span>
+                </div>
+              </div>
+              <div></div>
+            </div>
+            <div class="trow-old">
+              <div class="cb"></div>
+              <div>
+                <div class="title">Assos O365 lisans devri</div>
+                <div class="meta">
+                  <span class="tag-old support">DESTEK</span>
+                  <span class="prio">YÜKSEK</span>
+                  <span>·</span>
+                  <span>SLA: 4sa</span>
+                </div>
+              </div>
+              <div class="dl">GECİKTİ 2G</div>
+            </div>
+            <div class="trow-old">
+              <div class="cb"></div>
+              <div>
+                <div class="title">Switch2 firmware güncelleme</div>
+                <div class="meta">
+                  <span class="tag-old infra">INFRA</span>
+                  <span>Cuma 17:00</span>
+                </div>
+              </div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tile tile-new">
+          <span class="tile-tag now">Öneri · .trow-3d</span>
+          <div class="task-mock">
+            <div class="task-title-lbl">BUGÜNÜN GÖREVLERİ</div>
+            <div class="trow-new">
+              <div class="cb3 done"></div>
+              <div>
+                <div class="title done">Firewall config yedeği alındı</div>
+                <div class="meta">
+                  <span class="pill3 routine">RUTİN</span>
+                  <span>İnventist · 09:15</span>
+                </div>
+              </div>
+              <div></div>
+            </div>
+            <div class="trow-new" style="background:linear-gradient(180deg,rgba(255,95,109,.05),transparent)">
+              <div class="cb3"></div>
+              <div>
+                <div class="title">Assos O365 lisans devri</div>
+                <div class="meta">
+                  <span class="pill3 support">DESTEK</span>
+                  <span class="pill3 prio-hi">YÜKSEK</span>
+                  <span>SLA: 4sa</span>
+                </div>
+              </div>
+              <div class="dl3">GECİKTİ · 2G</div>
+            </div>
+            <div class="trow-new">
+              <div class="cb3"></div>
+              <div>
+                <div class="title">Switch2 firmware güncelleme</div>
+                <div class="meta">
+                  <span class="pill3 infra">INFRA</span>
+                  <span>Cuma · 17:00</span>
+                </div>
+              </div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─── ROADMAP / NEXT STEP ─── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">08</span>Uygulama Yol Haritası</h2>
+      <p>Küçük adımlar · geri dönüşsüz değil</p>
+    </div>
+    <div class="note-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="note">
+        <h4>Adım 1 · Token katmanı</h4>
+        <p><code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">app.html</code> <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">:root</code>'a <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">--rim, --shade-lo, --shade-hi</code> derinlik primitifleri eklenir. Mevcut hiçbir stil bozulmaz.</p>
+      </div>
+      <div class="note">
+        <h4>Adım 2 · Düğme + KPI</h4>
+        <p><code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">.btn-primary</code> ve <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">.kpi</code> önce <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">.btn-3d</code> / <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">.kpi-3d</code> opsiyonel sınıflar olarak eklenir. Ayarlar → "Derinlik modu" toggle'ı ile açılır.</p>
+      </div>
+      <div class="note">
+        <h4>Adım 3 · İkon seti</h4>
+        <p>Emoji ikonlar <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">static/img/icons/*.svg</code> altında tek bir sprite'a taşınır. <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">&lt;span class="nav-icon"&gt;</code> içine <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">&lt;svg&gt;&lt;use href="#icon-bell"/&gt;&lt;/svg&gt;</code>.</p>
+      </div>
+      <div class="note">
+        <h4>Adım 4 · Chart teması</h4>
+        <p>Chart.js zaten kurulu — sadece <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">backgroundColor</code> fonksiyonuna <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">CanvasGradient</code> döndüren bir helper eklenir. Bar shadow için <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">chartjs-plugin-annotation</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>IT//TRACKER · Depth Study · <span class="lm">Görsel Yön</span></div>
+    <div>Elanorth / ittracker · 2026-09-07</div>
+  </footer>
+</div>
+
+<script>
+  // Theme swap — the page defaults to dark to match the product; the button
+  // stamps [data-theme="light"] on <html> so the light token set wins.
+  (function(){
+    const btn = document.getElementById('themeSwap');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      const root = document.documentElement;
+      const cur = root.getAttribute('data-theme');
+      if(cur === 'light'){ root.removeAttribute('data-theme'); btn.textContent = '☾ Aydınlık'; }
+      else { root.setAttribute('data-theme', 'light'); btn.textContent = '☀ Karanlık'; }
+    });
+  })();
+</script>
