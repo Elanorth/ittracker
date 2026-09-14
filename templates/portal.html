@@ -17,9 +17,38 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .split:hover .half{filter:brightness(.45) saturate(.5)}
 .split .half:hover{flex:2.1;filter:none}
 .half .inner{text-align:center;max-width:420px;padding:20px;position:relative;z-index:3;transition:transform .5s}
-.half:hover .inner{transform:scale(1.07)}
+.half:hover .inner{transform:scale(1.04)}
 .half .cta{display:inline-block;margin-top:26px;padding:13px 30px;border-radius:9px;font-weight:700;font-size:14px;opacity:.85;transform:translateY(4px);transition:.35s}
 .half:hover .cta{opacity:1;transform:translateY(0)}
+/* v5.82 — Marka içi ikili CTA (kullanıcının önerisi, Varyant A).
+   Global teal `.kb-entry` card kaldırıldı; her firma panelinde
+   `Talep Oluştur` (primary) + `Bilgi Bankası` (secondary) ikili CTA. */
+.half .ctas{display:flex;flex-direction:column;gap:8px;margin:22px auto 0;max-width:340px;position:relative;z-index:3}
+.half .b-cta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-radius:11px;
+  font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;text-align:left;text-decoration:none;cursor:pointer;
+  border:none;background:none;transition:transform .12s ease, box-shadow .15s ease, border-color .12s ease}
+.half .b-cta:hover{transform:translateY(-1px)}
+.half .b-cta:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.half .b-cta .b-cta-lbl{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.half .b-cta .b-cta-txt{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.half .b-cta .b-cta-t{font-weight:700;font-size:14px}
+.half .b-cta .b-cta-s{font-weight:400;font-size:11px;opacity:.72;margin-top:2px;letter-spacing:.2px}
+.half .b-cta .b-cta-arr{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;flex-shrink:0}
+.half .b-cta .b-cta-glyph{width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+/* İnventist — beyaz primary + koyu cam secondary */
+.half.inv .b-cta.primary{background:linear-gradient(180deg,#fff 0%,#dcdcdc 100%);color:#0a0a0a;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 14px -4px rgba(0,0,0,.4)}
+.half.inv .b-cta.secondary{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));color:#fff;
+  border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(10px)}
+.half.inv .b-cta.secondary:hover{border-color:rgba(255,255,255,.35)}
+.half.inv .b-cta.secondary .b-cta-glyph{background:rgba(255,255,255,.10);color:#fff}
+/* Assos — mavi primary + açık mavi secondary */
+.half.assos .b-cta.primary{background:linear-gradient(180deg,#2f8fda 0%,#1e73be 100%);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 14px -4px rgba(30,115,190,.45)}
+.half.assos .b-cta.secondary{background:linear-gradient(180deg,rgba(30,115,190,.10),rgba(30,115,190,.02));color:#1e73be;
+  border:1px solid rgba(30,115,190,.25)}
+.half.assos .b-cta.secondary:hover{border-color:rgba(30,115,190,.55)}
+.half.assos .b-cta.secondary .b-cta-glyph{background:rgba(30,115,190,.14);color:#1e73be}
 .half .bsub{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;opacity:.6;margin-bottom:14px;font-family:'IBM Plex Mono',monospace}
 .half h1{font-size:34px;font-weight:800;line-height:1.15}.half p{margin-top:12px;font-size:13px;opacity:.7;line-height:1.6}
 .half.inv{background:#0a0a0a;color:#f2f2f2}.half.inv .cta{background:#fff;color:#0a0a0a}
@@ -62,6 +91,25 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .btn-b[disabled]{opacity:.4;cursor:not-allowed}
 .btn-ghost{background:transparent;color:var(--tx);border:1px solid var(--bd);border-radius:9px;padding:12px 22px;font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
 .back{font-size:11px;color:var(--mut);cursor:pointer;margin-bottom:16px;display:inline-block}
+/* v5.82 — Branded ekranların üstünde sticky navigasyon çubuğu.
+   Eski `.back` linki (küçük gri metin) yerine hakiki 44 px+ düğme +
+   breadcrumb. `.branded`'ın `padding:52px 18px 40px`'ini negatif margin
+   ile telafi ederek edge-to-edge oturur. */
+.brand-topbar{display:flex;align-items:center;gap:14px;margin:-52px -18px 24px;padding:12px 20px;
+  background:var(--pan);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:20;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px 9px 12px;border-radius:10px;
+  background:linear-gradient(180deg,var(--pan2),var(--pan));border:1px solid var(--bd);color:var(--ac);
+  font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;min-height:40px;
+  transition:transform .12s ease, border-color .12s ease}
+.back-btn:hover{transform:translateX(-2px);border-color:var(--ac)}
+.back-btn:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.back-btn .arr{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:16px;line-height:1}
+.brand-crumb{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:1px;color:var(--mut);text-transform:uppercase;min-width:0;overflow:hidden}
+.brand-crumb .cur{color:var(--ac);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-crumb .sep{opacity:.4;flex-shrink:0}
+@media(max-width:520px){.brand-crumb{display:none}}
 .formerr{color:#e5484d;font-size:12px;margin-top:10px;min-height:16px}
 .kvkk{font-size:9.5px;color:var(--mut);margin-top:14px;line-height:1.6}
 /* success */
@@ -94,35 +142,10 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .replybox{display:flex;gap:9px;align-items:flex-end}
 .replybox textarea{flex:1;min-height:52px;background:var(--pan2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:10px 12px;font-size:12.5px;font-family:'IBM Plex Sans',sans-serif;outline:none;resize:vertical}
 .replybox textarea:focus{border-color:var(--ac)}
-/* ── v5.24 Bilgi Bankası ── */
-/* v6.0 — Lookup kutusunun altındaki KB satırını gerçek CTA'ya çevirdik.
-   Önceki hâli 10px gri metin + tek altı çizili link idi → görünmezdi.
-   Yeni: kartın kendisi tıklanabilir, teal ışıklı çerçeve, sağda "→" ok.
-   Layout / kutunun konumu değişmedi — sadece görsel ağırlık arttı. */
-.kb-entry{
-  display:flex;align-items:center;gap:12px;
-  margin-top:14px;padding:12px 14px;
-  background:linear-gradient(180deg,rgba(0,229,192,.10),rgba(0,229,192,.02));
-  border:1px solid rgba(0,229,192,.28);
-  border-radius:12px;
-  color:var(--tx);font-size:13px;
-  cursor:pointer;transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 4px 14px -6px rgba(0,229,192,.35);
-}
-.kb-entry:hover{transform:translateY(-1px);border-color:rgba(0,229,192,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 10px 22px -8px rgba(0,229,192,.5)}
-.kb-entry .kb-entry-icon{
-  width:34px;height:34px;border-radius:10px;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:16px;
-  background:linear-gradient(160deg,#4ff9d6,#007a68);color:#041712;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 4px 10px -2px rgba(0,229,192,.45);
-}
-.kb-entry .kb-entry-txt{flex:1;min-width:0;line-height:1.35}
-.kb-entry .kb-entry-t{font-size:13px;font-weight:700;color:var(--tx)}
-.kb-entry .kb-entry-s{font-size:11px;color:var(--mut);margin-top:2px}
-.kb-entry .kb-entry-arrow{color:var(--ac);font-weight:700;font-size:16px;font-family:'IBM Plex Mono',monospace;padding-right:2px}
-/* Eski link yapısını kullanan yerler bozulmasın: */
-.kb-entry a{color:var(--ac);cursor:pointer;font-weight:600;text-decoration:none}
-.kb-entry a:hover{text-decoration:underline}
+/* ── v5.24 → v5.82: eski global `.kb-entry` (lookup kutusu altındaki teal
+   CTA kart) tamamen kaldırıldı. KB girişi artık her firmanın kendi hero
+   panelinin içinde, `Talep Oluştur` ile eşit ağırlıklı ikinci CTA olarak
+   yer alıyor (Varyant A — `.half .b-cta.secondary` üstte). */
 .kb-firmtabs{display:flex;gap:8px;margin-bottom:16px}
 .kb-firmtab{background:var(--pan2);border:1px solid var(--bd);color:var(--mut);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
 .kb-firmtab.active{background:var(--ac);color:var(--acc);border-color:var(--ac)}
@@ -203,27 +226,56 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 <body>
 
 <!-- 1 · LANDING -->
+<!-- v5.82 — Varyant A: her firma panelinde ikili CTA (Talep + KB).
+     Panelin kendisi artık tıklanabilir değil; iki hakiki `<button>` var.
+     Global `.kb-entry` (teal card) kaldırıldı — her firma kendi KB'sini
+     kendi marka diliyle sunuyor. openKb('inventist' | 'assos') firma
+     ipucunu iletir (KB e-posta kapısı yine domain'e göre kilitler). -->
 <div class="screen active" id="s-landing">
   <div class="center-mark"><div class="lg">IT//TRACKER · DESTEK</div></div>
   <div class="split">
-    <section class="half inv" onclick="openForm('inventist')">
+    <section class="half inv">
       <img class="bgimg" src="/static/img/inventist-bg.jpg" alt="" aria-hidden="true" onerror="this.remove()">
       <div class="veil"></div>
       <div class="inner">
         <div class="bsub">⬡ İNVENTİST</div>
         <h1>İnventist<br>BT Destek</h1>
-        <p>İnventist lokasyonları için BT destek talebi oluşturun; talebiniz otomatik olarak doğru ekibe yönlendirilir.</p>
-        <span class="cta">Talep Oluştur →</span>
+        <p>İnventist lokasyonları için — talep aç veya çözüm makalelerine göz at.</p>
+        <div class="ctas">
+          <button class="b-cta primary" onclick="openForm('inventist')" aria-label="İnventist için yeni destek talebi oluştur">
+            <span class="b-cta-lbl"><span class="b-cta-txt"><span class="b-cta-t">Talep Oluştur</span><span class="b-cta-s">Yeni destek talebi aç</span></span></span>
+            <span class="b-cta-arr">→</span>
+          </button>
+          <button class="b-cta secondary" onclick="openKb('inventist')" aria-label="İnventist Bilgi Bankası'nı aç">
+            <span class="b-cta-lbl">
+              <span class="b-cta-glyph"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg></span>
+              <span class="b-cta-txt"><span class="b-cta-t">Bilgi Bankası</span><span class="b-cta-s">Çözüm makalelerine göz at</span></span>
+            </span>
+            <span class="b-cta-arr">→</span>
+          </button>
+        </div>
       </div>
     </section>
-    <section class="half assos" onclick="openForm('assos')">
+    <section class="half assos">
       <video class="bgvid" autoplay muted loop playsinline src="https://assospharma.com/wp-content/uploads/2021/03/assos_webbg_v8.mp4"></video>
       <div class="veil"></div>
       <div class="inner">
         <div class="bsub">⬡ ASSOS PHARMA</div>
         <h1>Assos<br>BT Destek</h1>
-        <p>Assos lokasyonları için BT destek talebi oluşturun; talebiniz otomatik olarak doğru ekibe yönlendirilir.</p>
-        <span class="cta">Talep Oluştur →</span>
+        <p>Assos lokasyonları için — talep aç veya çözüm makalelerine göz at.</p>
+        <div class="ctas">
+          <button class="b-cta primary" onclick="openForm('assos')" aria-label="Assos için yeni destek talebi oluştur">
+            <span class="b-cta-lbl"><span class="b-cta-txt"><span class="b-cta-t">Talep Oluştur</span><span class="b-cta-s">Yeni destek talebi aç</span></span></span>
+            <span class="b-cta-arr">→</span>
+          </button>
+          <button class="b-cta secondary" onclick="openKb('assos')" aria-label="Assos Bilgi Bankası'nı aç">
+            <span class="b-cta-lbl">
+              <span class="b-cta-glyph"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg></span>
+              <span class="b-cta-txt"><span class="b-cta-t">Bilgi Bankası</span><span class="b-cta-s">Çözüm makalelerine göz at</span></span>
+            </span>
+            <span class="b-cta-arr">→</span>
+          </button>
+        </div>
       </div>
     </section>
   </div>
@@ -237,26 +289,20 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
     </div>
     <div class="err" id="lk-err"></div>
     <div class="sec">🔒 Case No tek başına yeterli değildir — e-posta adresiyle birlikte doğrulanır.</div>
-    <!-- v6.0 — Görünürlük yükseltmesi: eski tek satır gri metin, teal ışıklı
-         tıklanabilir kart oldu. Konum ve akış aynı (lookup kutusunun altında),
-         sadece görsel ağırlık arttı. openKb() fonksiyonu değişmedi. -->
-    <div class="kb-entry" onclick="openKb()" role="button" tabindex="0"
-         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openKb();}">
-      <div class="kb-entry-icon">📚</div>
-      <div class="kb-entry-txt">
-        <div class="kb-entry-t">Önce Bilgi Bankası'na bak</div>
-        <div class="kb-entry-s">Sorununun cevabı zaten hazır olabilir — talep açmadan önce göz at</div>
-      </div>
-      <div class="kb-entry-arrow">→</div>
-    </div>
   </div>
 </div>
 
 <!-- 1b · BİLGİ BANKASI -->
 <div class="screen" id="s-kb">
   <div class="branded" data-brand="inventist" id="kb-branded">
+    <!-- v5.82 — Sticky topbar (§04 fix): 44 px+ hakiki geri düğmesi + breadcrumb.
+         goBackToLanding() history.back()'i tercih eder (browser stack varsa doğal
+         geri) — yoksa show('s-landing')'e düşer. -->
+    <div class="brand-topbar">
+      <button class="back-btn" type="button" onclick="goBackToLanding()"><span class="arr">←</span>Portal</button>
+      <div class="brand-crumb"><span class="cur">Bilgi Bankası</span></div>
+    </div>
     <div class="wrap">
-      <span class="back" onclick="show('s-landing')">← Portal ana sayfa</span>
       <div class="bhead"><div class="dot">📚</div><div><div class="nm">Bilgi Bankası</div><div class="sb">SIK SORULAN SORULAR · ÇÖZÜM ADIMLARI</div></div></div>
       <!-- v5.28 — E-posta kapısı: içerik yalnız şirket çalışanlarına açılır -->
       <div class="card" id="kb-gate">
@@ -298,8 +344,11 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 <!-- 2 · FORM -->
 <div class="screen" id="s-form">
   <div class="branded" data-brand="inventist" id="form-branded">
+    <div class="brand-topbar">
+      <button class="back-btn" type="button" onclick="goBackToLanding()"><span class="arr">←</span>Portal</button>
+      <div class="brand-crumb"><span class="cur">Yeni Destek Talebi</span></div>
+    </div>
     <div class="wrap">
-      <span class="back" onclick="show('s-landing')">← Marka seçimine dön</span>
       <div class="bhead"><div class="dot" id="f-dot">İN</div><div><div class="nm" id="f-name">İnventist BT Destek</div><div class="sb">YENİ DESTEK TALEBİ</div></div></div>
       <div class="card">
         <h2>Talebinizi anlatın</h2>
@@ -360,8 +409,11 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 <!-- 4 · CASE VIEW -->
 <div class="screen" id="s-case">
   <div class="branded" data-brand="inventist" id="case-branded">
+    <div class="brand-topbar">
+      <button class="back-btn" type="button" onclick="goBackToLanding()"><span class="arr">←</span>Portal</button>
+      <div class="brand-crumb"><span class="cur">Talep Takibi</span></div>
+    </div>
     <div class="wrap">
-      <span class="back" onclick="show('s-landing')">← Portal ana sayfa</span>
       <div class="case-top">
         <div><div class="mono" id="c-code" style="font-size:20px;font-weight:700;letter-spacing:2px">—</div><div id="c-subject" style="font-size:13px;margin-top:5px;font-weight:600"></div></div>
         <span class="stbadge" id="c-status">—</span>
@@ -388,7 +440,48 @@ const BRANDS = {
 };
 let _brand = 'inventist';
 function esc(s){const d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+/* v5.82 — SPA ekranları için tarayıcı geçmişi entegrasyonu.
+   Her show() çağrısı history.pushState ile URL hash'ini günceller;
+   popstate dinleyicisi browser back/forward tuşlarını yakalar.
+   `opts.fromPopState` bayrağı sonsuz döngüyü engeller
+   (popstate → show → pushState → popstate ...). */
+function show(id, opts){
+  opts = opts || {};
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if(!opts.fromPopState){
+    const hash = (id==='s-landing') ? ' ' : ('#'+id.replace(/^s-/,''));
+    try { history.pushState({screen:id}, '', hash); } catch(e){}
+  }
+}
+window.addEventListener('popstate', e => {
+  const id = (e.state && e.state.screen) || (function(){
+    const h = (location.hash||'').replace(/^#/,'');
+    return h ? ('s-'+h) : 's-landing';
+  })();
+  if(document.getElementById(id)) show(id, {fromPopState:true});
+});
+// Sayfa yüklenirken doğrudan #hash ile gelinirse (deep-link) ilgili ekranı aç
+window.addEventListener('DOMContentLoaded', () => {
+  const h = (location.hash||'').replace(/^#/,'');
+  if(h && document.getElementById('s-'+h)) show('s-'+h, {fromPopState:true});
+  // Başlangıç state'ini history'ye yaz — böylece Landing'ten Portal'a
+  // ilk kez gidildiğinde bile browser back'i doğru state'e döner.
+  try { history.replaceState({screen: document.querySelector('.screen.active')?.id || 's-landing'}, '', location.hash || ' '); } catch(e){}
+});
+/* v5.82 — Portal geri düğmesi tıklaması. Browser history stack'i varsa
+   history.back() → doğal geri (popstate → show); yoksa doğrudan
+   landing'e döner. Referrer'ın portal-dışı olduğu durumda da
+   kullanıcı portalda kalır. */
+function goBackToLanding(){
+  const st = history.state;
+  if (st && st.screen && st.screen !== 's-landing') {
+    history.back();
+  } else {
+    show('s-landing');
+  }
+}
 function setBrand(b){_brand=b;['form-branded','ok-branded','case-branded'].forEach(id=>document.getElementById(id).setAttribute('data-brand',b));}
 
 function openForm(b){
@@ -558,7 +651,17 @@ function kbShowGate(show){
   document.getElementById('kb-gate').classList.toggle('hidden',!show);
   document.getElementById('kb-main').classList.toggle('hidden',show);
 }
-function openKb(){
+/* v5.82 — Firma ipucu opsiyonel: landing'deki ikili CTA
+   `openKb('inventist'|'assos')` çağırır → gate teması ve e-posta
+   placeholder'ı o markaya göre gelir. Gate doğrulama yine
+   domain'e göre kilit atar (kullanıcı Assos butonuna basıp
+   İnventist e-postası ile girerse İnventist KB'sini görür). */
+function openKb(firm){
+  if(firm==='inventist' || firm==='assos'){
+    _kbFirm = firm;
+    const em = document.getElementById('kb-gate-email');
+    if(em) em.placeholder = firm==='assos' ? 'ad.soyad@assospharma.com' : 'ad.soyad@inventist.com.tr';
+  }
   document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
   renderKbChips(); kbBackToList(); show('s-kb');
   kbSearch();  // oturum varsa listeyi açar; yoksa 401 → kapı görünür

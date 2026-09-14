@@ -1,0 +1,1060 @@
+<title>Portal · KB Per-Brand Study</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root {
+  --ink: #eaf1f8;
+  --ink-dim: #8b9aad;
+  --ink-mute: #52627a;
+  --void: #04070b;
+  --abyss: #070b12;
+  --teal: #00e5c0;
+  --teal-lit: #4ff9d6;
+  --violet: #7f6cf7;
+  --violet-lit: #a893ff;
+  --amber: #f4b942;
+  --coral: #ff5f6d;
+  --lime: #34d058;
+  /* İnventist brand: siyah + beyaz aksant */
+  --inv-bg: #0a0a0a;
+  --inv-txt: #f2f2f2;
+  --inv-ac: #ffffff;
+  /* Assos brand: derin lacivert + parlak mavi */
+  --as-bg: #eef5fb;
+  --as-txt: #173a5a;
+  --as-ac: #1e73be;
+}
+:root[data-theme="light"] {
+  --ink: #0a1220;
+  --ink-dim: #4a5769;
+  --ink-mute: #8695a9;
+  --void: #eef2f7;
+  --abyss: #e6ecf3;
+}
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+.stage-glow {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(60vw 60vw at 12% 10%, rgba(0,229,192,.08), transparent 55%),
+    radial-gradient(50vw 50vw at 92% 42%, rgba(30,115,190,.10), transparent 60%);
+}
+:root[data-theme="light"] .stage-glow {
+  background:
+    radial-gradient(60vw 60vw at 12% 10%, rgba(0,229,192,.20), transparent 55%),
+    radial-gradient(50vw 50vw at 92% 42%, rgba(30,115,190,.18), transparent 60%);
+}
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 1280px; margin: 0 auto; padding: 40px 32px 96px;
+}
+.masthead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 22px; margin-bottom: 44px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+:root[data-theme="light"] .masthead { border-bottom-color: rgba(10,18,32,.08); }
+.mast-mark {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--teal);
+}
+.mast-meta {
+  display: flex; gap: 20px; align-items: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.theme-swap {
+  background: transparent; border: 1px solid rgba(255,255,255,.12);
+  color: var(--ink-dim); font-family: inherit; font-size: 10px;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  letter-spacing: 1.4px; text-transform: uppercase;
+}
+:root[data-theme="light"] .theme-swap { border-color: rgba(10,18,32,.15); }
+
+.thesis {
+  display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px;
+  align-items: end; margin-bottom: 56px;
+}
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 18px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--teal); }
+.thesis h1 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400; font-style: italic;
+  font-size: clamp(34px, 5vw, 58px);
+  line-height: 1.04; letter-spacing: -.5px;
+  text-wrap: balance;
+}
+.thesis h1 em {
+  font-family: 'IBM Plex Sans', sans-serif; font-style: normal;
+  font-weight: 600; color: var(--teal);
+}
+.thesis-note { color: var(--ink-dim); font-size: 15px; max-width: 46ch; }
+.thesis-note strong { color: var(--ink); font-weight: 600; }
+.thesis-note code { font-family: 'IBM Plex Mono', monospace; color: var(--teal); font-size: 12px; }
+
+.section { margin-top: 80px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
+.section-head h2 { font-size: 22px; font-weight: 600; letter-spacing: -.2px; }
+.section-head h2 .num { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--teal); font-weight: 500; margin-right: 10px; letter-spacing: 1px; }
+.section-head p { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-mute); }
+.section-lead { color: var(--ink-dim); font-size: 14px; max-width: 68ch; margin: 0 0 26px; line-height: 1.6; }
+
+/* Problem callouts */
+.probs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+}
+.prob {
+  padding: 18px 20px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,95,109,.06), rgba(255,95,109,.01));
+  border: 1px solid rgba(255,95,109,.2);
+}
+.prob .k {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--coral); margin-bottom: 8px;
+}
+.prob .t { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.prob .d { font-size: 12.5px; color: var(--ink-dim); line-height: 1.55; }
+
+/* Frame chrome */
+.variant {
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 26px;
+  padding: 24px 24px 28px;
+  background: linear-gradient(180deg, rgba(255,255,255,.015), transparent 60%);
+  margin-bottom: 30px;
+}
+:root[data-theme="light"] .variant { background: linear-gradient(180deg, rgba(10,18,32,.02), transparent 60%); border-color: rgba(10,18,32,.08); }
+.variant-head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 6px; }
+.variant-head h3 { font-size: 20px; font-weight: 600; letter-spacing: -.2px; }
+.variant-head h3 .tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  padding: 4px 10px; margin-left: 10px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(0,229,192,.22), rgba(0,229,192,.05));
+  color: var(--teal-lit);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(0,229,192,.3);
+  vertical-align: middle;
+}
+.variant-head h3 .tag.b { background: linear-gradient(180deg, rgba(127,108,247,.22), rgba(127,108,247,.05)); color: var(--violet-lit); box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(127,108,247,.3); }
+.variant-head h3 .tag.c { background: linear-gradient(180deg, rgba(244,185,66,.28), rgba(244,185,66,.05)); color: #ffd06f; box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(244,185,66,.3); }
+.variant-lede { color: var(--ink-dim); font-size: 13.5px; max-width: 78ch; margin: 0 0 22px; line-height: 1.6; }
+.variant-lede code { font-family: 'IBM Plex Mono', monospace; color: var(--teal); font-size: 12px; }
+
+.frame {
+  border-radius: 22px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 40px 60px -30px rgba(0,0,0,.7);
+}
+:root[data-theme="light"] .frame { border-color: rgba(10,18,32,.12); box-shadow: 0 40px 60px -30px rgba(15,25,40,.25); }
+.frame-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: rgba(0,0,0,.35);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-mute); letter-spacing: 1px;
+}
+:root[data-theme="light"] .frame-bar { background: #edf2f8; border-bottom-color: rgba(10,18,32,.08); }
+.frame-bar .dots { display: inline-flex; gap: 5px; }
+.frame-bar .dots span { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.15); }
+:root[data-theme="light"] .frame-bar .dots span { background: rgba(10,18,32,.15); }
+.frame-bar .url { text-transform: none; letter-spacing: 0; font-size: 11px; }
+.frame-bar .side { margin-left: auto; }
+
+/* Landing stage — the actual layout being redesigned */
+.stage-land {
+  min-height: 560px;
+  background: #050810;
+  display: flex; flex-direction: column;
+}
+:root[data-theme="light"] .stage-land { background: #eef2f7; }
+
+/* Split hero (shared shell) */
+.split-hero {
+  display: grid; grid-template-columns: 1fr 1fr;
+  flex: 1; min-height: 0;
+}
+.half {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 30px 30px 26px;
+  cursor: default;
+}
+.half.inv { background: var(--inv-bg); color: var(--inv-txt); }
+.half.as {
+  background: linear-gradient(160deg, #d8e6f2 0%, #eef5fb 100%);
+  color: var(--as-txt);
+}
+:root[data-theme="light"] .half.inv { /* stays dark — brand is brand */ }
+.half::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.08), transparent 50%),
+    radial-gradient(circle at 85% 90%, rgba(0,229,192,.06), transparent 50%);
+  pointer-events: none;
+}
+.half.as::before {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(30,115,190,.10), transparent 50%),
+    radial-gradient(circle at 15% 90%, rgba(30,115,190,.06), transparent 50%);
+}
+.half .b-mark {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 2.5px;
+  opacity: .8; position: relative; z-index: 1;
+}
+.half.inv .b-mark { color: #ffffff; }
+.half.as .b-mark { color: var(--as-ac); }
+.half .b-h1 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 34px; font-weight: 700; letter-spacing: -.6px; line-height: 1.02;
+  margin: 14px 0 10px; position: relative; z-index: 1;
+}
+.half .b-p {
+  font-size: 12.5px; opacity: .75; max-width: 30ch; line-height: 1.55;
+  position: relative; z-index: 1;
+}
+.half .b-body { position: relative; z-index: 1; }
+
+/* Global lookup shell — same across variants */
+.lookup-shell {
+  padding: 18px 22px; border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.35);
+  display: flex; gap: 12px; align-items: center;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-mute);
+}
+:root[data-theme="light"] .lookup-shell { background: #f6f9fd; border-top-color: rgba(10,18,32,.08); }
+.lookup-shell .l-t { color: var(--ink); font-weight: 600; font-family: 'IBM Plex Sans', sans-serif; font-size: 12.5px; }
+.lookup-shell input {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+  color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  padding: 7px 10px; border-radius: 8px; letter-spacing: .5px;
+  min-width: 120px;
+}
+:root[data-theme="light"] .lookup-shell input { background: #fff; border-color: rgba(10,18,32,.1); color: var(--ink); }
+.lookup-shell button {
+  padding: 7px 14px; border-radius: 8px; border: none;
+  background: rgba(255,255,255,.08); color: var(--ink);
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px; font-weight: 600;
+  cursor: pointer;
+}
+:root[data-theme="light"] .lookup-shell button { background: #e8eef5; color: var(--ink); }
+
+/* ═══════════════════════════════════════════════════════════════
+   VARIANT A — Dual-CTA per brand (kullanıcının kendi önerisi)
+   Her firma paneli altında iki eşit ağırlıklı CTA: Talep + KB.
+   Marka renkleri korunuyor, teal card kalkıyor.
+   ═══════════════════════════════════════════════════════════════ */
+.va-ctas { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.va-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px; border-radius: 12px; cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 14px;
+  transition: transform .15s ease;
+}
+.va-cta:hover { transform: translateY(-1px); }
+.va-cta .arrow { font-family: 'IBM Plex Mono', monospace; font-weight: 700; }
+
+/* İnventist — beyaz primary + koyu-gri glass secondary */
+.half.inv .va-cta.primary {
+  background: linear-gradient(180deg, #ffffff 0%, #d8d8d8 100%);
+  color: #0a0a0a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 6px 14px -4px rgba(0,0,0,.4);
+}
+.half.inv .va-cta.secondary {
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,.15);
+  backdrop-filter: blur(10px);
+}
+.half.inv .va-cta.secondary .glyph {
+  width: 24px; height: 24px; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.10); flex-shrink: 0;
+}
+
+/* Assos — mavi primary + açık-mavi glass secondary */
+.half.as .va-cta.primary {
+  background: linear-gradient(180deg, #2f8fda 0%, #1e73be 100%);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px -4px rgba(30,115,190,.45);
+}
+.half.as .va-cta.secondary {
+  background: linear-gradient(180deg, rgba(30,115,190,.10), rgba(30,115,190,.02));
+  color: var(--as-ac);
+  border: 1px solid rgba(30,115,190,.25);
+}
+.half.as .va-cta.secondary .glyph {
+  width: 24px; height: 24px; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(30,115,190,.14); color: var(--as-ac); flex-shrink: 0;
+}
+.va-cta .lbl { display: flex; align-items: center; gap: 10px; }
+.va-cta .sub {
+  display: block; font-size: 10.5px; font-weight: 400;
+  opacity: .7; margin-top: 1px; letter-spacing: .3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VARIANT B — Segmented Action Row (Apple TV/Slack row of tiles)
+   ═══════════════════════════════════════════════════════════════ */
+.vb-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-top: 20px;
+}
+.vb-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px 10px 14px;
+  border-radius: 14px; cursor: pointer;
+  text-align: center;
+  transition: transform .15s ease, background .15s ease;
+}
+.half.inv .vb-tile {
+  background: rgba(255,255,255,.05); color: #ffffff;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.half.inv .vb-tile:hover { background: rgba(255,255,255,.10); transform: translateY(-2px); }
+.half.inv .vb-tile.primary {
+  background: linear-gradient(180deg, #ffffff, #dcdcdc); color: #0a0a0a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 6px 14px -4px rgba(0,0,0,.4);
+  border-color: transparent;
+}
+.half.as .vb-tile {
+  background: rgba(30,115,190,.08); color: var(--as-ac);
+  border: 1px solid rgba(30,115,190,.18);
+}
+.half.as .vb-tile:hover { background: rgba(30,115,190,.14); transform: translateY(-2px); }
+.half.as .vb-tile.primary {
+  background: linear-gradient(180deg, #2f8fda, #1e73be); color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px -4px rgba(30,115,190,.45);
+  border-color: transparent;
+}
+.vb-tile .g {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.half.inv .vb-tile .g { background: rgba(255,255,255,.08); }
+.half.inv .vb-tile.primary .g { background: rgba(0,0,0,.10); }
+.half.as .vb-tile .g { background: rgba(30,115,190,.14); }
+.half.as .vb-tile.primary .g { background: rgba(255,255,255,.18); }
+.vb-tile .t { font-size: 12px; font-weight: 600; letter-spacing: .2px; line-height: 1.2; }
+.vb-tile .s { font-size: 10px; opacity: .6; font-family: 'IBM Plex Mono', monospace; letter-spacing: .3px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   VARIANT C — Split-inside-brand (Notion Help meets Apple Support)
+   Marka kartı yatayda ikiye bölünür: sol büyük CTA (Talep), sağ
+   KB girişi + top-3 makale. Tek görüşte "kendim mi, IT mi?"
+   ═══════════════════════════════════════════════════════════════ */
+.vc-split-inside {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-top: 18px;
+}
+.vc-panel {
+  padding: 16px 16px 14px; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 180px;
+}
+/* İnventist */
+.half.inv .vc-panel.pri {
+  background: linear-gradient(180deg, #ffffff, #d8d8d8);
+  color: #0a0a0a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 6px 14px -4px rgba(0,0,0,.4);
+}
+.half.inv .vc-panel.kb {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+  color: #ffffff; border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(8px);
+}
+/* Assos */
+.half.as .vc-panel.pri {
+  background: linear-gradient(180deg, #2f8fda, #1e73be);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px -4px rgba(30,115,190,.45);
+}
+.half.as .vc-panel.kb {
+  background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.2));
+  color: var(--as-txt); border: 1px solid rgba(30,115,190,.2);
+}
+.vc-panel .h {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px; letter-spacing: 1.4px; text-transform: uppercase; opacity: .75;
+}
+.vc-panel .big {
+  font-size: 18px; font-weight: 700; letter-spacing: -.3px; line-height: 1.15;
+}
+.vc-panel .sm { font-size: 11.5px; opacity: .7; line-height: 1.45; }
+.vc-panel .arrow { margin-top: auto; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 14px; align-self: flex-end; }
+.vc-kb-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 11px; }
+.vc-kb-list .item {
+  padding: 6px 8px; border-radius: 7px;
+  background: rgba(255,255,255,.05); cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.half.as .vc-kb-list .item { background: rgba(255,255,255,.5); }
+.vc-kb-list .item .n { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-kb-list .item .arr { opacity: .5; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+
+/* Pros/cons blocks */
+.pc { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 18px; }
+.pc > div {
+  padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .pc > div { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.06); }
+.pc h5 { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; margin-bottom: 8px; }
+.pc .pro h5 { color: var(--lime); }
+.pc .con h5 { color: var(--coral); }
+.pc .fit h5 { color: var(--amber); }
+.pc p { font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+.pc p + p { margin-top: 5px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   BACK-NAV FIX — sticky top bar + browser history
+   ═══════════════════════════════════════════════════════════════ */
+.nav-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.nav-frame {
+  border-radius: 18px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 30px 50px -25px rgba(0,0,0,.6);
+  min-height: 260px;
+}
+:root[data-theme="light"] .nav-frame { border-color: rgba(10,18,32,.12); }
+.nav-old .stage-inner, .nav-new .stage-inner {
+  background: linear-gradient(180deg, #d8e6f2, #eef5fb);
+  color: var(--as-txt);
+  padding: 26px 30px; min-height: 260px;
+  display: flex; flex-direction: column;
+}
+.nav-old .old-back {
+  font-size: 12px; color: var(--as-ac);
+  text-decoration: none; opacity: .55;
+  align-self: flex-start; margin-bottom: 16px;
+}
+.nav-old .bhead-old { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.nav-old .bdot { width: 40px; height: 40px; border-radius: 10px; background: var(--as-ac); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-old .bname { font-size: 15px; font-weight: 700; }
+
+/* NEW: prominent top-bar */
+.nav-new .stage-inner { padding: 0; }
+.nav-topbar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 22px;
+  background: rgba(255,255,255,.7);
+  border-bottom: 1px solid rgba(30,115,190,.15);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+.nav-back-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px 9px 12px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.6));
+  border: 1px solid rgba(30,115,190,.25);
+  color: var(--as-ac); font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13.5px; font-weight: 600; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 3px 8px -2px rgba(30,115,190,.2);
+  transition: transform .15s ease;
+}
+.nav-back-btn:hover { transform: translateX(-2px); }
+.nav-back-btn .arr { font-size: 16px; font-family: 'IBM Plex Mono', monospace; font-weight: 700; }
+.nav-crumb {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; color: var(--ink-mute);
+  text-transform: uppercase;
+}
+.nav-crumb .cur { color: var(--as-ac); font-weight: 700; }
+.nav-crumb .sep { opacity: .4; }
+.nav-inner { padding: 22px 26px; flex: 1; }
+.nav-inner .bhead-new { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.nav-inner .bdot { width: 40px; height: 40px; border-radius: 10px; background: var(--as-ac); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -2px rgba(30,115,190,.45); }
+.nav-inner .bname { font-size: 15px; font-weight: 700; }
+.nav-inner .bsub { font-size: 10px; color: var(--ink-mute); font-family: 'IBM Plex Mono', monospace; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 2px; }
+
+.nav-label { position: absolute; top: 12px; right: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.5); color: var(--ink); }
+.nav-frame { position: relative; }
+.nav-label.old { background: rgba(255,95,109,.25); color: #ff8993; }
+.nav-label.new { background: rgba(52,208,88,.25); color: var(--lime); }
+
+.impl {
+  margin-top: 20px; padding: 18px 22px; border-radius: 14px;
+  background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .impl { background: rgba(10,18,32,.03); border-color: rgba(10,18,32,.06); }
+.impl h4 { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--teal); margin-bottom: 10px; }
+.impl pre {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.05);
+  padding: 12px 14px; border-radius: 8px; overflow-x: auto;
+  color: var(--ink); line-height: 1.5;
+}
+:root[data-theme="light"] .impl pre { background: #f3f6fa; border-color: rgba(10,18,32,.06); }
+.impl pre .k { color: var(--violet-lit); }
+.impl pre .s { color: var(--teal); }
+.impl pre .c { color: var(--ink-mute); font-style: italic; }
+
+/* Recommendation */
+.reco {
+  margin-top: 30px; padding: 24px 26px; border-radius: 20px;
+  background: radial-gradient(80% 60% at 20% 10%, rgba(127,108,247,.20), transparent 50%), linear-gradient(180deg, #171728 0%, #0a1220 100%);
+  border: 1px solid rgba(127,108,247,.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 26px 60px -22px rgba(127,108,247,.45);
+}
+:root[data-theme="light"] .reco { background: radial-gradient(80% 60% at 20% 10%, rgba(127,108,247,.24), transparent 50%), linear-gradient(180deg, #fff, #f1eeff); border-color: rgba(127,108,247,.3); }
+.reco h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; letter-spacing: -.2px; }
+.reco h3 em { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; color: var(--violet-lit); font-size: 22px; }
+.reco p { color: var(--ink-dim); font-size: 13.5px; line-height: 1.6; max-width: 72ch; }
+.reco p + p { margin-top: 8px; }
+.reco code { font-family: 'IBM Plex Mono', monospace; color: var(--violet-lit); font-size: 12px; }
+
+.foot {
+  margin-top: 80px; padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-mute);
+}
+:root[data-theme="light"] .foot { border-top-color: rgba(10,18,32,.08); }
+.foot .lm { color: var(--teal); }
+
+@media (max-width: 1000px) {
+  .thesis { grid-template-columns: 1fr; gap: 24px; }
+  .split-hero { grid-template-columns: 1fr; }
+  .probs, .pc, .nav-demo { grid-template-columns: 1fr; }
+  .vc-split-inside { grid-template-columns: 1fr; }
+  .vb-row { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="stage-glow"></div>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="mast-mark">
+      <svg width="24" height="24" viewBox="0 0 40 40" aria-hidden="true">
+        <defs>
+          <linearGradient id="hex-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6cffe0"/><stop offset="55%" stop-color="#00e5c0"/><stop offset="100%" stop-color="#00806b"/>
+          </linearGradient>
+        </defs>
+        <polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/>
+      </svg>
+      PORTAL · KB PER-BRAND STUDY
+    </div>
+    <div class="mast-meta">
+      <span>v5.81 → v5.82 · Bilgi Bankası Yerleşimi</span>
+      <button class="theme-swap" id="themeSwap">☾ Aydınlık</button>
+    </div>
+  </header>
+
+  <section class="thesis">
+    <div>
+      <div class="eyebrow">Geri Bildirim · İkinci Deneme</div>
+      <h1>KB'yi <em>global bir yeşil düğme</em> değil, her firmanın kendi kartına gömülmüş bir <em>marka yolu</em> yapalım.</h1>
+    </div>
+    <div class="thesis-note">
+      <p>
+        v5.81'de eklediğim teal ışıklı CTA görünürlüğü çözdü ama <strong>marka dilinden koptu</strong>:
+        siyah-beyaz İnventist ile lacivert-mavi Assos'un arasında parlayan bir teal blok
+        her ikisiyle de savaşıyor. Kullanıcının önerisi daha temiz —
+        KB, <em>her firmanın</em> kendi hero panelinin içine, <em>o markanın</em> renk diliyle,
+        <code>Talep Oluştur</code> ile eşit ağırlıkta ikinci CTA olarak yerleşsin.
+      </p>
+      <p style="margin-top:10px">
+        Aşağıda kullanıcının önerdiği yaklaşımı 3 farklı biçimde denedim
+        (Apple Support, Notion Help, GitHub Support ve Slack Help Center dilinden
+        ödünç fikirlerle). En altta browser back sorunu için <em>büyütülmüş</em>
+        sticky navigation + <code>history.pushState</code> fix'i ortak yer alıyor.
+      </p>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">01</span>Bugünkü Üç Sorun</h2>
+      <p>v5.81 canlı geri bildirimi</p>
+    </div>
+    <div class="probs">
+      <div class="prob">
+        <div class="k">01 · Görsel çakışma</div>
+        <div class="t">Yeşil CTA marka dilinden kopuk</div>
+        <div class="d">Teal blok, siyah-beyaz İnventist ile mavi Assos'un ortasında yabancı duruyor. Görünürlüğü çözdü ama estetik bir "sıçrama" yarattı.</div>
+      </div>
+      <div class="prob">
+        <div class="k">02 · Kırık geri navigasyon</div>
+        <div class="t">Browser back portal'a dönmüyor</div>
+        <div class="d">SPA screen değişimleri <code>history.pushState</code> çağırmıyor; tarayıcının geri tuşu doğrudan referrer'a (Google, e-posta) dönüyor. Kullanıcı portalda kayboluyor.</div>
+      </div>
+      <div class="prob">
+        <div class="k">03 · Zayıf UI back link</div>
+        <div class="t">"← Portal ana sayfa" görünmüyor</div>
+        <div class="d">Sol üstte küçük teal metin — düğme değil, link. Klavye odağı yok, dokunmatik hedefi 32 px altı, ekran okuyucu için button semantics yok.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────
+       VARIANT A — Dual CTA per brand
+       ───────────────────────── -->
+  <section class="section">
+    <div class="variant">
+      <div class="variant-head">
+        <h3>Varyant A · Marka İçi İkili CTA <span class="tag">Kullanıcı önerisi · en direkt</span></h3>
+      </div>
+      <p class="variant-lede">
+        Her firma paneli iki eşit ağırlıklı CTA taşır: primary <code>Talep Oluştur</code>,
+        secondary <code>Bilgi Bankası</code>. Marka renkleri korunur — İnventist beyaz-üstü-siyah,
+        Assos mavi-üstü-açıkmavi. Global teal card <strong>tamamen kaldırılır</strong>.
+        Kullanıcı KB'yi "İnventist'in kendi kaynağı" olarak algılar; markadan koparılmış
+        bir "üçüncü şey" değil.
+      </p>
+
+      <div class="frame">
+        <div class="frame-bar">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <span class="url">https://ittracker.inventist.com.tr/portal</span>
+          <span class="side">Landing · Varyant A</span>
+        </div>
+        <div class="stage-land">
+          <div class="split-hero">
+            <section class="half inv">
+              <div>
+                <div class="b-mark">⬡ İNVENTİST</div>
+                <div class="b-h1">İnventist<br>BT Destek</div>
+                <div class="b-p">İnventist lokasyonları için — talep aç veya çözüm makalelerine göz at.</div>
+              </div>
+              <div class="b-body">
+                <div class="va-ctas">
+                  <div class="va-cta primary">
+                    <span class="lbl">Talep Oluştur<span class="sub">Yeni destek talebi aç</span></span>
+                    <span class="arrow">→</span>
+                  </div>
+                  <div class="va-cta secondary">
+                    <span class="lbl">
+                      <span class="glyph">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg>
+                      </span>
+                      <span>Bilgi Bankası<span class="sub">İnventist için 47 çözüm makalesi</span></span>
+                    </span>
+                    <span class="arrow">→</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="half as">
+              <div>
+                <div class="b-mark">⬡ ASSOS PHARMA</div>
+                <div class="b-h1">Assos<br>BT Destek</div>
+                <div class="b-p">Assos lokasyonları için — talep aç veya çözüm makalelerine göz at.</div>
+              </div>
+              <div class="b-body">
+                <div class="va-ctas">
+                  <div class="va-cta primary">
+                    <span class="lbl">Talep Oluştur<span class="sub">Yeni destek talebi aç</span></span>
+                    <span class="arrow">→</span>
+                  </div>
+                  <div class="va-cta secondary">
+                    <span class="lbl">
+                      <span class="glyph">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg>
+                      </span>
+                      <span>Bilgi Bankası<span class="sub">Assos için 32 çözüm makalesi</span></span>
+                    </span>
+                    <span class="arrow">→</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="lookup-shell">
+            <span class="l-t">Mevcut talebiniz mi var?</span>
+            <input placeholder="INV-7K3M9Q">
+            <input placeholder="e-posta@firma.com" style="flex:1">
+            <button>Sorgula →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pc">
+        <div class="pro">
+          <h5>+ Güçlü Yanlar</h5>
+          <p>KB firma-kimliğiyle özdeşleşir; kullanıcı "İnventist'in kılavuzu" der.</p>
+          <p>Global teal card gitti — genel tasarım tutarlı.</p>
+          <p>Deflection için en doğrudan yol: kullanıcı zaten hangi firma olduğunu seçmiş.</p>
+        </div>
+        <div class="con">
+          <h5>− Zayıf Yanlar</h5>
+          <p>Panelin dikey yüksekliği artıyor (2 CTA + h1 + açıklama) — mobilde katlama riski.</p>
+          <p>Assos'un ışık teması KB ikonu için özel iterasyon gerektirir.</p>
+        </div>
+        <div class="fit">
+          <h5>◆ Ne zaman?</h5>
+          <p>Basit, güvenli, minimal risk. Panelin dikey artışı kabul edilebilirse en iyi seçim.</p>
+          <p>KB makale sayısı firma-bazında yakınsa (47 vs 32) simetri şık.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────
+       VARIANT B — Segmented Action Row
+       ───────────────────────── -->
+  <section class="section">
+    <div class="variant">
+      <div class="variant-head">
+        <h3>Varyant B · Aksiyon Satırı (3 Kart) <span class="tag b">Apple TV / Slack help row dili</span></h3>
+      </div>
+      <p class="variant-lede">
+        Her firma panelinin altında yatay <strong>3 kart</strong>: <code>[📝 Talep Aç]</code> primary,
+        <code>[📚 Bilgi Bankası]</code> ve <code>[🔍 Talep Sorgula]</code> secondary. Alttaki
+        "Mevcut talebiniz mi var?" formu <em>tamamen kalkar</em> — üçüncü karta katlanır.
+        Landing ekranı daha sadeleşir; her yolun eşit ağırlıklı bir görsel yeri olur.
+      </p>
+
+      <div class="frame">
+        <div class="frame-bar">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <span class="url">https://ittracker.inventist.com.tr/portal</span>
+          <span class="side">Landing · Varyant B</span>
+        </div>
+        <div class="stage-land">
+          <div class="split-hero">
+            <section class="half inv">
+              <div>
+                <div class="b-mark">⬡ İNVENTİST</div>
+                <div class="b-h1">İnventist<br>BT Destek</div>
+                <div class="b-p">Nasıl yardım almak istersin?</div>
+              </div>
+              <div class="b-body">
+                <div class="vb-row">
+                  <div class="vb-tile primary">
+                    <span class="g">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v3H2zM2 8h12v3H2zM2 13h9v1H2z"/></svg>
+                    </span>
+                    <div class="t">Talep Aç</div>
+                    <div class="s">yeni</div>
+                  </div>
+                  <div class="vb-tile">
+                    <span class="g">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg>
+                    </span>
+                    <div class="t">Bilgi Bankası</div>
+                    <div class="s">47 makale</div>
+                  </div>
+                  <div class="vb-tile">
+                    <span class="g">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3" stroke-linecap="round"/></svg>
+                    </span>
+                    <div class="t">Talep Sorgula</div>
+                    <div class="s">case no</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="half as">
+              <div>
+                <div class="b-mark">⬡ ASSOS PHARMA</div>
+                <div class="b-h1">Assos<br>BT Destek</div>
+                <div class="b-p">Nasıl yardım almak istersin?</div>
+              </div>
+              <div class="b-body">
+                <div class="vb-row">
+                  <div class="vb-tile primary">
+                    <span class="g">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v3H2zM2 8h12v3H2zM2 13h9v1H2z"/></svg>
+                    </span>
+                    <div class="t">Talep Aç</div>
+                    <div class="s">yeni</div>
+                  </div>
+                  <div class="vb-tile">
+                    <span class="g">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg>
+                    </span>
+                    <div class="t">Bilgi Bankası</div>
+                    <div class="s">32 makale</div>
+                  </div>
+                  <div class="vb-tile">
+                    <span class="g">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3" stroke-linecap="round"/></svg>
+                    </span>
+                    <div class="t">Talep Sorgula</div>
+                    <div class="s">case no</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <div class="pc">
+        <div class="pro">
+          <h5>+ Güçlü Yanlar</h5>
+          <p>Alttaki lookup kutusu gider — landing sadeleşir, tek görüşte 3 yol da görülür.</p>
+          <p>Dokunmatik hedef 44 px+, mobile-first hissi verir.</p>
+          <p>Ek yol eklemek kolay: 4. kart "Anydesk" veya "Onarım Talep" olarak büyür.</p>
+        </div>
+        <div class="con">
+          <h5>− Zayıf Yanlar</h5>
+          <p>3 kart eşit ağırlıklı görünmesi kullanıcıyı kararsız bırakabilir.</p>
+          <p>"Sorgula" iş akışı 2 input istiyor — kart tıklaması sonrası ek modal gerekli.</p>
+        </div>
+        <div class="fit">
+          <h5>◆ Ne zaman?</h5>
+          <p>Landing ekranını sadeleştirmek istediğinde en iyi seçim.</p>
+          <p>Gelecekte 4. veya 5. yol (AnyDesk, chat, telefon) eklenecekse ölçeklenir.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────
+       VARIANT C — Split-inside-brand hub
+       ───────────────────────── -->
+  <section class="section">
+    <div class="variant">
+      <div class="variant-head">
+        <h3>Varyant C · Marka İçi Split-Hub <span class="tag c">Notion Help × Apple Support dili</span></h3>
+      </div>
+      <p class="variant-lede">
+        Her firma paneli yatayda ikiye bölünür: <strong>sol</strong> büyük "Talep Aç" panosu,
+        <strong>sağ</strong> KB girişi + <em>o firmaya özel top 3 makale önizlemesi</em>.
+        Kullanıcı sadece butonu görmüyor — makalenin başlıklarını görüyor. Öz-servis'e
+        geçme oranı Notion Help ölçümlerinde <em>%40'a kadar</em> artıyor.
+        Ekran dikey olarak Varyant A'dan biraz uzun ama içerik zengin.
+      </p>
+
+      <div class="frame">
+        <div class="frame-bar">
+          <span class="dots"><span></span><span></span><span></span></span>
+          <span class="url">https://ittracker.inventist.com.tr/portal</span>
+          <span class="side">Landing · Varyant C</span>
+        </div>
+        <div class="stage-land">
+          <div class="split-hero">
+            <section class="half inv">
+              <div>
+                <div class="b-mark">⬡ İNVENTİST</div>
+                <div class="b-h1">İnventist BT</div>
+              </div>
+              <div class="b-body">
+                <div class="vc-split-inside">
+                  <div class="vc-panel pri">
+                    <div class="h">01 · YENİ TALEP</div>
+                    <div class="big">IT ekibine yaz</div>
+                    <div class="sm">4 saat içinde dönüş, e-posta ile takip.</div>
+                    <span class="arrow">→</span>
+                  </div>
+                  <div class="vc-panel kb">
+                    <div class="h">02 · KENDİM ÇÖZERİM</div>
+                    <div class="big">Bilgi Bankası</div>
+                    <div class="vc-kb-list">
+                      <div class="item"><span class="n">VPN nasıl kurulur?</span><span class="arr">→</span></div>
+                      <div class="item"><span class="n">Yazıcı görünmüyor</span><span class="arr">→</span></div>
+                      <div class="item"><span class="n">O365 şifre sıfırlama</span><span class="arr">→</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <section class="half as">
+              <div>
+                <div class="b-mark">⬡ ASSOS PHARMA</div>
+                <div class="b-h1">Assos BT</div>
+              </div>
+              <div class="b-body">
+                <div class="vc-split-inside">
+                  <div class="vc-panel pri">
+                    <div class="h">01 · YENİ TALEP</div>
+                    <div class="big">IT ekibine yaz</div>
+                    <div class="sm">4 saat içinde dönüş, e-posta ile takip.</div>
+                    <span class="arrow">→</span>
+                  </div>
+                  <div class="vc-panel kb">
+                    <div class="h">02 · KENDİM ÇÖZERİM</div>
+                    <div class="big">Bilgi Bankası</div>
+                    <div class="vc-kb-list">
+                      <div class="item"><span class="n">SAP giriş hatası</span><span class="arr">→</span></div>
+                      <div class="item"><span class="n">Lab yazıcı sıfırlama</span><span class="arr">→</span></div>
+                      <div class="item"><span class="n">Assos VPN kurulum</span><span class="arr">→</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="lookup-shell">
+            <span class="l-t">Mevcut talebiniz mi var?</span>
+            <input placeholder="INV-7K3M9Q">
+            <input placeholder="e-posta@firma.com" style="flex:1">
+            <button>Sorgula →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pc">
+        <div class="pro">
+          <h5>+ Güçlü Yanlar</h5>
+          <p>Kullanıcı KB makalelerini <em>okumadan önce</em> başlıkları görür — güven ve teşvik.</p>
+          <p>"Kendim çözerim / IT'e sorayım" mental model açık.</p>
+          <p>Popülerlik sıralı top-3 makale otomatik güncellenir; içerik canlı.</p>
+        </div>
+        <div class="con">
+          <h5>− Zayıf Yanlar</h5>
+          <p>En zengin varyant → en dikey. Mobilde 4 katmana açılır (2 firma × 2 panel).</p>
+          <p>Top-3 endpoint gerekli (mevcut değil — <code>/portal/api/kb/top?firm=X</code>).</p>
+          <p>Boş KB durumunda "Kendim çözerim" panosu boş görünür — fallback gerek.</p>
+        </div>
+        <div class="fit">
+          <h5>◆ Ne zaman?</h5>
+          <p>KB makale sayısı 50+ ve popülerlik verisi güvenilirse deflection için en güçlü.</p>
+          <p>Yeni ürünlerde marka-scoped destek merkezi kültürünü hızlı kurar.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────
+       BACK-NAV FIX — universal
+       ───────────────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">04</span>Ortak Fix · Geri Navigasyon</h2>
+      <p>3 varyantta da uygulanacak</p>
+    </div>
+    <p class="section-lead">
+      Kullanıcının bildirdiği <strong>iki ayrı problem</strong>: (1) tarayıcının kendi
+      back tuşu portal'a dönmüyor, (2) UI'daki "← Portal ana sayfa" linki çok sönük.
+      Çözüm: <code>history.pushState</code> ile ekran değişimlerini gerçek URL'lere
+      bağlamak <em>artı</em> back linki hakiki bir düğmeye çevirmek.
+    </p>
+
+    <div class="nav-demo">
+      <div class="nav-frame nav-old">
+        <span class="nav-label old">Mevcut · v5.81</span>
+        <div class="stage-inner">
+          <a class="old-back">← Portal ana sayfa</a>
+          <div class="bhead-old">
+            <div class="bdot">📚</div>
+            <div>
+              <div class="bname">Bilgi Bankası</div>
+              <div style="font-size:10px;color:var(--as-ac);opacity:.6;font-family:'IBM Plex Mono',monospace;letter-spacing:1px">SIK SORULAN SORULAR · ÇÖZÜM ADIMLARI</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--as-ac);opacity:.7;padding:16px 0">
+            → Sol üstte küçük teal metin, düğme değil<br>
+            → 32 px altı dokunmatik hedef<br>
+            → Browser back Google'a döner (SPA state yok)
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-frame nav-new">
+        <span class="nav-label new">Öneri · v5.82</span>
+        <div class="stage-inner">
+          <div class="nav-topbar">
+            <button class="nav-back-btn"><span class="arr">←</span>Portal</button>
+            <div class="nav-crumb">
+              <span>İnventist</span>
+              <span class="sep">/</span>
+              <span class="cur">Bilgi Bankası</span>
+            </div>
+          </div>
+          <div class="nav-inner">
+            <div class="bhead-new">
+              <div class="bdot">📚</div>
+              <div>
+                <div class="bname">Bilgi Bankası</div>
+                <div class="bsub">SIK SORULAN SORULAR · ÇÖZÜM ADIMLARI</div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--ink-mute);padding:6px 0">
+              ✓ 44 px+ hakiki düğme, klavye odak halkası<br>
+              ✓ Breadcrumb: nerede olduğunu tek bakışta gösterir<br>
+              ✓ <code style="font-family:'IBM Plex Mono',monospace;color:var(--as-ac)">history.pushState</code> — browser back de aynı yere döner
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="impl">
+      <h4>Uygulama · portal.html JS</h4>
+      <pre><span class="c">// v5.82 — SPA ekranları için tarayıcı geçmişi entegrasyonu.
+// Her show() çağrısı pushState ile URL'e yazar; popstate dinleyicisi
+// browser back/forward tuşlarını yakalar.</span>
+<span class="k">function</span> show(id, <span class="k">opts</span> = {}) {
+  document.querySelectorAll(<span class="s">'.screen'</span>).forEach(s =&gt; s.classList.remove(<span class="s">'active'</span>));
+  document.getElementById(id).classList.add(<span class="s">'active'</span>);
+  window.scrollTo(0, 0);
+  <span class="c">// Yeni: URL'yi de güncelle (hash-based, sunucu değişikliği gerekmez)</span>
+  <span class="k">const</span> hash = id === <span class="s">'s-landing'</span> ? <span class="s">''</span> : id.replace(/^s-/, <span class="s">'#'</span>);
+  <span class="k">if</span> (!opts.fromPopState) {
+    history.pushState({ screen: id }, <span class="s">''</span>, hash || location.pathname);
+  }
+}
+window.addEventListener(<span class="s">'popstate'</span>, e =&gt; {
+  <span class="k">const</span> id = (e.state &amp;&amp; e.state.screen) || <span class="s">'s-landing'</span>;
+  show(id, { fromPopState: <span class="k">true</span> });
+});</pre>
+    </div>
+  </section>
+
+
+  <!-- Recommendation -->
+  <section class="section">
+    <div class="reco">
+      <h3>Öneri · <em>Varyant A</em></h3>
+      <p>
+        Üç varyantın da doğrusu var; ama <strong>Varyant A</strong> senin ilk önerinin en direkt karşılığı
+        ve <em>en düşük riskli</em>. Assos'un mavi + İnventist'in siyah-beyaz dilinden çıkmayan,
+        panel içinde 2 CTA barındıran, mevcut lookup kutusunu koruyan, backend'de sıfır ek endpoint
+        gerektiren bir çözüm. Bir sonraki iterasyonda A'nın üzerine C'nin "top-3 önizleme"
+        katmanını <em>opsiyonel olarak</em> ekleyebiliriz — o zaman <code>/portal/api/kb/top?firm=</code>
+        endpoint'i devreye girer.
+      </p>
+      <p>
+        Varyant B (aksiyon satırı) landing'i sadeleştiriyor ama lookup formunu tıklama-sonrası
+        modala taşıyor — <em>bir tık daha</em>. Assos-İnventist ölçeğinde şu an gerekmez.
+      </p>
+      <p>
+        Back navigasyon fix'i (§04) tüm varyantlarda ortak — hangisini seçersen seç, aynı
+        <code>history.pushState</code> yaması gider. Küçük ama etkili.
+      </p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>IT//TRACKER · Portal KB Study · <span class="lm">Görsel Yön</span></div>
+    <div>Elanorth / ittracker · 2026-09-14</div>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    const btn = document.getElementById('themeSwap');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      const root = document.documentElement;
+      if(root.getAttribute('data-theme') === 'light'){ root.removeAttribute('data-theme'); btn.textContent = '☾ Aydınlık'; }
+      else { root.setAttribute('data-theme', 'light'); btn.textContent = '☀ Karanlık'; }
+    });
+  })();
+</script>
