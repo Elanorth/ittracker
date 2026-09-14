@@ -857,7 +857,7 @@ textarea.form-control{resize:vertical;min-height:64px;}
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
     <a class="nav-item admin-item" data-perm="manager" data-click="nav" data-page="admin"><span class="nav-icon">👥</span>Kullanıcılar</a>
     <a class="nav-item admin-item" data-perm="director" data-click="nav" data-page="audit"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
-    <a class="nav-item" data-perm="director" data-click="nav" data-page="kb"><span class="nav-icon">📚</span>Bilgi Bankası</a>
+    <a class="nav-item" data-perm="all" data-click="nav" data-page="kb"><span class="nav-icon">📚</span>Bilgi Bankası</a>
     <a class="nav-item" data-perm="manager" data-click="nav" data-page="settings"><span class="nav-icon">⚙</span>Ayarlar</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
     <a class="nav-item" data-perm="manager" data-click="nav" data-page="notifications"><span class="nav-icon">🔔</span>Bildirim Ayarları</a>
@@ -1926,18 +1926,67 @@ textarea.form-control{resize:vertical;min-height:64px;}
   <div id="arch-pager" style="display:flex;gap:10px;align-items:center;justify-content:center;margin-top:14px;font-size:12px;color:var(--text-muted)"></div>
 </div>
 
-<!-- v5.24 — BİLGİ BANKASI (director+) -->
+<!-- v5.24 — BİLGİ BANKASI (v6.0'dan itibaren TÜM giriş yapmış rollere OKUMA;
+     yalnız director+ yazma). Operatör benzer bir case daha önce çözülmüş mü
+     hızlıca görebilsin; makale yazımı yönetim kademesinde kalır. -->
 <div id="page-kb" class="page-section">
   <div class="topbar">
     <div>
       <div class="page-title">Bilgi <span>Bankası</span></div>
-      <div class="page-sub">Portal self-service çözüm makaleleri — yayınlananlar kullanıcıya görünür, talep sayısını azaltır</div>
+      <div class="page-sub" id="kb-page-sub">Yayınlanmış çözüm makaleleri — hem operatörler için hızlı referans hem portalda kullanıcıya sunulur</div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-primary btn-sm" data-click="openKbEditor">＋ Yeni Makale</button>
+      <!-- v6.0 — Yalnızca director+ yazma butonu görür (kb.js applyRoleUi
+           çağrısı listelemede tekrar doğrular; guard iki katmanlıdır). -->
+      <button class="btn btn-primary btn-sm" data-perm="director" data-click="openKbEditor">＋ Yeni Makale</button>
     </div>
   </div>
+
+  <!-- v6.0 — Arama + kategori filtresi (okuma modu için birincil UI) -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:0 2px">
+    <input class="form-control" id="kb-search" placeholder="🔍 Başlık, anahtar kelime veya içerikte ara…" style="flex:1;min-width:220px" data-input="kbSearchDebounced">
+    <select class="form-control" id="kb-filter-cat" style="width:180px" data-change="renderKbList">
+      <option value="">Tüm kategoriler</option>
+      <option value="genel">Genel</option>
+      <option value="ağ">Ağ/İnternet</option>
+      <option value="donanım">Donanım</option>
+      <option value="yazılım">Yazılım</option>
+      <option value="hesap">Hesap/Erişim</option>
+      <option value="diğer">Diğer</option>
+    </select>
+    <!-- Yalnız director+ görür: taslak/yayında filtresi -->
+    <select class="form-control" id="kb-filter-status" data-perm="director" style="width:150px" data-change="renderKbList">
+      <option value="">Tümü</option>
+      <option value="published">Yayında</option>
+      <option value="draft">Taslak</option>
+    </select>
+  </div>
+
   <div id="kb-admin-list" style="display:flex;flex-direction:column;gap:10px;padding:4px 2px"></div>
+</div>
+
+<!-- v6.0 — KB Salt-Okunur Görüntüleyici (non-director için).
+     Editör modalını disabled state'e sokmak yerine ayrı bileşen daha net. -->
+<div id="kb-viewer-modal" class="modal-overlay hidden">
+  <div class="modal" style="width:640px" role="dialog" aria-modal="true" aria-label="Makale">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+      <div style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(0,229,192,.12);color:var(--accent);font-size:18px;flex-shrink:0">📄</div>
+      <div style="flex:1;min-width:0">
+        <div class="modal-title" style="margin-bottom:4px" id="kb-view-title">—</div>
+        <div id="kb-view-meta" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.8px;color:var(--text-muted);text-transform:uppercase"></div>
+      </div>
+    </div>
+    <div id="kb-view-body" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--text);max-height:50vh;overflow-y:auto"></div>
+    <div id="kb-view-keywords" style="margin-top:10px;font-size:11px;color:var(--text-muted);display:none">
+      <span style="font-family:'IBM Plex Mono',monospace;letter-spacing:.5px">Anahtar kelimeler: </span><span id="kb-view-kw"></span>
+    </div>
+    <div class="modal-actions">
+      <div style="flex:1"></div>
+      <button class="btn btn-outline btn-sm" data-click="hideModal" data-modal="kb-viewer-modal">Kapat</button>
+      <!-- v6.0 — director+ için hızlı düzenle geçişi -->
+      <button class="btn btn-primary btn-sm" data-perm="director" id="kb-view-edit-btn" data-click="editFromViewer">Düzenle</button>
+    </div>
+  </div>
 </div>
 
 <!-- KB Editör modalı -->

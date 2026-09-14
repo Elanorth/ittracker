@@ -3221,15 +3221,34 @@ def _kb_scope_ok(me, firm):
 
 
 @app.route("/api/kb", methods=["GET"])
-@director_required
+@login_required
 def kb_list():
-    """IT: kapsamdaki tüm makaleler (taslak dahil). Director yönettiği firma + global."""
+    """IT: kapsamdaki makaleler. Director+ taslak dahil hepsini görür ve düzenler;
+    diğer roller yalnızca yayınlanmış makaleleri okuma amaçlı görür."""
     me = _current_user()
     arts = KbArticle.query.order_by(KbArticle.updated_at.desc()).all()
     scope = _user_firm_scope(me)
     if scope is not None:
         arts = [a for a in arts if (not a.firm) or a.firm in scope]
+    # v6.0 — non-director: yalnız yayınlanmışları döndür (okuma modu)
+    if not me.is_director_or_above:
+        arts = [a for a in arts if a.published]
     return jsonify([a.to_dict() for a in arts])
+
+
+@app.route("/api/kb/<int:art_id>", methods=["GET"])
+@login_required
+def kb_detail(art_id):
+    """v6.0 — App tarafı makale okuma. Non-director sadece yayınlanmışı okuyabilir;
+    firma kapsamı dışındaki makaleye erişim 404 döner (bilgi sızmaz)."""
+    me = _current_user()
+    art = KbArticle.query.get_or_404(art_id)
+    scope = _user_firm_scope(me)
+    if scope is not None and art.firm and art.firm not in scope:
+        return jsonify({"error": "Bulunamadı"}), 404
+    if not me.is_director_or_above and not art.published:
+        return jsonify({"error": "Bulunamadı"}), 404
+    return jsonify(art.to_dict())
 
 
 @app.route("/api/kb", methods=["POST"])
