@@ -127,3 +127,55 @@ class TestKbCrud:
         login_as(d)
         firms = {a["firm"] for a in client.get("/api/kb").get_json()}
         assert "assos" not in firms  # director assos taslağını görmez
+
+
+class TestKbReadForAllRoles:
+    """v6.0 — KB okuma tüm giriş yapmış rollere açık, yazma director+ kalır.
+    Önceden GET /api/kb sadece director+'ye açıktı → operatör case'e bakarken
+    benzer çözülmüş vakaları göremiyordu. Bu davranış artık düzeltildi."""
+
+    def test_junior_operator_yayinlanan_makaleleri_gorur(self, db, client, user_factory, login_as):
+        _art("Yayınlanmış inv", firm="inventist", published=True)
+        _art("Taslak inv", firm="inventist", published=False)
+        op = user_factory(username="kb_jr", firm="inventist", permission_level="junior")
+        login_as(op)
+        r = client.get("/api/kb")
+        assert r.status_code == 200
+        titles = {a["title"] for a in r.get_json()}
+        assert "Yayınlanmış inv" in titles
+        assert "Taslak inv" not in titles  # non-director taslak görmez
+
+    def test_junior_operator_yazma_403(self, db, client, user_factory, login_as):
+        op = user_factory(username="kb_jr2", firm="inventist", permission_level="junior")
+        login_as(op)
+        assert client.post("/api/kb", json={"title": "X", "firm": "inventist"}).status_code == 403
+
+    def test_operator_makale_detayi_okur(self, db, client, user_factory, login_as):
+        a = _art("Yazıcı kılavuzu", firm="inventist", published=True, body="Adım 1…")
+        op = user_factory(username="kb_op", firm="inventist", permission_level="senior")
+        login_as(op)
+        r = client.get(f"/api/kb/{a.id}")
+        assert r.status_code == 200
+        assert r.get_json()["body"] == "Adım 1…"
+
+    def test_operator_taslak_makale_404(self, db, client, user_factory, login_as):
+        a = _art("Taslak", firm="inventist", published=False)
+        op = user_factory(username="kb_op2", firm="inventist", permission_level="junior")
+        login_as(op)
+        # Non-director için taslak görünmemeli (yayın bilgi sızıntısı olmasın)
+        assert client.get(f"/api/kb/{a.id}").status_code == 404
+
+    def test_operator_kapsam_disi_makale_404(self, db, client, user_factory, login_as):
+        a = _art("Assos makale", firm="assos", published=True)
+        op = user_factory(username="kb_op3", firm="inventist", permission_level="senior")
+        login_as(op)
+        # İnv operatörü Assos yayın makalesini bile görmez (firma izolasyonu)
+        assert client.get(f"/api/kb/{a.id}").status_code == 404
+
+    def test_director_taslak_detay_erisir(self, db, client, user_factory, login_as):
+        a = _art("Taslak inv", firm="inventist", published=False, body="wip")
+        d = user_factory(username="kb_dr", firm="inventist", permission_level="it_director")
+        login_as(d)
+        r = client.get(f"/api/kb/{a.id}")
+        assert r.status_code == 200
+        assert r.get_json()["body"] == "wip"

@@ -1,0 +1,1833 @@
+<title>IT//TRACKER · Workflow &amp; Bilgi Bankası</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* ─── Design tokens carried from v6.0 depth study ─── */
+:root {
+  --ink: #eaf1f8;
+  --ink-dim: #8b9aad;
+  --ink-mute: #52627a;
+
+  --void:      #04070b;
+  --abyss:     #070b12;
+  --surface-1: #0c131c;
+  --surface-2: #131c28;
+  --surface-3: #1a2532;
+
+  --teal:      #00e5c0;
+  --teal-lit:  #4ff9d6;
+  --teal-deep: #007a68;
+  --violet:    #7f6cf7;
+  --violet-lit:#a893ff;
+  --amber:     #f4b942;
+  --coral:     #ff5f6d;
+  --lime:      #34d058;
+
+  --rim:       rgba(255,255,255,.10);
+  --rim-hot:   rgba(255,255,255,.22);
+  --shade-lo:  rgba(0,0,0,.35);
+  --shade-hi:  rgba(0,0,0,.75);
+}
+
+:root[data-theme="light"] {
+  --ink: #0a1220;
+  --ink-dim: #4a5769;
+  --ink-mute: #8695a9;
+  --void: #eef2f7;
+  --abyss: #e6ecf3;
+  --surface-1: #ffffff;
+  --surface-2: #f3f6fa;
+  --surface-3: #e8eef5;
+  --rim: rgba(255,255,255,.9);
+  --shade-lo: rgba(15,25,40,.08);
+  --shade-hi: rgba(15,25,40,.18);
+}
+
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.stage-glow {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(60vw 60vw at 12% 10%, rgba(0,229,192,.10), transparent 55%),
+    radial-gradient(50vw 50vw at 92% 42%, rgba(127,108,247,.10), transparent 60%),
+    radial-gradient(80vw 40vw at 50% 100%, rgba(244,185,66,.06), transparent 65%);
+}
+:root[data-theme="light"] .stage-glow {
+  background:
+    radial-gradient(60vw 60vw at 12% 10%, rgba(0,229,192,.22), transparent 55%),
+    radial-gradient(50vw 50vw at 92% 42%, rgba(127,108,247,.18), transparent 60%);
+}
+
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 1280px; margin: 0 auto; padding: 40px 32px 96px;
+}
+
+.masthead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 22px; margin-bottom: 44px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+:root[data-theme="light"] .masthead { border-bottom-color: rgba(10,18,32,.08); }
+.mast-mark {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 700; letter-spacing: 2px;
+  color: var(--teal);
+}
+.mast-meta {
+  display: flex; gap: 20px; align-items: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.theme-swap {
+  background: transparent; border: 1px solid rgba(255,255,255,.12);
+  color: var(--ink-dim); font-family: inherit; font-size: 10px;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  letter-spacing: 1.4px; text-transform: uppercase;
+}
+:root[data-theme="light"] .theme-swap { border-color: rgba(10,18,32,.15); }
+.theme-swap:hover { color: var(--teal); border-color: rgba(0,229,192,.4); }
+
+/* Thesis */
+.thesis {
+  display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px;
+  align-items: end; margin-bottom: 56px;
+}
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 18px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--teal); }
+.thesis h1 {
+  font-family: 'Instrument Serif', 'Times New Roman', serif;
+  font-weight: 400; font-style: italic;
+  font-size: clamp(36px, 5.2vw, 62px);
+  line-height: 1.02; letter-spacing: -.5px;
+  text-wrap: balance;
+}
+.thesis h1 em {
+  font-family: 'IBM Plex Sans', sans-serif; font-style: normal;
+  font-weight: 600; color: var(--teal);
+}
+.thesis-note { color: var(--ink-dim); font-size: 15px; max-width: 46ch; }
+.thesis-note strong { color: var(--ink); font-weight: 600; }
+
+.section { margin-top: 88px; }
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 24px; margin-bottom: 22px;
+}
+.section-head h2 {
+  font-size: 22px; font-weight: 600; letter-spacing: -.2px;
+}
+.section-head h2 .num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; color: var(--teal); font-weight: 500;
+  margin-right: 10px; letter-spacing: 1px;
+}
+.section-head p {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.section-lead {
+  color: var(--ink-dim); font-size: 14px; max-width: 68ch;
+  margin: 0 0 28px; line-height: 1.6;
+}
+
+/* ────────────────────────────────────────────────
+   WORKFLOW — a real horizontal-scan pipeline with
+   phase columns, decision gate and completion pill.
+   ──────────────────────────────────────────────── */
+.flow {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 14px; position: relative;
+  padding-top: 8px;
+}
+.flow::before {
+  /* Connective spine — a soft teal beam threading the phases */
+  content: ""; position: absolute; left: 24px; right: 24px; top: 44px;
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(0,229,192,.05) 0%,
+    rgba(0,229,192,.55) 10%,
+    rgba(127,108,247,.55) 55%,
+    rgba(244,185,66,.55) 88%,
+    rgba(244,185,66,.05) 100%);
+  z-index: 0; border-radius: 2px;
+  filter: blur(.3px);
+}
+.phase {
+  position: relative; z-index: 1;
+  border-radius: 18px;
+  padding: 60px 16px 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 20px 40px -18px rgba(0,0,0,.5);
+  min-height: 220px;
+  display: flex; flex-direction: column;
+}
+:root[data-theme="light"] .phase {
+  background: linear-gradient(180deg, #ffffff, #f3f6fa);
+  border-color: rgba(10,18,32,.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 20px 40px -18px rgba(15,25,40,.14);
+}
+.phase-num {
+  position: absolute; top: 28px; left: 50%; transform: translateX(-50%);
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%),
+    linear-gradient(160deg, #4ff9d6, #007a68);
+  color: #041712;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.5),
+    0 6px 14px -4px rgba(0,229,192,.55),
+    0 0 0 3px var(--void);
+}
+:root[data-theme="light"] .phase-num { box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(0,229,192,.55), 0 0 0 3px var(--void); }
+.phase[data-tone="violet"] .phase-num {
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%), linear-gradient(160deg, #b19dff, #4a3ab8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(127,108,247,.55), 0 0 0 3px var(--void); color: #fff;
+}
+.phase[data-tone="amber"] .phase-num {
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%), linear-gradient(160deg, #ffd88a, #8a6218);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(244,185,66,.55), 0 0 0 3px var(--void); color: #2a1e04;
+}
+.phase-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute); margin-bottom: 8px;
+}
+.phase-title {
+  font-size: 14px; font-weight: 700; margin-bottom: 10px; letter-spacing: -.1px;
+}
+.phase-body {
+  font-size: 11.5px; color: var(--ink-dim); line-height: 1.55;
+  flex: 1;
+}
+.phase-body ul { padding-left: 14px; margin: 0; }
+.phase-body li { margin-bottom: 4px; }
+.phase-foot {
+  margin-top: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  padding-top: 10px; border-top: 1px solid rgba(255,255,255,.05);
+  display: flex; justify-content: space-between; color: var(--ink-mute);
+}
+:root[data-theme="light"] .phase-foot { border-top-color: rgba(10,18,32,.08); }
+.phase-foot .est { color: var(--teal); }
+.phase[data-tone="violet"] .phase-foot .est { color: var(--violet-lit); }
+.phase[data-tone="amber"] .phase-foot .est { color: #ffd06f; }
+.phase[data-slot="kb"] {
+  border: 1px dashed rgba(127,108,247,.35);
+  background:
+    linear-gradient(180deg, rgba(127,108,247,.06), transparent 60%);
+}
+.phase[data-slot="kb"] .phase-title::after {
+  content: "?"; margin-left: 8px; color: var(--violet-lit);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ────────────────────────────────────────────────
+   MOCKUP FRAME — a labeled device chrome that
+   holds one screen. Two variants: portal-like
+   (public, hero background) and app-like (dark
+   ops console with sidebar).
+   ──────────────────────────────────────────────── */
+.variant {
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 26px;
+  padding: 26px 26px 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,.015), transparent 60%);
+  margin-bottom: 32px;
+}
+:root[data-theme="light"] .variant {
+  background: linear-gradient(180deg, rgba(10,18,32,.02), transparent 60%);
+  border-color: rgba(10,18,32,.08);
+}
+.variant-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 24px; margin-bottom: 8px;
+}
+.variant-head h3 {
+  font-size: 20px; font-weight: 600; letter-spacing: -.2px;
+}
+.variant-head h3 .tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  padding: 4px 10px; margin-left: 10px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(0,229,192,.25), rgba(0,229,192,.05));
+  color: var(--teal-lit);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(0,229,192,.3);
+  vertical-align: middle;
+}
+.variant-head h3 .tag.v-b { background: linear-gradient(180deg, rgba(127,108,247,.25), rgba(127,108,247,.05)); color: var(--violet-lit); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(127,108,247,.3); }
+.variant-head h3 .tag.v-c { background: linear-gradient(180deg, rgba(244,185,66,.3), rgba(244,185,66,.05)); color: #ffd06f; box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 0 0 1px rgba(244,185,66,.3); }
+.variant-lede {
+  color: var(--ink-dim); font-size: 13.5px; max-width: 78ch;
+  margin: 0 0 22px; line-height: 1.6;
+}
+.dual {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 22px;
+  margin-bottom: 20px;
+}
+.frame {
+  border-radius: 22px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 40px 60px -30px rgba(0,0,0,.7);
+  position: relative;
+  display: flex; flex-direction: column;
+}
+:root[data-theme="light"] .frame {
+  border-color: rgba(10,18,32,.12);
+  box-shadow: 0 40px 60px -30px rgba(15,25,40,.25);
+}
+.frame-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,.35);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--ink-mute); letter-spacing: 1px;
+}
+:root[data-theme="light"] .frame-bar { background: #edf2f8; border-bottom-color: rgba(10,18,32,.08); color: var(--ink-mute); }
+.frame-bar .dots { display: inline-flex; gap: 5px; }
+.frame-bar .dots span { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.15); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+:root[data-theme="light"] .frame-bar .dots span { background: rgba(10,18,32,.15); }
+.frame-bar .url { margin-left: 6px; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.frame-bar .side { margin-left: auto; }
+
+.stage {
+  flex: 1; min-height: 520px; padding: 0;
+  position: relative; overflow: hidden;
+}
+
+/* Portal stage — public, brand-lit */
+.stage.portal {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(0,229,192,.14), transparent 55%),
+    linear-gradient(180deg, #0a1017 0%, #050810 100%);
+}
+:root[data-theme="light"] .stage.portal {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(0,229,192,.30), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #eef2f7 100%);
+}
+
+/* App stage — operator dashboard with sidebar */
+.stage.app { background: #050810; display: flex; }
+:root[data-theme="light"] .stage.app { background: #eef2f7; }
+
+/* ─── Shared bits: search bar, KB card, pill, badge ─── */
+.mock-search {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 20px 40px -18px rgba(0,229,192,.35);
+  backdrop-filter: blur(20px) saturate(1.4);
+  color: var(--ink-dim); font-size: 15px;
+}
+:root[data-theme="light"] .mock-search { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.08); box-shadow: inset 0 1px 0 #fff, 0 20px 40px -18px rgba(15,25,40,.2); }
+.mock-search .ico {
+  width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--teal);
+}
+.mock-search .placeholder { flex: 1; }
+.mock-search .placeholder .caret {
+  display: inline-block; width: 2px; height: 16px; background: var(--teal);
+  vertical-align: middle; margin-left: 2px; animation: blink 1s infinite;
+}
+@keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+.mock-search .kbd {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  padding: 4px 8px; border-radius: 6px; color: var(--ink-mute);
+  background: rgba(255,255,255,.05);
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
+}
+:root[data-theme="light"] .mock-search .kbd { background: rgba(10,18,32,.05); box-shadow: inset 0 -1px 0 rgba(10,18,32,.15), inset 0 1px 0 #fff; }
+
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: .4px;
+  padding: 5px 11px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+  color: var(--ink-dim);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .chip { background: linear-gradient(180deg, #fff, #edf2f8); color: var(--ink-dim); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(10,18,32,.08); }
+.chip.active {
+  color: #041712;
+  background: linear-gradient(180deg, #6cffe0, #00b294);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 10px -2px rgba(0,229,192,.5);
+}
+
+/* KB article card — reused across variants */
+.kb-card {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.05);
+  cursor: pointer; transition: transform .15s ease, border-color .15s ease;
+}
+:root[data-theme="light"] .kb-card { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.06); }
+.kb-card:hover { border-color: rgba(0,229,192,.35); transform: translateX(2px); }
+.kb-card .glyph {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 45%),
+    linear-gradient(160deg, rgba(0,229,192,.5), rgba(0,229,192,.05));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -4px rgba(0,229,192,.5);
+  color: #041712;
+}
+.kb-card .glyph.violet { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 45%), linear-gradient(160deg, rgba(127,108,247,.5), rgba(127,108,247,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -4px rgba(127,108,247,.5); color: #fff; }
+.kb-card .glyph.amber { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 45%), linear-gradient(160deg, rgba(244,185,66,.55), rgba(244,185,66,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -4px rgba(244,185,66,.5); color: #2a1e04; }
+.kb-card .glyph.coral  { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 45%), linear-gradient(160deg, rgba(255,95,109,.55), rgba(255,95,109,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -4px rgba(255,95,109,.5); color: #fff; }
+.kb-card .txt { flex: 1; min-width: 0; }
+.kb-card .t { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; line-height: 1.3; }
+.kb-card .m {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--ink-mute); letter-spacing: .4px;
+  display: flex; gap: 8px; align-items: center;
+}
+.kb-card .m .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-mute); }
+.kb-card .m .views { color: var(--teal); }
+
+/* Firm brand-badge */
+.brand-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  padding: 6px 12px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
+  color: var(--ink-dim);
+}
+:root[data-theme="light"] .brand-badge { background: linear-gradient(180deg, #fff, #edf2f8); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(10,18,32,.08); }
+
+/* App stage sidebar (compact mock) */
+.mini-side {
+  width: 68px; flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border-right: 1px solid rgba(255,255,255,.06);
+  padding: 14px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+:root[data-theme="light"] .mini-side { background: linear-gradient(180deg, #fff, #f3f6fa); border-right-color: rgba(10,18,32,.08); }
+.mini-side .m-hex {
+  width: 30px; height: 30px;
+}
+.mini-side .m-item {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-mute);
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  cursor: pointer;
+}
+:root[data-theme="light"] .mini-side .m-item { background: transparent; box-shadow: none; }
+.mini-side .m-item.active {
+  color: #041712;
+  background: linear-gradient(180deg, #6cffe0, #00b294);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(0,229,192,.5);
+}
+.mini-side .m-item.kb {
+  color: #fff;
+  background: linear-gradient(180deg, #b19dff, #4a3ab8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(127,108,247,.5);
+  position: relative;
+}
+.mini-side .m-item.kb .n {
+  position: absolute; top: -3px; right: -3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(180deg, #ff8993, #c73543);
+  color: #fff; font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 3px 6px -1px rgba(255,95,109,.5);
+}
+
+.app-body {
+  flex: 1; min-width: 0; padding: 22px 24px; overflow: hidden;
+}
+.app-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.app-title { font-size: 18px; font-weight: 700; letter-spacing: -.2px; }
+.app-title .h { color: var(--teal); }
+
+/* ────────────────────────────────────────────────
+   VARIANT A — Search-first hero (portal & app)
+   ──────────────────────────────────────────────── */
+.va-portal-inner {
+  padding: 40px 40px 30px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.va-portal-inner .brand-line {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; letter-spacing: 2px; color: var(--teal);
+  margin-bottom: 4px;
+}
+.va-portal-inner h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400; font-style: italic;
+  font-size: 34px; line-height: 1.05; letter-spacing: -.4px;
+  margin-bottom: 4px;
+}
+.va-portal-inner h2 em {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-style: normal; font-weight: 600; color: var(--teal);
+}
+.va-portal-inner .sub {
+  font-size: 13px; color: var(--ink-dim); max-width: 46ch;
+}
+.va-list { display: flex; flex-direction: column; gap: 8px; }
+.va-foot {
+  margin-top: auto; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,.08);
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--ink-mute);
+}
+:root[data-theme="light"] .va-foot { border-top-color: rgba(10,18,32,.1); }
+.va-foot .link {
+  color: var(--violet-lit); font-weight: 600; cursor: pointer;
+}
+
+/* App variant A — command palette overlay */
+.va-app-body {
+  padding: 22px 24px;
+  flex: 1; display: flex; flex-direction: column; gap: 16px;
+  position: relative;
+}
+.palette {
+  position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+  width: min(560px, 90%);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.15),
+    0 40px 80px -20px rgba(0,0,0,.8),
+    0 0 0 1px rgba(0,229,192,.2);
+  backdrop-filter: blur(30px) saturate(1.5);
+  z-index: 5;
+  overflow: hidden;
+}
+:root[data-theme="light"] .palette {
+  background: linear-gradient(180deg, #fff, #f3f6fa);
+  border-color: rgba(10,18,32,.12);
+  box-shadow: inset 0 1px 0 #fff, 0 40px 80px -20px rgba(15,25,40,.35), 0 0 0 1px rgba(0,229,192,.35);
+}
+.palette-search {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  font-size: 14px; color: var(--ink);
+}
+:root[data-theme="light"] .palette-search { border-bottom-color: rgba(10,18,32,.08); }
+.palette-search .cmd {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  padding: 3px 8px; border-radius: 6px; color: var(--ink-mute);
+  background: rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .palette-search .cmd { background: rgba(10,18,32,.06); }
+.palette-sec {
+  padding: 8px 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.palette-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px; cursor: pointer;
+}
+.palette-item.hi {
+  background: linear-gradient(90deg, rgba(0,229,192,.14), transparent 80%);
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+.palette-item .g {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  color: var(--teal);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.palette-item .g.violet { color: var(--violet-lit); }
+.palette-item .t2 { flex: 1; font-size: 13px; }
+.palette-item .kbd {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  padding: 2px 7px; border-radius: 5px; color: var(--ink-mute);
+  background: rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .palette-item .kbd { background: rgba(10,18,32,.06); }
+/* Behind the palette — blurred dashboard */
+.va-app-behind {
+  filter: blur(2px); opacity: .5;
+  padding: 0 0;
+}
+.va-app-behind .mini-kpi {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.mini-kpi > div {
+  padding: 14px; border-radius: 14px;
+  background: linear-gradient(180deg, #16202d, #0a121c);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.mini-kpi .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--ink-mute); letter-spacing: 1px; }
+.mini-kpi .val { font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 700; color: var(--teal); }
+:root[data-theme="light"] .mini-kpi > div { background: #fff; border-color: rgba(10,18,32,.08); }
+
+/* ────────────────────────────────────────────────
+   VARIANT B — Split-hero self-service vs ticket
+   ──────────────────────────────────────────────── */
+.vb-portal-inner {
+  padding: 30px 26px 24px;
+  display: flex; flex-direction: column; gap: 18px;
+  height: 100%;
+}
+.vb-heading { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; font-size: 24px; line-height: 1.1; }
+.vb-heading em { font-family: 'IBM Plex Sans', sans-serif; font-style: normal; font-weight: 600; color: var(--teal); }
+.vb-split {
+  display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px;
+  flex: 1; min-height: 0;
+}
+.vb-panel {
+  border-radius: 18px; padding: 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  overflow: hidden;
+}
+.vb-panel.self {
+  background:
+    radial-gradient(120% 60% at 30% -10%, rgba(0,229,192,.18), transparent 55%),
+    linear-gradient(180deg, #10202a 0%, #0a1620 100%);
+  border: 1px solid rgba(0,229,192,.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 20px 40px -20px rgba(0,229,192,.35);
+}
+:root[data-theme="light"] .vb-panel.self { background: radial-gradient(120% 60% at 30% -10%, rgba(0,229,192,.28), transparent 55%), linear-gradient(180deg, #fff, #e8faf5); border-color: rgba(0,229,192,.3); }
+.vb-panel.ticket {
+  background:
+    radial-gradient(120% 60% at 70% -10%, rgba(127,108,247,.14), transparent 55%),
+    linear-gradient(180deg, #171728 0%, #0a1220 100%);
+  border: 1px solid rgba(127,108,247,.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 20px 40px -20px rgba(127,108,247,.35);
+}
+:root[data-theme="light"] .vb-panel.ticket { background: radial-gradient(120% 60% at 70% -10%, rgba(127,108,247,.22), transparent 55%), linear-gradient(180deg, #fff, #f1eeff); border-color: rgba(127,108,247,.3); }
+.vb-panel-head { display: flex; align-items: center; gap: 10px; }
+.vb-panel-head .lbl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.vb-panel h3 {
+  font-size: 16px; font-weight: 700; letter-spacing: -.2px;
+}
+.vb-panel .sub { font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+.vb-panel .mock-search { padding: 11px 14px; font-size: 12.5px; }
+.vb-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.vb-tile {
+  padding: 10px 12px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.05);
+  display: flex; gap: 10px; align-items: center; cursor: pointer;
+}
+:root[data-theme="light"] .vb-tile { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.06); }
+.vb-tile .g { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.vb-tile .g.teal   { background: linear-gradient(160deg, rgba(0,229,192,.5), rgba(0,229,192,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 6px -1px rgba(0,229,192,.5); color: #041712; }
+.vb-tile .g.violet { background: linear-gradient(160deg, rgba(127,108,247,.5), rgba(127,108,247,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 6px -1px rgba(127,108,247,.5); color: #fff; }
+.vb-tile .g.amber  { background: linear-gradient(160deg, rgba(244,185,66,.55), rgba(244,185,66,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 6px -1px rgba(244,185,66,.5); color: #2a1e04; }
+.vb-tile .g.coral  { background: linear-gradient(160deg, rgba(255,95,109,.55), rgba(255,95,109,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 6px -1px rgba(255,95,109,.5); color: #fff; }
+.vb-tile .l { font-size: 11.5px; font-weight: 600; line-height: 1.25; }
+.vb-firm-row { display: flex; gap: 10px; }
+.vb-firm {
+  flex: 1; padding: 12px 14px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  transition: border-color .15s ease;
+}
+:root[data-theme="light"] .vb-firm { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.06); }
+.vb-firm:hover { border-color: rgba(127,108,247,.4); }
+.vb-firm .dot {
+  width: 32px; height: 32px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 12px;
+  background: linear-gradient(160deg, rgba(0,229,192,.4), rgba(0,229,192,.05));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 8px -3px rgba(0,229,192,.5);
+  color: #041712;
+}
+.vb-firm .dot.as { background: linear-gradient(160deg, rgba(30,115,190,.5), rgba(30,115,190,.05)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 8px -3px rgba(30,115,190,.5); color: #fff; }
+.vb-firm .n { font-size: 12.5px; font-weight: 600; }
+.vb-firm .s { font-size: 10px; color: var(--ink-mute); font-family: 'IBM Plex Mono', monospace; }
+.vb-panel .lookup-hint {
+  margin-top: auto; padding: 10px 12px; border-radius: 10px;
+  background: rgba(255,255,255,.03); font-size: 11px; color: var(--ink-mute);
+  border: 1px dashed rgba(255,255,255,.06);
+}
+:root[data-theme="light"] .vb-panel .lookup-hint { background: rgba(10,18,32,.03); border-color: rgba(10,18,32,.08); }
+.vb-panel .lookup-hint b { color: var(--violet-lit); font-weight: 600; }
+
+/* App variant B — full KB page for operators */
+.vb-app-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.vb-app-topbar h4 { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+.vb-app-topbar h4 span { color: var(--teal); }
+.vb-app-stats { display: flex; gap: 10px; }
+.vb-app-stat {
+  padding: 8px 12px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.05);
+  display: flex; align-items: baseline; gap: 6px;
+}
+:root[data-theme="light"] .vb-app-stat { background: #fff; border-color: rgba(10,18,32,.06); }
+.vb-app-stat .n {
+  font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 700; color: var(--teal);
+}
+.vb-app-stat .l {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  color: var(--ink-mute); letter-spacing: 1px; text-transform: uppercase;
+}
+.vb-app-body {
+  padding: 20px 22px; flex: 1;
+  display: flex; flex-direction: column; gap: 12px; overflow: hidden;
+}
+
+/* ────────────────────────────────────────────────
+   VARIANT C — Contextual widget
+   ──────────────────────────────────────────────── */
+.vc-portal-inner {
+  padding: 30px 26px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+  height: 100%; position: relative;
+}
+.vc-form-shell {
+  padding: 20px 22px; border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.05);
+  flex: 1; display: flex; flex-direction: column; gap: 12px;
+  min-height: 0;
+}
+:root[data-theme="light"] .vc-form-shell { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.06); }
+.vc-input, .vc-textarea {
+  border-radius: 10px; padding: 9px 12px;
+  background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.06);
+  color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; font-size: 12.5px;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.35);
+}
+:root[data-theme="light"] .vc-input, :root[data-theme="light"] .vc-textarea { background: #fff; border-color: rgba(10,18,32,.1); box-shadow: inset 0 1px 2px rgba(10,18,32,.05); color: var(--ink); }
+.vc-input.filled { color: var(--ink); }
+.vc-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 1px; color: var(--ink-mute); text-transform: uppercase; margin-bottom: 4px; display: block; }
+.vc-textarea { height: 60px; }
+.vc-inline-kb {
+  border-radius: 12px; padding: 12px 14px;
+  background:
+    linear-gradient(180deg, rgba(127,108,247,.14), rgba(127,108,247,.03));
+  border: 1px solid rgba(127,108,247,.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 8px 20px -8px rgba(127,108,247,.4);
+  animation: slideDown .5s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.vc-inline-kb .h { font-size: 11.5px; font-weight: 700; color: var(--violet-lit); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.vc-inline-kb .r { display: flex; flex-direction: column; gap: 6px; }
+.vc-inline-kb .r > div {
+  padding: 8px 10px; border-radius: 8px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.05);
+  font-size: 12px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+}
+:root[data-theme="light"] .vc-inline-kb .r > div { background: #fff; border-color: rgba(10,18,32,.06); }
+.vc-inline-kb .r > div .arrow { color: var(--violet-lit); font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+
+/* Floating help bubble */
+.help-bubble {
+  position: absolute;
+  right: 20px; bottom: 20px;
+  width: 300px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(0,229,192,.15), rgba(0,229,192,.03));
+  border: 1px solid rgba(0,229,192,.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.15),
+    0 20px 40px -12px rgba(0,229,192,.4),
+    0 10px 30px -8px rgba(0,0,0,.6);
+  backdrop-filter: blur(20px) saturate(1.4);
+  padding: 14px 16px;
+  z-index: 3;
+}
+:root[data-theme="light"] .help-bubble { background: linear-gradient(180deg, #fff, #e8faf5); border-color: rgba(0,229,192,.4); }
+.help-bubble .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.help-bubble .h .g { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #4ff9d6, #007a68); color: #041712; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 8px -2px rgba(0,229,192,.6); }
+.help-bubble .h .t { font-size: 12.5px; font-weight: 700; }
+.help-bubble .s { font-size: 11.5px; color: var(--ink-dim); line-height: 1.45; }
+.help-bubble .btn-tiny {
+  display: inline-block; margin-top: 10px;
+  padding: 7px 12px; border-radius: 10px;
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px; font-weight: 600;
+  background: linear-gradient(180deg, #6cffe0, #00b294);
+  color: #041712; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(0,229,192,.5);
+}
+
+/* App variant C — support ticket detail with KB rail */
+.vc-app-body {
+  padding: 20px 22px; flex: 1;
+  display: grid; grid-template-columns: 1fr 260px; gap: 16px; overflow: hidden;
+}
+.vc-ticket {
+  border-radius: 16px; padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.05);
+  display: flex; flex-direction: column; gap: 10px;
+  overflow: hidden;
+}
+:root[data-theme="light"] .vc-ticket { background: #fff; border-color: rgba(10,18,32,.06); }
+.vc-ticket .cno {
+  font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 700;
+  letter-spacing: 2px; color: var(--teal);
+}
+.vc-ticket .subj { font-size: 13.5px; font-weight: 600; }
+.vc-ticket .body { font-size: 12px; color: var(--ink-dim); line-height: 1.55; padding: 10px 12px; border-radius: 8px; background: rgba(0,0,0,.2); }
+:root[data-theme="light"] .vc-ticket .body { background: #f3f6fa; }
+.vc-rail {
+  border-radius: 16px; padding: 14px 14px;
+  background:
+    linear-gradient(180deg, rgba(0,229,192,.10), rgba(0,229,192,.02));
+  border: 1px solid rgba(0,229,192,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 12px 30px -12px rgba(0,229,192,.35);
+  display: flex; flex-direction: column; gap: 10px;
+  overflow: hidden;
+}
+:root[data-theme="light"] .vc-rail { background: linear-gradient(180deg, #e8faf5, #fff); border-color: rgba(0,229,192,.3); }
+.vc-rail-h { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px dashed rgba(0,229,192,.2); }
+.vc-rail-h .lbl {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--teal);
+}
+.vc-rail-h .g {
+  width: 24px; height: 24px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #4ff9d6, #007a68); color: #041712;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 3px 6px -1px rgba(0,229,192,.5);
+}
+.vc-rail .sug {
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.05);
+  font-size: 11.5px; cursor: pointer;
+}
+:root[data-theme="light"] .vc-rail .sug { background: #fff; border-color: rgba(10,18,32,.06); }
+.vc-rail .sug .t { font-weight: 600; margin-bottom: 3px; }
+.vc-rail .sug .m {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9.5px;
+  color: var(--ink-mute); letter-spacing: .4px;
+  display: flex; gap: 6px; align-items: center;
+}
+.vc-rail .send-btn {
+  margin-top: auto; padding: 9px 12px; border-radius: 10px;
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px; font-weight: 600;
+  background: linear-gradient(180deg, #6cffe0, #00b294);
+  color: #041712; text-align: center; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 6px 14px -4px rgba(0,229,192,.5);
+}
+
+/* ────────────────────────────────────────────────
+   PROS/CONS ROW
+   ──────────────────────────────────────────────── */
+.pc {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  margin-top: 6px;
+}
+.pc > div {
+  padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .pc > div { background: linear-gradient(180deg, #fff, #f6f9fd); border-color: rgba(10,18,32,.06); }
+.pc h5 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.pc .pro h5 { color: var(--lime); }
+.pc .con h5 { color: var(--coral); }
+.pc .fit h5 { color: var(--amber); }
+.pc p { font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+.pc p + p { margin-top: 6px; }
+
+/* ────────────────────────────────────────────────
+   COMPARISON MATRIX
+   ──────────────────────────────────────────────── */
+.matrix {
+  overflow-x: auto; margin-top: 24px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.005));
+}
+:root[data-theme="light"] .matrix { border-color: rgba(10,18,32,.08); background: #fff; }
+.matrix table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.matrix th, .matrix td {
+  padding: 12px 16px; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+:root[data-theme="light"] .matrix th, :root[data-theme="light"] .matrix td { border-bottom-color: rgba(10,18,32,.06); }
+.matrix th {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-mute);
+  background: rgba(0,0,0,.2); position: sticky; top: 0;
+  font-weight: 600;
+}
+:root[data-theme="light"] .matrix th { background: #f3f6fa; }
+.matrix tr:last-child td { border-bottom: none; }
+.matrix td.crit { color: var(--ink-mute); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .6px; text-transform: uppercase; }
+.matrix td .score { display: inline-flex; align-items: center; gap: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+.matrix td .score .d { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.15); display: inline-block; }
+:root[data-theme="light"] .matrix td .score .d { background: rgba(10,18,32,.12); }
+.matrix td .score .d.on { background: var(--teal); box-shadow: 0 0 6px rgba(0,229,192,.6); }
+.matrix td .score.violet .d.on { background: var(--violet); box-shadow: 0 0 6px rgba(127,108,247,.6); }
+.matrix td .score.amber .d.on  { background: var(--amber); box-shadow: 0 0 6px rgba(244,185,66,.6); }
+
+/* Recommendation */
+.reco {
+  margin-top: 30px; padding: 24px 26px; border-radius: 20px;
+  background:
+    radial-gradient(80% 60% at 20% 10%, rgba(127,108,247,.20), transparent 50%),
+    linear-gradient(180deg, #171728 0%, #0a1220 100%);
+  border: 1px solid rgba(127,108,247,.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 26px 60px -22px rgba(127,108,247,.45);
+}
+:root[data-theme="light"] .reco { background: radial-gradient(80% 60% at 20% 10%, rgba(127,108,247,.24), transparent 50%), linear-gradient(180deg, #fff, #f1eeff); border-color: rgba(127,108,247,.3); }
+.reco h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; letter-spacing: -.2px; }
+.reco h3 em { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; color: var(--violet-lit); font-size: 22px; }
+.reco p { color: var(--ink-dim); font-size: 13.5px; line-height: 1.6; max-width: 72ch; }
+.reco p + p { margin-top: 10px; }
+.reco .why {
+  margin-top: 16px; padding: 14px 16px; border-radius: 12px;
+  background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.05);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink);
+}
+:root[data-theme="light"] .reco .why { background: rgba(10,18,32,.03); border-color: rgba(10,18,32,.06); }
+
+/* Foot */
+.foot {
+  margin-top: 80px; padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-mute);
+}
+:root[data-theme="light"] .foot { border-top-color: rgba(10,18,32,.08); }
+.foot .lm { color: var(--teal); }
+
+/* Responsive */
+@media (max-width: 1000px) {
+  .thesis { grid-template-columns: 1fr; gap: 24px; }
+  .flow { grid-template-columns: 1fr 1fr; }
+  .flow::before { display: none; }
+  .dual { grid-template-columns: 1fr; }
+  .pc { grid-template-columns: 1fr; }
+  .vb-split { grid-template-columns: 1fr; }
+  .vc-app-body { grid-template-columns: 1fr; }
+  .help-bubble { position: static; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="stage-glow"></div>
+
+<div class="wrap">
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="mast-mark">
+      <svg width="26" height="26" viewBox="0 0 40 40" aria-hidden="true">
+        <defs>
+          <linearGradient id="hex-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6cffe0"/><stop offset="55%" stop-color="#00e5c0"/><stop offset="100%" stop-color="#00806b"/>
+          </linearGradient>
+          <linearGradient id="hex-rim" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(255,255,255,.9)"/><stop offset="55%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+        </defs>
+        <polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/>
+        <polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="none" stroke="url(#hex-rim)" stroke-width="1"/>
+      </svg>
+      IT//TRACKER · WORKFLOW &amp; KB
+    </div>
+    <div class="mast-meta">
+      <span>v5.34 → v6.0 · Uygulama Planı</span>
+      <button class="theme-swap" id="themeSwap" type="button">☾ Aydınlık</button>
+    </div>
+  </header>
+
+  <!-- Thesis -->
+  <section class="thesis">
+    <div>
+      <div class="eyebrow">Uygulama Yolu · Yönlendirilmiş Plan</div>
+      <h1>Önce <em>plan</em>, sonra derinlik, arada <em>Bilgi Bankası'nı</em> görünür yapalım.</h1>
+    </div>
+    <div class="thesis-note">
+      <p>
+        Bir önceki oturumda önerilen <strong>v6.0 görsel derinliği</strong>ni
+        tek seferde uygulamak riskli — 3.100 satır <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:12px">app.js</code>
+        ve 2.300 satır <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:12px">app.html</code>
+        var. <strong>6 fazlı bir uygulama planı</strong> ile mevcut ürün hiç kırılmadan,
+        her sürüm staging'de doğrulanarak ilerleyebiliriz.
+      </p>
+      <p style="margin-top:10px">
+        Planın <span style="color:var(--violet-lit)">3. fazı</span> Bilgi Bankası
+        redizaynı için ayrılmış <em>boş bir slot</em> — çünkü mevcut
+        <a href="https://ittracker.inventist.com.tr/portal" style="color:var(--teal)">portal</a>
+        KB'si tek satırlık minik gri bir link olarak "Mevcut talebiniz mi var?"
+        kutusunun altına gömülü; uygulama tarafında ise KB yalnızca
+        <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:12px">it_director+</code>
+        rolüne görünüyor. Aşağıda <strong>3 farklı KB varyantı</strong> var — hangisi
+        seçilirse o slotun içine oturuyor.
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────────
+       01 · WORKFLOW
+       ───────────────────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">01</span>Uygulama Workflow'u</h2>
+      <p>6 faz · ~4–5 hafta · staging-first</p>
+    </div>
+    <p class="section-lead">
+      Her faz kendi PR'ı, kendi staging deploy'u ve kendi kabul kriterleri ile ilerler.
+      Faz 3 açık uçlu — seçilen KB varyantı burada devreye girer. Faz sırası kritik:
+      önce token altyapısı, sonra en görünür bileşenler (KPI + düğme), sonra iş etkisi
+      en yüksek olan (KB), en son operatörün her gün baktığı ekranlar.
+    </p>
+
+    <div class="flow">
+      <div class="phase" data-tone="teal">
+        <div class="phase-num">01</div>
+        <div class="phase-tag">Faz · 3 gün</div>
+        <div class="phase-title">Token Altyapısı</div>
+        <div class="phase-body">
+          <ul>
+            <li><code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:10px">:root</code>'a derinlik değişkenleri</li>
+            <li><code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:10px">--rim, --shade-lo/hi</code></li>
+            <li>Utility class'lar: <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:10px">.depth-1/2/3</code></li>
+            <li>Test: mevcut hiçbir stil bozulmadı</li>
+          </ul>
+        </div>
+        <div class="phase-foot"><span>PR #1</span><span class="est">~3g</span></div>
+      </div>
+
+      <div class="phase" data-tone="teal">
+        <div class="phase-num">02</div>
+        <div class="phase-tag">Faz · 4 gün</div>
+        <div class="phase-title">Düğme + KPI + İkon</div>
+        <div class="phase-body">
+          <ul>
+            <li><code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:10px">.btn-3d</code>, <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:10px">.kpi-3d</code> opsiyonel</li>
+            <li>SVG ikon sprite (<code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:10px">static/img/icons/</code>)</li>
+            <li>Ayarlar → "Derinlik modu" toggle</li>
+            <li>Test: emoji fallback bozulmuyor</li>
+          </ul>
+        </div>
+        <div class="phase-foot"><span>PR #2</span><span class="est">~4g</span></div>
+      </div>
+
+      <div class="phase" data-tone="violet" data-slot="kb">
+        <div class="phase-num">03</div>
+        <div class="phase-tag">Faz · 5 gün</div>
+        <div class="phase-title">Bilgi Bankası Redizaynı</div>
+        <div class="phase-body">
+          <ul>
+            <li><strong style="color:var(--violet-lit)">Bu slot = seçilen varyant</strong></li>
+            <li>Portal + App her iki tarafta</li>
+            <li>Tüm rollere görünür yap</li>
+            <li>Deflection metriği: talep -%X hedefi</li>
+          </ul>
+        </div>
+        <div class="phase-foot"><span>PR #3</span><span class="est">~5g</span></div>
+      </div>
+
+      <div class="phase" data-tone="teal">
+        <div class="phase-num">04</div>
+        <div class="phase-tag">Faz · 3 gün</div>
+        <div class="phase-title">Sidebar + Nav</div>
+        <div class="phase-body">
+          <ul>
+            <li>Cam sidebar + pill seçim</li>
+            <li>Mobil hamburger derinlik</li>
+            <li>Aktif durum animasyonu</li>
+            <li>Test: klavye navigasyonu</li>
+          </ul>
+        </div>
+        <div class="phase-foot"><span>PR #4</span><span class="est">~3g</span></div>
+      </div>
+
+      <div class="phase" data-tone="violet">
+        <div class="phase-num">05</div>
+        <div class="phase-tag">Faz · 4 gün</div>
+        <div class="phase-title">Grafik Teması</div>
+        <div class="phase-body">
+          <ul>
+            <li>Chart.js gradient plugin</li>
+            <li>Bar shadow + rim</li>
+            <li>Donut depth + specular</li>
+            <li>Test: legend/tooltip okunuyor</li>
+          </ul>
+        </div>
+        <div class="phase-foot"><span>PR #5</span><span class="est">~4g</span></div>
+      </div>
+
+      <div class="phase" data-tone="amber">
+        <div class="phase-num">06</div>
+        <div class="phase-tag">Faz · 3 gün</div>
+        <div class="phase-title">Cilalama + Yayın</div>
+        <div class="phase-body">
+          <ul>
+            <li>Görev satırı derinliği</li>
+            <li>Modal / toast derinliği</li>
+            <li>Prod release notu</li>
+            <li>v6.0 canary → tam yayın</li>
+          </ul>
+        </div>
+        <div class="phase-foot"><span>PR #6</span><span class="est">~3g</span></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────────
+       02 · PROBLEM STATEMENT
+       ───────────────────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">02</span>Bilgi Bankası — Bugünün Sorunu</h2>
+      <p>iki taraf, iki farklı görünmezlik</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div style="padding:22px;border-radius:16px;background:linear-gradient(180deg,rgba(255,95,109,.06),rgba(255,95,109,.01));border:1px solid rgba(255,95,109,.2)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--coral);margin-bottom:10px">Portal · Kullanıcı Tarafı</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">Tek satır, gri, en alta gömülü</div>
+        <div style="font-size:12.5px;color:var(--ink-dim);line-height:1.55">
+          Kullanıcı portala girdiğinde İnventist / Assos hero kutularını görür, altta
+          "Mevcut talebiniz mi var?" formu vardır — KB linki bu formun bile
+          <em>altına</em> tek satır gri metin olarak yerleştirilmiş:
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-mute);background:rgba(0,0,0,.3);padding:8px 10px;border-radius:6px;margin-top:8px;border:1px dashed rgba(255,255,255,.05)">
+            📚 Talep açmadan önce Bilgi Bankası'na göz atın…
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:22px;border-radius:16px;background:linear-gradient(180deg,rgba(255,95,109,.06),rgba(255,95,109,.01));border:1px solid rgba(255,95,109,.2)">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--coral);margin-bottom:10px">App · Operatör Tarafı</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">Sadece IT müdürüne görünür, yönetim gibi kullanılıyor</div>
+        <div style="font-size:12.5px;color:var(--ink-dim);line-height:1.55">
+          <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">data-perm="director"</code>
+          — makale <em>yazan</em> herkes de operatör, ama arayüzde
+          <em>okuma</em> panelinden yoksun. Destek talebine bakan operatör,
+          benzer bir vaka önceden çözülmüş mü göremiyor; kullanıcıya
+          "şu makaleye bakın" diyemiyor; makaleyi mesaja tek tıkla iliştiremiyor.
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────────
+       VARIANT A — SEARCH-FIRST HERO
+       ───────────────────────────── -->
+  <section class="section">
+    <div class="variant">
+      <div class="variant-head">
+        <h3>Varyant A · Search-First Hero <span class="tag">Notion / Intercom Help Center dili</span></h3>
+      </div>
+      <p class="variant-lede">
+        Portal ana ekranı büyük bir <strong>arama kutusuyla</strong> açılır — hero-level.
+        Kullanıcı yazmaya başladığı anda cevaplar aşağıda belirir; talep formu
+        <em>ikinci sırada</em>. Uygulama tarafında ise KB, sidebar'da tüm rollere görünen
+        bir öğe olur <em>ve</em> her yerden <kbd>⌘K</kbd> ile açılan bir
+        <strong>komut paleti</strong> ile aranabilir hâle gelir.
+      </p>
+
+      <div class="dual">
+        <!-- PORTAL VIEW -->
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span class="url">https://ittracker.inventist.com.tr/portal</span>
+            <span class="side">Portal · Genel Kullanıcı</span>
+          </div>
+          <div class="stage portal">
+            <div class="va-portal-inner">
+              <div class="brand-line">
+                <svg width="18" height="18" viewBox="0 0 40 40"><polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/></svg>
+                IT//TRACKER · YARDIM MERKEZİ
+              </div>
+              <h2>Bir sorunun mu var?<br><em>Muhtemelen cevabı burada.</em></h2>
+              <div class="sub">
+                Önce Bilgi Bankası'nı ara — 148 makale, ortalama 2 dakikada çözüm.
+                Bulamazsan destek talebi aç.
+              </div>
+
+              <div class="mock-search">
+                <span class="ico">
+                  <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 14l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </span>
+                <span class="placeholder">yazıcı bağlanamıyor<span class="caret"></span></span>
+                <span class="kbd">↵</span>
+              </div>
+
+              <div class="chip-row">
+                <span class="chip active">Popüler</span>
+                <span class="chip">Ağ / VPN</span>
+                <span class="chip">Yazıcı</span>
+                <span class="chip">O365 / Hesap</span>
+                <span class="chip">Donanım</span>
+              </div>
+
+              <div class="va-list">
+                <div class="kb-card">
+                  <div class="glyph">
+                    <svg width="18" height="18" viewBox="0 0 16 16"><rect x="2" y="4" width="12" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="8" height="4" fill="currentColor"/><rect x="5" y="2" width="6" height="2" fill="currentColor"/></svg>
+                  </div>
+                  <div class="txt">
+                    <div class="t">Yazıcı görünmüyor — Windows / Mac için toplu çözüm</div>
+                    <div class="m"><span>Donanım</span><span class="dot"></span><span class="views">1.2K okundu</span><span class="dot"></span><span>%94 çözdü</span></div>
+                  </div>
+                </div>
+                <div class="kb-card">
+                  <div class="glyph violet">
+                    <svg width="18" height="18" viewBox="0 0 16 16"><path d="M3 6a5 5 0 0 1 10 0v3h1v5H2V9h1z" fill="currentColor"/></svg>
+                  </div>
+                  <div class="txt">
+                    <div class="t">VPN (AnyConnect) kurulumu ve ilk giriş</div>
+                    <div class="m"><span>Ağ</span><span class="dot"></span><span class="views">890 okundu</span><span class="dot"></span><span>%88 çözdü</span></div>
+                  </div>
+                </div>
+                <div class="kb-card">
+                  <div class="glyph amber">
+                    <svg width="18" height="18" viewBox="0 0 16 16"><circle cx="8" cy="6" r="3" fill="currentColor"/><path d="M2 14c1-3 3-4 6-4s5 1 6 4z" fill="currentColor"/></svg>
+                  </div>
+                  <div class="txt">
+                    <div class="t">O365 şifremi unuttum — SSPR ile sıfırlama</div>
+                    <div class="m"><span>Hesap</span><span class="dot"></span><span class="views">2.1K okundu</span><span class="dot"></span><span>%97 çözdü</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="va-foot">
+                <span>Aradığınız yok mu?</span>
+                <span class="link">→ Destek talebi aç</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- APP VIEW -->
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span class="url">https://ittracker.inventist.com.tr/app</span>
+            <span class="side">Uygulama · Operatör</span>
+          </div>
+          <div class="stage app">
+            <div class="mini-side">
+              <svg class="m-hex" viewBox="0 0 40 40"><polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/></svg>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><polygon points="8,2 14,5 14,11 8,14 2,11 2,5" fill="currentColor"/></svg></div>
+              <div class="m-item active"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M9 2L4 9h4l-1 5 5-7H8z" fill="currentColor"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" stroke-width="1.5"/></svg></div>
+              <div class="m-item kb"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M3 3h9a1 1 0 0 1 1 1v9l-2-1h-8z" fill="currentColor"/><path d="M5 6h6M5 8.5h6M5 11h4" stroke="rgba(0,0,0,.35)" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M4 7a4 4 0 0 1 7-2l1-1v3.5H8.5l1-1a2.5 2.5 0 0 0-4.5 1M12 9a4 4 0 0 1-7 2l-1 1V8.5h3.5l-1 1a2.5 2.5 0 0 0 4.5-1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+            </div>
+
+            <div class="va-app-body">
+              <div class="app-topbar">
+                <div class="app-title">Anlık <span class="h">Görevler</span></div>
+                <div style="display:flex;gap:10px">
+                  <span class="brand-badge">⌘K · her yerde ara</span>
+                </div>
+              </div>
+
+              <div class="va-app-behind">
+                <div class="mini-kpi">
+                  <div><div class="lbl">TOPLAM</div><div class="val">24</div></div>
+                  <div><div class="lbl">AÇIK</div><div class="val" style="color:var(--coral)">5</div></div>
+                  <div><div class="lbl">GECİKEN</div><div class="val" style="color:var(--amber)">2</div></div>
+                </div>
+              </div>
+
+              <div class="palette">
+                <div class="palette-search">
+                  <span style="color:var(--teal)">
+                    <svg width="18" height="18" viewBox="0 0 20 20"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 14l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  </span>
+                  <span style="flex:1">yazıcı bağlanamıyor<span style="display:inline-block;width:2px;height:14px;background:var(--teal);vertical-align:middle;margin-left:2px;animation:blink 1s infinite"></span></span>
+                  <span class="cmd">⌘K</span>
+                </div>
+
+                <div class="palette-sec">Bilgi Bankası · 3 makale</div>
+
+                <div class="palette-item hi">
+                  <span class="g">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><rect x="2" y="4" width="12" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="8" height="4" fill="currentColor"/></svg>
+                  </span>
+                  <span class="t2">Yazıcı görünmüyor — Windows / Mac için toplu çözüm</span>
+                  <span class="kbd">↵</span>
+                </div>
+                <div class="palette-item">
+                  <span class="g">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 12l4-8 4 6 2-3 2 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                  <span class="t2">Yazıcı kuyruğunu temizleme (spooler restart)</span>
+                </div>
+
+                <div class="palette-sec">Destek Talepleri · 2 açık case</div>
+                <div class="palette-item">
+                  <span class="g violet">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </span>
+                  <span class="t2">INV-7K3M9Q · "Yazıcı yeni PC'de gözükmüyor"</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pc">
+        <div class="pro">
+          <h5>+ Güçlü Yanlar</h5>
+          <p>Portal ilk açılışta cevap odaklı — arama = self-service kültürü.</p>
+          <p>⌘K paleti operatörün akıştan çıkmadan hem case hem KB'yi tek yerden araması.</p>
+          <p>Search analytics'i geliyor: hangi terimler cevapsız → yeni makale sinyali.</p>
+        </div>
+        <div class="con">
+          <h5>− Zayıf Yanlar</h5>
+          <p>Boş KB durumunda hero soğuk kalabilir — 148 makale hedefine ulaşılmalı.</p>
+          <p>Search backend (Postgres FTS veya küçük Lucene) gerekli; mevcut basit LIKE yeterli değil.</p>
+          <p>⌘K keyboard-first — mobile'da ek "arama fişi" gerekiyor.</p>
+        </div>
+        <div class="fit">
+          <h5>◆ Ne zaman?</h5>
+          <p>KB makale sayısı 100+ ve arama trafiği yüksekse mükemmel.</p>
+          <p>Kullanıcı tabanı teknik değilse arama davranışı zayıf olabilir.</p>
+          <p>Bir sonraki 2 yıl için ölçeklenebilir omurga.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────────
+       VARIANT B — SPLIT-HERO
+       ───────────────────────────── -->
+  <section class="section">
+    <div class="variant">
+      <div class="variant-head">
+        <h3>Varyant B · Split-Hero: "Kendim mi, IT mi?" <span class="tag v-b">Apple Support dili</span></h3>
+      </div>
+      <p class="variant-lede">
+        Portal ekranı ikiye bölünür — <strong>solda</strong> "Kendim çözmek istiyorum"
+        paneli (KB kartları + arama), <strong>sağda</strong> "IT ekibine soracağım"
+        paneli (firma seçici + mevcut case sorgu). Kullanıcı iki yolu <em>eşit ağırlıkta</em>
+        görür, bilinçli seçim yapar. Uygulama tarafında ise KB, sidebar'da tüm rollere
+        <em>ayrı bir tam sayfa</em> olur — istatistikleri ve deflection metriği görünür.
+      </p>
+
+      <div class="dual">
+        <!-- PORTAL VIEW -->
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span class="url">https://ittracker.inventist.com.tr/portal</span>
+            <span class="side">Portal · Genel Kullanıcı</span>
+          </div>
+          <div class="stage portal">
+            <div class="vb-portal-inner">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div class="vb-heading">Nasıl <em>yardım</em> almak istersin?</div>
+                <span class="brand-badge">📚 148 makale · %72 çözüm</span>
+              </div>
+
+              <div class="vb-split">
+                <div class="vb-panel self">
+                  <div class="vb-panel-head">
+                    <span class="brand-badge" style="background:linear-gradient(180deg,rgba(0,229,192,.3),rgba(0,229,192,.05));color:var(--teal-lit);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(0,229,192,.3)">TAVSİYE EDİLİR</span>
+                  </div>
+                  <h3>Kendim çözmek istiyorum</h3>
+                  <div class="sub">Ortalama 2 dakika. Bilgi Bankası makaleleri adım-adım rehber sunuyor.</div>
+
+                  <div class="mock-search" style="padding:11px 14px;font-size:12px">
+                    <span class="ico">
+                      <svg width="16" height="16" viewBox="0 0 20 20"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 14l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <span class="placeholder" style="font-size:12px">Sorunu ara…</span>
+                  </div>
+
+                  <div class="vb-grid">
+                    <div class="vb-tile">
+                      <span class="g teal">
+                        <svg width="14" height="14" viewBox="0 0 16 16"><rect x="2" y="4" width="12" height="7" rx="1" fill="currentColor"/></svg>
+                      </span>
+                      <span class="l">Yazıcı sorunları</span>
+                    </div>
+                    <div class="vb-tile">
+                      <span class="g violet">
+                        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 6a5 5 0 0 1 10 0v3h1v5H2V9h1z" fill="currentColor"/></svg>
+                      </span>
+                      <span class="l">VPN / Ağ erişimi</span>
+                    </div>
+                    <div class="vb-tile">
+                      <span class="g amber">
+                        <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="6" r="3" fill="currentColor"/><path d="M2 14c1-3 3-4 6-4s5 1 6 4z" fill="currentColor"/></svg>
+                      </span>
+                      <span class="l">O365 / Hesap</span>
+                    </div>
+                    <div class="vb-tile">
+                      <span class="g coral">
+                        <svg width="14" height="14" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="currentColor"/></svg>
+                      </span>
+                      <span class="l">Donanım</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="vb-panel ticket">
+                  <div class="vb-panel-head">
+                    <span class="brand-badge" style="background:linear-gradient(180deg,rgba(127,108,247,.25),rgba(127,108,247,.05));color:var(--violet-lit);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(127,108,247,.3)">DESTEK TALEBİ</span>
+                  </div>
+                  <h3>IT ekibine sormak istiyorum</h3>
+                  <div class="sub">Firmanı seç, talebini yaz. Yanıt süresi iş saatleri içinde 4 saat.</div>
+
+                  <div class="vb-firm-row">
+                    <div class="vb-firm">
+                      <div class="dot">İN</div>
+                      <div><div class="n">İnventist</div><div class="s">BT DESTEK</div></div>
+                    </div>
+                    <div class="vb-firm">
+                      <div class="dot as">AS</div>
+                      <div><div class="n">Assos</div><div class="s">BT DESTEK</div></div>
+                    </div>
+                  </div>
+
+                  <div class="lookup-hint">
+                    Mevcut talebin mi var? <b>Case No + e-posta</b> ile sorgula →
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- APP VIEW -->
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span class="url">https://ittracker.inventist.com.tr/app#kb</span>
+            <span class="side">Uygulama · Operatör</span>
+          </div>
+          <div class="stage app">
+            <div class="mini-side">
+              <svg class="m-hex" viewBox="0 0 40 40"><polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/></svg>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><polygon points="8,2 14,5 14,11 8,14 2,11 2,5" fill="currentColor"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M9 2L4 9h4l-1 5 5-7H8z" fill="currentColor"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+              <div class="m-item active"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M3 3h9a1 1 0 0 1 1 1v9l-2-1h-8z" fill="currentColor"/><path d="M5 6h6M5 8.5h6M5 11h4" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M4 7a4 4 0 0 1 7-2l1-1v3.5H8.5l1-1a2.5 2.5 0 0 0-4.5 1M12 9a4 4 0 0 1-7 2l-1 1V8.5h3.5l-1 1a2.5 2.5 0 0 0 4.5-1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></div>
+            </div>
+
+            <div class="vb-app-body">
+              <div class="vb-app-topbar">
+                <div>
+                  <div class="app-title">Bilgi <span class="h">Bankası</span></div>
+                  <div style="font-size:11px;color:var(--ink-mute);margin-top:3px">Yayınlanmış: 148 · Taslak: 12 · Ay ort. deflection: <span style="color:var(--lime);font-weight:600">-27%</span></div>
+                </div>
+                <div class="vb-app-stats">
+                  <div class="vb-app-stat"><span class="n">1.4K</span><span class="l">bu ay</span></div>
+                  <div class="vb-app-stat"><span class="n" style="color:var(--lime)">72%</span><span class="l">çözüm</span></div>
+                </div>
+              </div>
+
+              <div class="mock-search" style="padding:11px 14px;font-size:12.5px">
+                <span class="ico">
+                  <svg width="16" height="16" viewBox="0 0 20 20"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 14l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </span>
+                <span class="placeholder" style="font-size:12.5px">Makale ara ya da başlığa göre filtrele…</span>
+                <span class="kbd">/</span>
+              </div>
+
+              <div class="chip-row">
+                <span class="chip active">Tümü · 148</span>
+                <span class="chip">İnventist · 89</span>
+                <span class="chip">Assos · 59</span>
+                <span class="chip">Taslak · 12</span>
+              </div>
+
+              <div class="va-list" style="flex:1;overflow:hidden">
+                <div class="kb-card">
+                  <div class="glyph">
+                    <svg width="18" height="18" viewBox="0 0 16 16"><rect x="2" y="4" width="12" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4" y="9" width="8" height="4" fill="currentColor"/></svg>
+                  </div>
+                  <div class="txt">
+                    <div class="t">Yazıcı görünmüyor — Windows / Mac için toplu çözüm</div>
+                    <div class="m"><span>Donanım</span><span class="dot"></span><span class="views">1.2K okundu</span><span class="dot"></span><span style="color:var(--lime)">%94 faydalı</span></div>
+                  </div>
+                  <span class="brand-badge" style="align-self:center;font-size:9px;padding:3px 8px">İN</span>
+                </div>
+                <div class="kb-card">
+                  <div class="glyph violet">
+                    <svg width="18" height="18" viewBox="0 0 16 16"><path d="M3 6a5 5 0 0 1 10 0v3h1v5H2V9h1z" fill="currentColor"/></svg>
+                  </div>
+                  <div class="txt">
+                    <div class="t">VPN (AnyConnect) kurulumu ve ilk giriş</div>
+                    <div class="m"><span>Ağ</span><span class="dot"></span><span class="views">890 okundu</span><span class="dot"></span><span style="color:var(--lime)">%88 faydalı</span></div>
+                  </div>
+                  <span class="brand-badge" style="align-self:center;font-size:9px;padding:3px 8px;background:linear-gradient(180deg,rgba(30,115,190,.35),rgba(30,115,190,.05));color:#7fc0ff;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(30,115,190,.3)">AS</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pc">
+        <div class="pro">
+          <h5>+ Güçlü Yanlar</h5>
+          <p>Kullanıcıya eşit ağırlıkta 2 yol sunmak deflection metriği için en net etki.</p>
+          <p>Operatör KB'yi tam sayfa görüyor — makale sayısı, faydalı oranı, firma dağılımı.</p>
+          <p>Mevcut portal mantığından minimal sapma — sadece landing ekranı değişiyor.</p>
+        </div>
+        <div class="con">
+          <h5>− Zayıf Yanlar</h5>
+          <p>Ekran alanı ikiye bölündüğü için mobile'da alt-alta sıralama gerekli.</p>
+          <p>Arama hâlâ tıklama-sonrası — Varyant A kadar hızlı değil.</p>
+          <p>Kullanıcı sağa gitmeye eğilimliyse KB paneli boş yer olarak kalabilir.</p>
+        </div>
+        <div class="fit">
+          <h5>◆ Ne zaman?</h5>
+          <p>Kullanıcılara net bir "kendin denedin mi?" mesajı vermek istediğinde.</p>
+          <p>Mevcut portal mimarisiyle en uyumlu — mevcut kodun %70'i korunur.</p>
+          <p>Deflection KPI'sı ilk 3 ayda net ölçülebilir olur.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────────
+       VARIANT C — CONTEXTUAL WIDGET
+       ───────────────────────────── -->
+  <section class="section">
+    <div class="variant">
+      <div class="variant-head">
+        <h3>Varyant C · Contextual Widget <span class="tag v-c">Front / Linear / Zendesk dili</span></h3>
+      </div>
+      <p class="variant-lede">
+        KB "ayrı bir sayfa" olmaktan çıkar, <em>ihtiyaç anında ortaya çıkan</em> bir yardımcı olur.
+        Portal'da form doldurulurken konu satırına yazılan kelimeye göre <strong>satır-içi öneri
+        kutusu</strong> anında beliriyor (bu mekanik zaten <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">form-kb-suggest</code>
+        olarak yarım-yamalak var, tam bir bileşene evriliyor). Ek olarak sağ-alt köşede
+        her ekranda görünen <strong>yardım balonu</strong>. Uygulama tarafında ise operatör
+        destek talebine tıkladığında <strong>sağ rail</strong>'de "benzer çözülmüş vakalar"
+        + "kullanıcıya tek tıkla gönder" görünür.
+      </p>
+
+      <div class="dual">
+        <!-- PORTAL VIEW -->
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span class="url">https://ittracker.inventist.com.tr/portal#form</span>
+            <span class="side">Portal · Form Ekranı</span>
+          </div>
+          <div class="stage portal">
+            <div class="vc-portal-inner">
+              <div style="display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--teal)">
+                <svg width="18" height="18" viewBox="0 0 40 40"><polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/></svg>
+                İNVENTİST BT DESTEK · YENİ TALEP
+              </div>
+
+              <div class="vc-form-shell">
+                <div>
+                  <span class="vc-lbl">Ad Soyad</span>
+                  <div class="vc-input filled">Ahmet Yılmaz</div>
+                </div>
+                <div>
+                  <span class="vc-lbl">E-posta</span>
+                  <div class="vc-input filled">ahmet.yilmaz@inventist.com.tr</div>
+                </div>
+                <div>
+                  <span class="vc-lbl">Konu</span>
+                  <div class="vc-input filled" style="color:var(--teal)">yazıcı bağlanamıyor<span style="display:inline-block;width:2px;height:14px;background:var(--teal);vertical-align:middle;margin-left:2px;animation:blink 1s infinite"></span></div>
+                </div>
+
+                <div class="vc-inline-kb">
+                  <div class="h">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 2a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9z" fill="currentColor"/></svg>
+                    3 makale sorununu çözebilir — talep açmadan önce dene:
+                  </div>
+                  <div class="r">
+                    <div><span><strong>Yazıcı görünmüyor</strong> — 30 saniyede çözüm</span><span class="arrow">→</span></div>
+                    <div><span><strong>Yazıcı kuyruğu takıldı</strong> — spooler restart</span><span class="arrow">→</span></div>
+                    <div><span><strong>USB yazıcı Windows 11'de görünmüyor</strong></span><span class="arrow">→</span></div>
+                  </div>
+                </div>
+
+                <div>
+                  <span class="vc-lbl">Açıklama</span>
+                  <div class="vc-textarea" style="color:var(--ink-mute);font-size:12px">Sorunu mümkün olduğunca ayrıntılı anlatın…</div>
+                </div>
+              </div>
+
+              <div class="help-bubble">
+                <div class="h">
+                  <span class="g">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 6a2 2 0 1 1 3 1.5c-.5.5-1 .5-1 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="12" r=".8" fill="currentColor"/></svg>
+                  </span>
+                  <span class="t">Bilgi Bankası yardım edebilir</span>
+                </div>
+                <div class="s">148 makale hazır. Sorunun ne? Şu an yazdığın konuyla eşleşenler yukarıda gösteriliyor.</div>
+                <div class="btn-tiny">Tümünü görüntüle →</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- APP VIEW -->
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dots"><span></span><span></span><span></span></span>
+            <span class="url">https://ittracker.inventist.com.tr/app#case/INV-7K3M9Q</span>
+            <span class="side">Uygulama · Destek Talebi Detay</span>
+          </div>
+          <div class="stage app">
+            <div class="mini-side">
+              <svg class="m-hex" viewBox="0 0 40 40"><polygon points="20,2 37,11 37,29 20,38 3,29 3,11" fill="url(#hex-g)"/></svg>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><polygon points="8,2 14,5 14,11 8,14 2,11 2,5" fill="currentColor"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M9 2L4 9h4l-1 5 5-7H8z" fill="currentColor"/></svg></div>
+              <div class="m-item active"><svg width="18" height="18" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3.5M8 10.5v.5" stroke="currentColor" stroke-width="1.5"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M3 3h9a1 1 0 0 1 1 1v9l-2-1h-8z" fill="currentColor"/></svg></div>
+              <div class="m-item"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M4 7a4 4 0 0 1 7-2l1-1v3.5H8.5l1-1a2.5 2.5 0 0 0-4.5 1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></div>
+            </div>
+
+            <div class="vc-app-body">
+              <div class="vc-ticket">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div class="cno">INV-7K3M9Q</div>
+                  <span class="brand-badge" style="background:linear-gradient(180deg,rgba(244,185,66,.25),rgba(244,185,66,.05));color:#ffd06f;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(244,185,66,.3)">İN · YÜKSEK · AÇIK</span>
+                </div>
+                <div class="subj">Yazıcı yeni PC'de gözükmüyor</div>
+                <div class="body">
+                  Yeni gelen laptopu bağladım, yazıcı sürücüsü kurdum ama yazıcı listede
+                  görünmüyor. Windows 11 Home. Yazıcı Brother DCP-L2530DW…
+                </div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-mute);margin-top:auto">Yanıtla · Not ekle · Kapat</div>
+              </div>
+
+              <div class="vc-rail">
+                <div class="vc-rail-h">
+                  <span class="g">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 2a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9z" fill="currentColor"/></svg>
+                  </span>
+                  <span class="lbl">İLGİLİ MAKALELER · 3</span>
+                </div>
+
+                <div class="sug">
+                  <div class="t">Windows 11 Home'da network yazıcı bulunmuyor</div>
+                  <div class="m"><span style="color:var(--lime)">%94 faydalı</span><span style="width:3px;height:3px;background:var(--ink-mute);border-radius:50%"></span><span>1.2K okundu</span></div>
+                </div>
+                <div class="sug">
+                  <div class="t">Brother DCP serisi sürücü kurulumu</div>
+                  <div class="m"><span style="color:var(--lime)">%89 faydalı</span><span style="width:3px;height:3px;background:var(--ink-mute);border-radius:50%"></span><span>412 okundu</span></div>
+                </div>
+                <div class="sug">
+                  <div class="t">Yazıcı kuyruğunu temizleme (spooler restart)</div>
+                  <div class="m"><span style="color:var(--lime)">%97 faydalı</span></div>
+                </div>
+
+                <div class="send-btn">📤 Seçileni kullanıcıya gönder</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pc">
+        <div class="pro">
+          <h5>+ Güçlü Yanlar</h5>
+          <p>KB kullanıcının aklına gelmediği anda bile onun önüne düşüyor — en yüksek deflection potansiyeli.</p>
+          <p>Operatör için tek tık ile "makale gönder" iş akışı — insan+bilgi işbirliği.</p>
+          <p>Mevcut yarım-yamalak <code style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:11px">form-kb-suggest</code>'i bitiriyoruz, ek büyük mimari değişiklik yok.</p>
+        </div>
+        <div class="con">
+          <h5>− Zayıf Yanlar</h5>
+          <p>KB "keşfetmek" için gelen kullanıcıya cevap vermiyor — kimin kimi aradığını bilmez.</p>
+          <p>Yardım balonu yanlış kullanılırsa banner-blindness'a düşer.</p>
+          <p>Öneri kalitesi zayıfsa güven yıkılır — semantik eşleşme (embedding) gerekli.</p>
+        </div>
+        <div class="fit">
+          <h5>◆ Ne zaman?</h5>
+          <p>Kullanıcı gene talep açacak, ama akış içinde caydırmak istediğinde.</p>
+          <p>Operatörün KB'yi aktif kullanmasını (silo-out) hedefliyorsa mükemmel.</p>
+          <p>En düşük geliştirme maliyeti — mevcut kod tabanının en az %90'ı korunuyor.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ─────────────────────────────
+       COMPARISON MATRIX
+       ───────────────────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <h2><span class="num">03</span>Karşılaştırma</h2>
+      <p>Hangi kriter · hangi varyant</p>
+    </div>
+
+    <div class="matrix">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:220px">Kriter</th>
+            <th>A · Search-First</th>
+            <th>B · Split-Hero</th>
+            <th>C · Contextual</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="crit">Talep deflection potansiyeli</td>
+            <td><span class="score"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d"></span></span></td>
+            <td><span class="score violet"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+            <td><span class="score amber"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+          </tr>
+          <tr>
+            <td class="crit">Kod değişiklik hacmi (az → çok)</td>
+            <td><span class="score"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+            <td><span class="score violet"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d"></span></span></td>
+            <td><span class="score amber"><span class="d on"></span><span class="d on"></span><span class="d"></span><span class="d"></span></span></td>
+          </tr>
+          <tr>
+            <td class="crit">Backend gereksinimi</td>
+            <td>Full-text search + analytics</td>
+            <td>Sadece endpoint iyileştirme</td>
+            <td>Semantik eşleşme (embedding) tercih</td>
+          </tr>
+          <tr>
+            <td class="crit">Operatör iş akışı iyileşmesi</td>
+            <td><span class="score"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d"></span></span></td>
+            <td><span class="score violet"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d"></span></span></td>
+            <td><span class="score amber"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+          </tr>
+          <tr>
+            <td class="crit">Mobil uyumluluk</td>
+            <td><span class="score"><span class="d on"></span><span class="d on"></span><span class="d"></span><span class="d"></span></span></td>
+            <td><span class="score violet"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d"></span></span></td>
+            <td><span class="score amber"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+          </tr>
+          <tr>
+            <td class="crit">Kullanıcı öğrenme eğrisi (düşük → iyi)</td>
+            <td><span class="score"><span class="d on"></span><span class="d on"></span><span class="d"></span><span class="d"></span></span></td>
+            <td><span class="score violet"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+            <td><span class="score amber"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+          </tr>
+          <tr>
+            <td class="crit">Ölçeklenebilirlik (2 yıl sonrası)</td>
+            <td><span class="score"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d on"></span></span></td>
+            <td><span class="score violet"><span class="d on"></span><span class="d on"></span><span class="d on"></span><span class="d"></span></span></td>
+            <td><span class="score amber"><span class="d on"></span><span class="d on"></span><span class="d"></span><span class="d"></span></span></td>
+          </tr>
+          <tr>
+            <td class="crit">Uygulama süresi</td>
+            <td>~7 gün</td>
+            <td>~5 gün</td>
+            <td>~4 gün</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Recommendation -->
+    <div class="reco">
+      <h3>Öneri · <em>B + C hibriti</em></h3>
+      <p>
+        Tek varyant seçmek gerekmiyor — <strong>B'nin split-hero portal ekranı</strong>
+        ile <strong>C'nin form-içi öneri kutusu + operatör rail'i</strong> birbirini
+        tamamlıyor. Portal'a giren yeni kullanıcı iki yolu <em>eşit ağırlıkta</em> görür
+        (B), ama yine de formu doldurmayı seçen için son bir <em>caydırma katmanı</em>
+        (C'nin satır-içi önerileri) devreye girer. Operatör tarafında ise KB hem tam
+        sayfa erişilebilir olur (B) hem de her case detayında <em>hazır cevap rail'i</em>
+        olarak (C) görünür.
+      </p>
+      <p>
+        Search-first (A) fikri güzel ama <em>backend eforu yüksek</em> — mevcut ~50
+        makale ile şu an aşırıya kaçar. B+C hibriti staging'de 2 hafta içinde canlıya
+        çıkabilir; makale sayısı 100'ü aştığında A'nın komut paletini <em>üzerine ekleyebiliriz</em> —
+        Faz 6.5 gibi.
+      </p>
+      <div class="why">
+        <strong style="color:var(--teal)">Karar → workflow slotu:</strong> Faz 3 =
+        Split-hero portal (B-portal) + operatör KB sayfası (B-app) + form-içi öneri
+        kutusu (C-portal) + case detay rail'i (C-app). Toplam ~5 gün, tek PR.
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>IT//TRACKER · Workflow &amp; Bilgi Bankası · <span class="lm">Görsel Yön</span></div>
+    <div>Elanorth / ittracker · 2026-09-14</div>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    const btn = document.getElementById('themeSwap');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      const root = document.documentElement;
+      const cur = root.getAttribute('data-theme');
+      if(cur === 'light'){ root.removeAttribute('data-theme'); btn.textContent = '☾ Aydınlık'; }
+      else { root.setAttribute('data-theme', 'light'); btn.textContent = '☀ Karanlık'; }
+    });
+  })();
+</script>
