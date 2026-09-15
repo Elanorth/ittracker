@@ -607,6 +607,150 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .kpi-clickable { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
 .kpi-clickable:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
 
+/* ═══════ v6.0 FAZ 2 — Derinlikli Bileşenler (opt-in) ═══════
+   Mevcut .btn/.kpi elementleri hiç etkilenmez. Sadece .btn-3d veya
+   .kpi-3d sınıfı EKLENEN elementler v6.0 dilinde görünür. Renk her
+   temada `var(--accent)` (veya .kpi'daki --kpi-color) üzerinden
+   üretildiğinden default / assos / inventist temaları korunur.
+   `color-mix` moderne browser (Chrome 111+, Safari 16.2+ — 2023-);
+   parse edemeyen tarayıcı flat fallback görür. */
+
+/* -- Derinlikli düğme ---------------------------------------------------- */
+.btn.btn-3d {
+  position: relative; isolation: isolate;
+  border-radius: var(--radius-md);
+  padding: 11px 18px;
+  font-size: 12.5px;
+  transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
+  overflow: hidden;
+}
+.btn.btn-3d::before {
+  /* Üst kenar ışık dudağı — parlak keskin bir çizgi hissi */
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none; z-index: 1;
+  background: linear-gradient(180deg, var(--rim-hot), transparent 45%, var(--shade-md));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.btn.btn-3d > * { position: relative; z-index: 2; }
+.btn.btn-3d:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn.btn-3d:active { transform: translateY(1px); }
+
+/* Primary (v6.0): mevcut var(--accent) rengi üzerine 3-stop gradient */
+.btn-primary.btn-3d {
+  /* fallback flat (color-mix parse edemezse) */
+  background: var(--accent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 45%,
+    color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -8px 14px rgba(0,0,0,.22),
+    var(--glow-accent),
+    0 4px 10px -2px var(--shade-lo);
+}
+
+/* Outline (v6.0): cam yüzey — accent border-ish glow */
+.btn-outline.btn-3d {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  border: 1px solid var(--border2);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-sm) 10px -4px var(--shade-md);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+
+/* Danger (v6.0): red gradient + danger glow */
+.btn-danger.btn-3d {
+  background: var(--danger);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--danger) 30%, #fff) 0%,
+    var(--danger) 45%,
+    color-mix(in srgb, var(--danger) 75%, #000) 100%);
+  color: #fff;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -8px 14px rgba(80,10,15,.35),
+    var(--glow-danger),
+    0 4px 10px -2px var(--shade-lo);
+}
+
+/* Gold (v6.0): amber gradient */
+.btn-gold.btn-3d {
+  background: var(--gold);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--gold) 30%, #fff) 0%,
+    var(--gold) 45%,
+    color-mix(in srgb, var(--gold) 75%, #000) 100%);
+  color: #2a1e04;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -8px 14px rgba(80,55,10,.35),
+    var(--glow-gold),
+    0 4px 10px -2px var(--shade-lo);
+}
+
+/* -- Derinlikli KPI kartı ------------------------------------------------ */
+/* Renk kaynağı: .c-* varyantından türetilen --kpi-color CSS var'ı */
+.kpi.kpi-3d { --kpi-color: var(--accent); }
+.kpi.kpi-3d.c-teal   { --kpi-color: var(--accent); }
+.kpi.kpi-3d.c-green  { --kpi-color: var(--green); }
+.kpi.kpi-3d.c-orange { --kpi-color: var(--accent2); }
+.kpi.kpi-3d.c-purple { --kpi-color: var(--accent3); }
+.kpi.kpi-3d.c-gold   { --kpi-color: var(--gold); }
+
+.kpi.kpi-3d {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius-lg);
+  padding: 20px 20px 22px;
+  border: 1px solid rgba(255,255,255,.06);
+  /* fallback flat */
+  background: var(--surface);
+  /* modern: alttan üste yumuşak elevation + üstten aşağı renk halkası */
+  background:
+    radial-gradient(120% 80% at 50% 0%,
+      color-mix(in srgb, var(--kpi-color) 22%, transparent),
+      transparent 55%),
+    linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-lg) 40px -22px var(--shade-md),
+    0 var(--lift-md) 22px -8px color-mix(in srgb, var(--kpi-color) 30%, transparent);
+}
+/* Faz 1 v5.34'te üst-kenar 2px renk şeridi vardı — v6.0'da halka onun yerine geçer */
+.kpi.kpi-3d::after { display: none; }
+.kpi.kpi-3d:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-lg) 50px -22px var(--shade-hi),
+    0 var(--lift-md) 30px -8px color-mix(in srgb, var(--kpi-color) 45%, transparent);
+}
+.kpi.kpi-3d .kpi-value {
+  font-size: 34px;
+  color: var(--kpi-color) !important;  /* inline color style'ı tema-aware token ile ez */
+  text-shadow: 0 0 22px color-mix(in srgb, var(--kpi-color) 40%, transparent);
+}
+.kpi.kpi-3d .kpi-icon {
+  /* Orbital ışıklı disk — eski solmuş emoji'nin yerine geçer */
+  position: absolute; top: 14px; right: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; opacity: 1;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%),
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--kpi-color) 55%, transparent),
+      color-mix(in srgb, var(--kpi-color) 8%, transparent));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 6px 12px -4px color-mix(in srgb, var(--kpi-color) 50%, transparent);
+}
+/* /Faz 2 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
@@ -964,16 +1108,19 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="date-day" id="topbar-date-day"></div>
         <div class="date-full" id="topbar-date-full"></div>
       </div>
-      <button class="btn btn-primary btn-new-task" data-click="nav" data-page="add">＋ Yeni Görev</button>
+      <!-- v6.0 Faz 2 — opt-in .btn-3d: primary düğmenin gradient + rim + glow versiyonu -->
+      <button class="btn btn-primary btn-3d btn-new-task" data-click="nav" data-page="add">＋ Yeni Görev</button>
     </div>
   </div>
 
+  <!-- v6.0 Faz 2 — opt-in .kpi-3d: her KPI kartı kendi renk halkasıyla derinlik kazanır.
+       Mevcut .c-* varyantları .kpi-3d içinde --kpi-color üzerinden okunur. -->
   <div class="kpi-row">
-    <div class="kpi c-teal kpi-clickable" title="Tüm görevleri göster" data-click="kpiJump" data-kind="all"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
-    <div class="kpi c-green kpi-clickable" title="Tamamlanan görevleri göster" data-click="kpiJump" data-kind="done"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
-    <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" data-click="kpiJump" data-kind="open"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
-    <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" data-click="kpiJump" data-kind="overdue"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
-    <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" data-click="kpiJump" data-kind="backup"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+    <div class="kpi kpi-3d c-teal kpi-clickable" title="Tüm görevleri göster" data-click="kpiJump" data-kind="all"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
+    <div class="kpi kpi-3d c-green kpi-clickable" title="Tamamlanan görevleri göster" data-click="kpiJump" data-kind="done"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
+    <div class="kpi kpi-3d c-orange kpi-clickable" title="Açık görevleri göster" data-click="kpiJump" data-kind="open"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
+    <div class="kpi kpi-3d c-purple kpi-clickable" title="Geciken görevlere odaklan" data-click="kpiJump" data-kind="overdue"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
+    <div class="kpi kpi-3d c-gold kpi-clickable" title="Backup sayfasına git" data-click="kpiJump" data-kind="backup"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
   </div>
 
   <!-- v4.9 firma şeridi v4.10'da kaldırıldı: artık ayrı "Yönettiğim Firmalar" sayfası var. -->
