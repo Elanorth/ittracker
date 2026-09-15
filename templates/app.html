@@ -35,6 +35,50 @@
   --text-dim: #3d4f61;
   --radius: 10px;
   --sidebar-w: 230px;
+
+  /* ═══════ v6.0 DERİNLİK PRİMİTİFLERİ (Faz 1) ═══════
+     iOS 26 Liquid Glass / One UI 8 / Material 3 Expressive dilinden
+     ödünç, 3B kabartma efektleri için hazır token'lar. Mevcut hiçbir
+     stil bu token'ları kullanmıyor — sıradaki fazlarda opt-in olarak
+     bağlanacak (Faz 2 düğme/KPI/ikon, Faz 4 sidebar, Faz 5 grafik).
+
+     Kullanım örnekleri Faz 2'de somutlaşacak; kısa referans:
+       box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) var(--shade-md);
+       background: linear-gradient(180deg, var(--rim-hot), transparent);  */
+
+  /* Rim = üst kenarın parlayan kağıt-kesiği — spec-lit hissi */
+  --rim:      rgba(255,255,255,.08);   /* subtle */
+  --rim-hot:  rgba(255,255,255,.18);   /* pronounced */
+
+  /* Shade = altta rengiyle tonlanmış yumuşak halka gölge */
+  --shade-lo: rgba(0,0,0,.35);
+  --shade-md: rgba(0,0,0,.55);
+  --shade-hi: rgba(0,0,0,.75);
+
+  /* Lift = elevation seviyeleri (translateY / shadow offset ölçüsü) */
+  --lift-sm: 4px;
+  --lift-md: 10px;
+  --lift-lg: 22px;
+
+  /* Elevated surface = derinlikli kartlar için silindir-üstü açık zemin
+     (linear-gradient içinde start/end olarak kullanılır) */
+  --lift-face-1: rgba(255,255,255,.03);  /* birinci basamak — hafif */
+  --lift-face-2: rgba(255,255,255,.06);  /* ikinci basamak — orta */
+
+  /* Accent-tinted glow — bir düğme veya KPI kartının rengiyle tonlu
+     halka gölge; box-shadow'a `var(--glow-accent)` olarak bindirilir */
+  --glow-accent:  0 var(--lift-md) 22px -8px rgba(0,229,192,.35);
+  --glow-accent2: 0 var(--lift-md) 22px -8px rgba(255,95,61,.35);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(127,108,247,.35);
+  --glow-danger:  0 var(--lift-md) 22px -8px rgba(248,81,73,.35);
+  --glow-green:   0 var(--lift-md) 22px -8px rgba(52,208,88,.35);
+  --glow-gold:    0 var(--lift-md) 22px -8px rgba(244,185,66,.35);
+
+  /* Radius ölçek — v6.0 kabartmalı bileşenler için daha yumuşak köşeler */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 }
 
 /* ═══════ ASSOS PHARMA TEMA ═══════ */
@@ -59,6 +103,9 @@
   --text: #dce6f0;
   --text-muted: #6b7e93;
   --text-dim: #3d5070;
+  /* v6.0 Faz 1 — Assos teması için mavi tonlu glow override'ları */
+  --glow-accent: 0 var(--lift-md) 22px -8px rgba(30,115,190,.4);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(0,149,235,.4);
 }
 [data-theme="assos"] .btn-primary { background: #1e73be; color: #fff; }
 [data-theme="assos"] .btn-primary:hover { background: #0095eb; }
@@ -87,6 +134,11 @@
   --text: #e8e8e8;
   --text-muted: #777777;
   --text-dim: #444444;
+  /* v6.0 Faz 1 — İnventist teması siyah-beyaz: glow nötr, biraz daha güçlü rim */
+  --rim: rgba(255,255,255,.12);
+  --rim-hot: rgba(255,255,255,.25);
+  --glow-accent: 0 var(--lift-md) 22px -8px rgba(255,255,255,.25);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(160,160,160,.35);
 }
 [data-theme="inventist"] .btn-primary { background: #ffffff; color: #0a0a0a; }
 [data-theme="inventist"] .btn-primary:hover { background: #d0d0d0; }
