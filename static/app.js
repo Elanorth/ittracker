@@ -15,7 +15,7 @@ import { loadPoolPage, updatePoolBadge } from './js/pool.js';
 import { renderProjectsPage } from './js/projects.js';
 import { initReportPage } from './js/report.js';
 import { renderScheduledPage } from './js/scheduled.js';
-import { loadAutoAssign, loadSettingsFromServer, loadTeamsSettings } from './js/settings.js';
+import { loadAutoAssign, loadSettingsFromServer, loadTeamsSettings, syncDepthToggle } from './js/settings.js';
 import { firmChip, renderFullList, taskRow, taskTiming } from './js/tasks.js';
 import { onClick, onChange, onEnter } from './js/events.js'; // ESM Faz 5 — event delegation
 
@@ -506,7 +506,7 @@ export function showPage(name, opts = {}) {
   if (name==='managed-firms') { loadManagedFirmsPage(); }
   if (name==='backups')   renderBackupList();
   if (name==='admin')     loadAndRenderUsers();
-  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); loadAutoAssign(); loadTeamsSettings(); }
+  if (name==='settings')  { loadFirmsFromDB().then(() => renderSettingsTeams()); loadSettingsFromServer(); applySettingsPermissions(); loadAutoAssign(); loadTeamsSettings(); syncDepthToggle(); }
   if (name==='kb')        loadKb();
   if (name==='archive')   loadArchivePage();
   if (name==='notifications') loadNotificationsPage();
