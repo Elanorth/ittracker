@@ -863,6 +863,83 @@ html[data-depth="on"] .sidebar-toggle {
 }
 /* /Faz 4 */
 
+/* ═══════ v6.0 FAZ 6 — Cilalama: task satırı + modal + toast ═══════
+   Derinlik moduna bağlıdır (data-depth="on"). Kapalıyken v5.89 stilleri
+   aynen. v6.0 tamamlanma katmanı — mevcut opt-in .btn-3d/.kpi-3d dahil
+   olan tüm bileşenlerin son parçası. */
+
+/* -- Task-item satırı: hover'da cam kabartma ------------------------------ */
+html[data-depth="on"] .task-item {
+  border-bottom: none;
+  padding: 12px 12px;
+  margin: 4px 0;
+  border-radius: var(--radius-md);
+  transition: background .12s ease, box-shadow .18s ease, transform .12s ease;
+}
+html[data-depth="on"] .task-item:hover {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 12px -4px var(--shade-md);
+}
+/* İç ayraç için ince divider satır — mevcut border-bottom yerine */
+html[data-depth="on"] .task-item + .task-item {
+  position: relative;
+}
+html[data-depth="on"] .task-item + .task-item::before {
+  content: ""; position: absolute; top: -4px; left: 12px; right: 12px;
+  height: 1px; background: rgba(255,255,255,.04);
+}
+
+/* -- Modal: overlay backdrop-blur + kart derinliği ----------------------- */
+html[data-depth="on"] .modal-overlay {
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+html[data-depth="on"] .modal {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 30px 60px -20px var(--shade-hi),
+    0 12px 30px -8px var(--shade-md);
+}
+/* KB salt-okunur viewer modalı (Faz 3) ekstra kartıyla da uyum */
+html[data-depth="on"] #kb-viewer-modal .modal { padding: 24px 26px; }
+
+/* -- Toast: rim + renk-tonlu glow --------------------------------------- */
+html[data-depth="on"] .toast {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: none;  /* Faz 6 — sol 3px çizgi yerine tam rim + glow */
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-md) 24px -8px var(--shade-hi);
+  position: relative; overflow: hidden;
+}
+html[data-depth="on"] .toast::before {
+  /* Sol iç kenar 3 px renkli çubuk (border-left'in devamı, gradient + glow'lu) */
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--text-muted);  /* varsayılan */
+}
+html[data-depth="on"] .toast.ok {
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) 24px -8px var(--shade-hi), var(--glow-green);
+}
+html[data-depth="on"] .toast.ok::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--green) 40%, #fff), var(--green));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--green) 50%, transparent);
+}
+html[data-depth="on"] .toast.err {
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) 24px -8px var(--shade-hi), var(--glow-danger);
+}
+html[data-depth="on"] .toast.err::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 40%, #fff), var(--danger));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 50%, transparent);
+}
+/* /Faz 6 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
