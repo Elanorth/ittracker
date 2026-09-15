@@ -11,6 +11,11 @@
 <meta name="apple-mobile-web-app-title" content="ITTracker">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  /* v5.86 — v6.0 Derinlik Modu (Faz 2.5): CSS'den önce çalışıp
+     <html data-depth="on"> bindirir → FOUC'siz açılış. */
+  try { if (localStorage.getItem('depthMode') === 'on') document.documentElement.setAttribute('data-depth', 'on'); } catch (e) {}
+</script>
 <style>
 :root {
   --bg: #080c10;
@@ -607,16 +612,22 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .kpi-clickable { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
 .kpi-clickable:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
 
-/* ═══════ v6.0 FAZ 2 — Derinlikli Bileşenler (opt-in) ═══════
-   Mevcut .btn/.kpi elementleri hiç etkilenmez. Sadece .btn-3d veya
-   .kpi-3d sınıfı EKLENEN elementler v6.0 dilinde görünür. Renk her
-   temada `var(--accent)` (veya .kpi'daki --kpi-color) üzerinden
+/* ═══════ v6.0 FAZ 2 — Derinlikli Bileşenler (opt-in + global toggle) ═══════
+   İki yolu vardır:
+     1) BİLEŞEN OPT-IN: bir .btn'e .btn-3d sınıfı ekle → o element
+        her koşulda v6.0 dilinde görünür.
+     2) GLOBAL TOGGLE (Faz 2.5): kullanıcı Ayarlar'dan "Derinlik Modu"nu
+        açar → <html data-depth="on"> bindirilir → tüm .btn / .kpi
+        elementleri (.no-depth ile opt-out'lananlar hariç) v6.0'a geçer.
+
+   Renk her temada `var(--accent)` (veya .kpi'daki --kpi-color) üzerinden
    üretildiğinden default / assos / inventist temaları korunur.
-   `color-mix` moderne browser (Chrome 111+, Safari 16.2+ — 2023-);
+   `color-mix` modern browser (Chrome 111+, Safari 16.2+ — 2023-);
    parse edemeyen tarayıcı flat fallback görür. */
 
 /* -- Derinlikli düğme ---------------------------------------------------- */
-.btn.btn-3d {
+.btn.btn-3d,
+html[data-depth="on"] .btn:not(.no-depth) {
   position: relative; isolation: isolate;
   border-radius: var(--radius-md);
   padding: 11px 18px;
@@ -624,7 +635,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
   transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
   overflow: hidden;
 }
-.btn.btn-3d::before {
+.btn.btn-3d::before,
+html[data-depth="on"] .btn:not(.no-depth)::before {
   /* Üst kenar ışık dudağı — parlak keskin bir çizgi hissi */
   content: ""; position: absolute; inset: 0; border-radius: inherit;
   padding: 1px; pointer-events: none; z-index: 1;
@@ -632,12 +644,16 @@ textarea.form-control{resize:vertical;min-height:64px;}
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
-.btn.btn-3d > * { position: relative; z-index: 2; }
-.btn.btn-3d:hover { transform: translateY(-1px); filter: brightness(1.05); }
-.btn.btn-3d:active { transform: translateY(1px); }
+.btn.btn-3d > *,
+html[data-depth="on"] .btn:not(.no-depth) > * { position: relative; z-index: 2; }
+.btn.btn-3d:hover,
+html[data-depth="on"] .btn:not(.no-depth):hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn.btn-3d:active,
+html[data-depth="on"] .btn:not(.no-depth):active { transform: translateY(1px); }
 
 /* Primary (v6.0): mevcut var(--accent) rengi üzerine 3-stop gradient */
-.btn-primary.btn-3d {
+.btn-primary.btn-3d,
+html[data-depth="on"] .btn-primary:not(.no-depth) {
   /* fallback flat (color-mix parse edemezse) */
   background: var(--accent);
   background: linear-gradient(180deg,
@@ -652,7 +668,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
 }
 
 /* Outline (v6.0): cam yüzey — accent border-ish glow */
-.btn-outline.btn-3d {
+.btn-outline.btn-3d,
+html[data-depth="on"] .btn-outline:not(.no-depth) {
   background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
   border: 1px solid var(--border2);
   box-shadow:
@@ -662,7 +679,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
 }
 
 /* Danger (v6.0): red gradient + danger glow */
-.btn-danger.btn-3d {
+.btn-danger.btn-3d,
+html[data-depth="on"] .btn-danger:not(.no-depth) {
   background: var(--danger);
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--danger) 30%, #fff) 0%,
@@ -678,7 +696,8 @@ textarea.form-control{resize:vertical;min-height:64px;}
 }
 
 /* Gold (v6.0): amber gradient */
-.btn-gold.btn-3d {
+.btn-gold.btn-3d,
+html[data-depth="on"] .btn-gold:not(.no-depth) {
   background: var(--gold);
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--gold) 30%, #fff) 0%,
@@ -695,14 +714,16 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
 /* -- Derinlikli KPI kartı ------------------------------------------------ */
 /* Renk kaynağı: .c-* varyantından türetilen --kpi-color CSS var'ı */
-.kpi.kpi-3d { --kpi-color: var(--accent); }
-.kpi.kpi-3d.c-teal   { --kpi-color: var(--accent); }
-.kpi.kpi-3d.c-green  { --kpi-color: var(--green); }
-.kpi.kpi-3d.c-orange { --kpi-color: var(--accent2); }
-.kpi.kpi-3d.c-purple { --kpi-color: var(--accent3); }
-.kpi.kpi-3d.c-gold   { --kpi-color: var(--gold); }
+.kpi.kpi-3d,
+html[data-depth="on"] .kpi:not(.no-depth) { --kpi-color: var(--accent); }
+.kpi.kpi-3d.c-teal,   html[data-depth="on"] .kpi.c-teal:not(.no-depth)   { --kpi-color: var(--accent); }
+.kpi.kpi-3d.c-green,  html[data-depth="on"] .kpi.c-green:not(.no-depth)  { --kpi-color: var(--green); }
+.kpi.kpi-3d.c-orange, html[data-depth="on"] .kpi.c-orange:not(.no-depth) { --kpi-color: var(--accent2); }
+.kpi.kpi-3d.c-purple, html[data-depth="on"] .kpi.c-purple:not(.no-depth) { --kpi-color: var(--accent3); }
+.kpi.kpi-3d.c-gold,   html[data-depth="on"] .kpi.c-gold:not(.no-depth)   { --kpi-color: var(--gold); }
 
-.kpi.kpi-3d {
+.kpi.kpi-3d,
+html[data-depth="on"] .kpi:not(.no-depth) {
   position: relative; overflow: hidden;
   border-radius: var(--radius-lg);
   padding: 20px 20px 22px;
@@ -721,20 +742,24 @@ textarea.form-control{resize:vertical;min-height:64px;}
     0 var(--lift-md) 22px -8px color-mix(in srgb, var(--kpi-color) 30%, transparent);
 }
 /* Faz 1 v5.34'te üst-kenar 2px renk şeridi vardı — v6.0'da halka onun yerine geçer */
-.kpi.kpi-3d::after { display: none; }
-.kpi.kpi-3d:hover {
+.kpi.kpi-3d::after,
+html[data-depth="on"] .kpi:not(.no-depth)::after { display: none; }
+.kpi.kpi-3d:hover,
+html[data-depth="on"] .kpi:not(.no-depth):hover {
   transform: translateY(-2px);
   box-shadow:
     inset 0 1px 0 var(--rim),
     0 var(--lift-lg) 50px -22px var(--shade-hi),
     0 var(--lift-md) 30px -8px color-mix(in srgb, var(--kpi-color) 45%, transparent);
 }
-.kpi.kpi-3d .kpi-value {
+.kpi.kpi-3d .kpi-value,
+html[data-depth="on"] .kpi:not(.no-depth) .kpi-value {
   font-size: 34px;
   color: var(--kpi-color) !important;  /* inline color style'ı tema-aware token ile ez */
   text-shadow: 0 0 22px color-mix(in srgb, var(--kpi-color) 40%, transparent);
 }
-.kpi.kpi-3d .kpi-icon {
+.kpi.kpi-3d .kpi-icon,
+html[data-depth="on"] .kpi:not(.no-depth) .kpi-icon {
   /* Orbital ışıklı disk — eski solmuş emoji'nin yerine geçer */
   position: absolute; top: 14px; right: 14px;
   width: 40px; height: 40px; border-radius: 50%;
@@ -1904,6 +1929,26 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <button class="btn btn-outline btn-sm" data-click="toast" data-type="ok" data-msg="O365 OAuth sayfasına yönlendiriliyorsunuz...">Microsoft ile Bağlan</button>
         </div>
         <button class="btn btn-primary btn-sm" data-click="saveUserSettings">Kaydet</button>
+      </div>
+    </div>
+
+    <!-- v5.86 — Görsel Ayarlar (v6.0 Faz 2.5): Derinlik Modu toggle -->
+    <div class="card" id="settings-card-visual">
+      <div class="card-header"><div class="card-title">GÖRSEL AYARLAR</div></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              v6.0 Derinlik Modu
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;background:var(--accent-dim);color:var(--accent);padding:2px 7px;border-radius:5px;letter-spacing:.6px">BETA</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;max-width:360px">Tüm düğme ve KPI kartlarına iOS 26 Liquid Glass dilinde 3B derinlik uygular — üst kenar ışık dudağı, gradient yüz, renk-tonlu ışıltı. Kapalıyken düz stil geri gelir.</div>
+          </div>
+          <label class="aa-switch"><input type="checkbox" id="depth-toggle" data-change="toggleDepthMode"><span></span></label>
+        </div>
+        <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:6px;font-size:10.5px;color:var(--text-muted);line-height:1.5">
+          <span style="color:var(--accent3);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.6px">İPUCU</span> · Tercihiniz tarayıcınızda saklanır. Bir öğeyi manuel olarak eski hâlinde tutmak için sınıflarına <code style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">.no-depth</code> ekleyin.
+        </div>
       </div>
     </div>
 

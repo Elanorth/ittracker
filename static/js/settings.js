@@ -26,6 +26,33 @@ onClick('testSmtp',           () => testSmtp());
 onClick('saveTeamsSettings',  () => saveTeamsSettings());
 onClick('testTeams',          () => testTeams());
 
+// v5.86 — v6.0 Faz 2.5: Derinlik Modu toggle
+onChange('toggleDepthMode',   el => toggleDepthMode(el.checked));
+
+/* v5.86 — <html data-depth="on"> bindirme ve localStorage kalıcılığı.
+   Sayfa yüklenirken FOUC önleyici inline script (app.html <head>) zaten
+   attribute'u set etti. Bu handler kullanıcı toggle'a tıkladığında çalışır. */
+export function toggleDepthMode(on) {
+  try {
+    if (on) {
+      document.documentElement.setAttribute('data-depth', 'on');
+      localStorage.setItem('depthMode', 'on');
+    } else {
+      document.documentElement.removeAttribute('data-depth');
+      localStorage.setItem('depthMode', 'off');
+    }
+    showToast('ok', on ? 'Derinlik modu açıldı' : 'Derinlik modu kapatıldı');
+  } catch (e) { showToast('err', 'Kaydedilemedi'); }
+}
+
+/* Ayarlar sayfası açıldığında checkbox'ı mevcut duruma senkron et.
+   FOUC scripti tarafından set edilmiş <html data-depth> attribute'u
+   doğruluk kaynağıdır. */
+export function syncDepthToggle() {
+  const cb = document.getElementById('depth-toggle');
+  if (cb) cb.checked = document.documentElement.getAttribute('data-depth') === 'on';
+}
+
 // ══════════════════════════════════════════════════════════
 //  PORTAL OTOMATİK ATAMA (v5.19 — Havuz D2)
 // ══════════════════════════════════════════════════════════
