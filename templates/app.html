@@ -784,6 +784,85 @@ html[data-depth="on"] .kpi:not(.no-depth) .kpi-icon {
 }
 /* /Faz 2 */
 
+/* ═══════ v6.0 FAZ 4 — Sidebar cam yüzey + pill selection ═══════
+   Derinlik moduna (data-depth="on") bağlıdır. Kapalıyken v5.87 sidebar
+   aynen kalır. Açıkken:
+     - Sidebar zemini yumuşak cam (backdrop-filter blur + saturate)
+     - Nav item'lar padding'li, köşeleri yumuşak "pill" konteynerlar
+     - Aktif item için sol 2px teal çizgi yerine kabartılmış ışıklı pill
+     - Admin item'lar aktif olduğunda gold pill (mevcut ayrım korunur) */
+html[data-depth="on"] .sidebar {
+  background:
+    linear-gradient(180deg, var(--lift-face-1), rgba(255,255,255,.01));
+  border-right: 1px solid rgba(255,255,255,.06);
+  box-shadow: inset 0 1px 0 var(--rim), 8px 0 30px -12px var(--shade-md);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+html[data-depth="on"] nav {
+  padding: 10px 6px;
+}
+html[data-depth="on"] .nav-section {
+  padding: 10px 12px 4px;  /* pill'lerle hizala */
+}
+html[data-depth="on"] .nav-item {
+  border-left: none;
+  margin: 2px 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  transition: color .12s ease, background .12s ease, box-shadow .18s ease;
+}
+html[data-depth="on"] .nav-item:hover {
+  color: var(--text);
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  box-shadow: inset 0 1px 0 var(--rim);
+}
+/* Aktif teal pill — accent üzerinden gradient + rim + glow */
+html[data-depth="on"] .nav-item.active {
+  color: #041712;
+  border-left: none;
+  /* fallback flat */
+  background: var(--accent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -6px 12px rgba(0,0,0,.20),
+    0 var(--lift-md) 20px -8px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 4px 10px -2px var(--shade-lo);
+}
+/* İnventist temasında beyaz üzerinde koyu metin */
+html[data-depth="on"] [data-theme="inventist"] .nav-item.active { color: #0a0a0a; }
+/* Aktif gold pill — audit + admin sayfaları */
+html[data-depth="on"] .nav-item.admin-item.active {
+  color: #2a1e04;
+  background: var(--gold);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--gold) 35%, #fff) 0%,
+    var(--gold) 50%,
+    color-mix(in srgb, var(--gold) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -6px 12px rgba(60,40,10,.25),
+    0 var(--lift-md) 20px -8px color-mix(in srgb, var(--gold) 55%, transparent),
+    0 4px 10px -2px var(--shade-lo);
+}
+/* Nav badge — aktif pill üzerinde belirgin kalsın (light pill üstünde dark bg) */
+html[data-depth="on"] .nav-item.active .nav-badge {
+  background: rgba(0,0,0,.35); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+}
+/* Mobile hamburger — cam yüzey */
+html[data-depth="on"] .sidebar-toggle {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 12px -4px var(--shade-md);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+/* /Faz 4 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
