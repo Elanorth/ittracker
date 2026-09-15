@@ -31,7 +31,9 @@ onChange('toggleDepthMode',   el => toggleDepthMode(el.checked));
 
 /* v5.86 — <html data-depth="on"> bindirme ve localStorage kalıcılığı.
    Sayfa yüklenirken FOUC önleyici inline script (app.html <head>) zaten
-   attribute'u set etti. Bu handler kullanıcı toggle'a tıkladığında çalışır. */
+   attribute'u set etti. Bu handler kullanıcı toggle'a tıkladığında çalışır.
+   v5.89 (Faz 5) — Chart.js grafiklerinin yeni gradient/depth ayarlarıyla
+   yeniden yaratılması için hafif reload; kullanıcı toast'u kısa süre görür. */
 export function toggleDepthMode(on) {
   try {
     if (on) {
@@ -42,6 +44,9 @@ export function toggleDepthMode(on) {
       localStorage.setItem('depthMode', 'off');
     }
     showToast('ok', on ? 'Derinlik modu açıldı' : 'Derinlik modu kapatıldı');
+    // Grafik chart'ları ve sidebar dahil tüm state'in tutarlı yeniden çizimi
+    // için kısa gecikmeyle reload — kullanıcı toast'u görür, sonra yenilenir.
+    setTimeout(() => { location.reload(); }, 700);
   } catch (e) { showToast('err', 'Kaydedilemedi'); }
 }
 
