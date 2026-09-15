@@ -74,8 +74,20 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 @media(max-width:720px){.split{flex-direction:column}.half:hover{flex:1.35}.half h1{font-size:24px}.lookup{position:fixed}}
 /* ── Branded pages ── */
 .branded{min-height:100vh;padding:52px 18px 40px;background:var(--bg);color:var(--tx)}
-.branded[data-brand="inventist"]{--bg:#0b0b0d;--pan:#16161a;--pan2:#1e1e24;--bd:#2b2b33;--ac:#fff;--acc:#0a0a0a;--tx:#ececf1;--mut:#9aa0ad;--soft:rgba(255,255,255,.06)}
-.branded[data-brand="assos"]{--bg:#eff5fa;--pan:#fff;--pan2:#f4f9fd;--bd:#d5e3ef;--ac:#1e73be;--acc:#fff;--tx:#1d3a52;--mut:#5f7a90;--soft:rgba(30,115,190,.08)}
+/* v6.0 Faz 1 — derinlik primitifleri branded scope'una da eklendi (rim/shade/lift/glow).
+   Kısa referans için app.html :root altındaki uzun açıklamaya bakın. */
+.branded[data-brand="inventist"]{--bg:#0b0b0d;--pan:#16161a;--pan2:#1e1e24;--bd:#2b2b33;--ac:#fff;--acc:#0a0a0a;--tx:#ececf1;--mut:#9aa0ad;--soft:rgba(255,255,255,.06);
+  --rim:rgba(255,255,255,.12);--rim-hot:rgba(255,255,255,.25);
+  --shade-lo:rgba(0,0,0,.35);--shade-md:rgba(0,0,0,.55);--shade-hi:rgba(0,0,0,.75);
+  --lift-sm:4px;--lift-md:10px;--lift-lg:22px;
+  --lift-face-1:rgba(255,255,255,.04);--lift-face-2:rgba(255,255,255,.08);
+  --glow-accent:0 var(--lift-md) 22px -8px rgba(255,255,255,.25)}
+.branded[data-brand="assos"]{--bg:#eff5fa;--pan:#fff;--pan2:#f4f9fd;--bd:#d5e3ef;--ac:#1e73be;--acc:#fff;--tx:#1d3a52;--mut:#5f7a90;--soft:rgba(30,115,190,.08);
+  --rim:rgba(255,255,255,.9);--rim-hot:rgba(255,255,255,1);
+  --shade-lo:rgba(15,25,40,.08);--shade-md:rgba(15,25,40,.14);--shade-hi:rgba(15,25,40,.22);
+  --lift-sm:4px;--lift-md:10px;--lift-lg:22px;
+  --lift-face-1:rgba(30,115,190,.04);--lift-face-2:rgba(30,115,190,.08);
+  --glow-accent:0 var(--lift-md) 22px -8px rgba(30,115,190,.35)}
 .wrap{max-width:720px;margin:0 auto}
 .bhead{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .bhead .dot{width:34px;height:34px;border-radius:9px;background:var(--ac);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}

@@ -11,6 +11,11 @@
 <meta name="apple-mobile-web-app-title" content="ITTracker">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  /* v5.86 — v6.0 Derinlik Modu (Faz 2.5): CSS'den önce çalışıp
+     <html data-depth="on"> bindirir → FOUC'siz açılış. */
+  try { if (localStorage.getItem('depthMode') === 'on') document.documentElement.setAttribute('data-depth', 'on'); } catch (e) {}
+</script>
 <style>
 :root {
   --bg: #080c10;
@@ -35,6 +40,50 @@
   --text-dim: #3d4f61;
   --radius: 10px;
   --sidebar-w: 230px;
+
+  /* ═══════ v6.0 DERİNLİK PRİMİTİFLERİ (Faz 1) ═══════
+     iOS 26 Liquid Glass / One UI 8 / Material 3 Expressive dilinden
+     ödünç, 3B kabartma efektleri için hazır token'lar. Mevcut hiçbir
+     stil bu token'ları kullanmıyor — sıradaki fazlarda opt-in olarak
+     bağlanacak (Faz 2 düğme/KPI/ikon, Faz 4 sidebar, Faz 5 grafik).
+
+     Kullanım örnekleri Faz 2'de somutlaşacak; kısa referans:
+       box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) var(--shade-md);
+       background: linear-gradient(180deg, var(--rim-hot), transparent);  */
+
+  /* Rim = üst kenarın parlayan kağıt-kesiği — spec-lit hissi */
+  --rim:      rgba(255,255,255,.08);   /* subtle */
+  --rim-hot:  rgba(255,255,255,.18);   /* pronounced */
+
+  /* Shade = altta rengiyle tonlanmış yumuşak halka gölge */
+  --shade-lo: rgba(0,0,0,.35);
+  --shade-md: rgba(0,0,0,.55);
+  --shade-hi: rgba(0,0,0,.75);
+
+  /* Lift = elevation seviyeleri (translateY / shadow offset ölçüsü) */
+  --lift-sm: 4px;
+  --lift-md: 10px;
+  --lift-lg: 22px;
+
+  /* Elevated surface = derinlikli kartlar için silindir-üstü açık zemin
+     (linear-gradient içinde start/end olarak kullanılır) */
+  --lift-face-1: rgba(255,255,255,.03);  /* birinci basamak — hafif */
+  --lift-face-2: rgba(255,255,255,.06);  /* ikinci basamak — orta */
+
+  /* Accent-tinted glow — bir düğme veya KPI kartının rengiyle tonlu
+     halka gölge; box-shadow'a `var(--glow-accent)` olarak bindirilir */
+  --glow-accent:  0 var(--lift-md) 22px -8px rgba(0,229,192,.35);
+  --glow-accent2: 0 var(--lift-md) 22px -8px rgba(255,95,61,.35);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(127,108,247,.35);
+  --glow-danger:  0 var(--lift-md) 22px -8px rgba(248,81,73,.35);
+  --glow-green:   0 var(--lift-md) 22px -8px rgba(52,208,88,.35);
+  --glow-gold:    0 var(--lift-md) 22px -8px rgba(244,185,66,.35);
+
+  /* Radius ölçek — v6.0 kabartmalı bileşenler için daha yumuşak köşeler */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 }
 
 /* ═══════ ASSOS PHARMA TEMA ═══════ */
@@ -59,6 +108,9 @@
   --text: #dce6f0;
   --text-muted: #6b7e93;
   --text-dim: #3d5070;
+  /* v6.0 Faz 1 — Assos teması için mavi tonlu glow override'ları */
+  --glow-accent: 0 var(--lift-md) 22px -8px rgba(30,115,190,.4);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(0,149,235,.4);
 }
 [data-theme="assos"] .btn-primary { background: #1e73be; color: #fff; }
 [data-theme="assos"] .btn-primary:hover { background: #0095eb; }
@@ -87,6 +139,11 @@
   --text: #e8e8e8;
   --text-muted: #777777;
   --text-dim: #444444;
+  /* v6.0 Faz 1 — İnventist teması siyah-beyaz: glow nötr, biraz daha güçlü rim */
+  --rim: rgba(255,255,255,.12);
+  --rim-hot: rgba(255,255,255,.25);
+  --glow-accent: 0 var(--lift-md) 22px -8px rgba(255,255,255,.25);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(160,160,160,.35);
 }
 [data-theme="inventist"] .btn-primary { background: #ffffff; color: #0a0a0a; }
 [data-theme="inventist"] .btn-primary:hover { background: #d0d0d0; }
@@ -144,7 +201,15 @@ nav{padding:12px 0;flex:1;overflow-y:auto;}
 .nav-item:hover{color:var(--text);background:var(--surface2);}
 .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-dim);}
 .nav-item.admin-item.active{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim);}
-.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.nav-icon{font-size:15px;width:18px;height:18px;text-align:center;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+/* v5.87 — v6.0 Faz 2.6 · SVG ikon sprite (opt-in derinlik moduna bağlı).
+   Nav item'lar hem emoji hem <svg><use> taşır; derinlik modu KAPALI
+   iken emoji görünür (varsayılan davranış, backward compat), AÇIK iken
+   SVG glyph görünür. currentColor ile temaya uyumlu. */
+.nav-icon .nav-emoji{display:inline-block;line-height:1;}
+.nav-icon .nav-glyph{display:none;width:16px;height:16px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+html[data-depth="on"] .nav-icon .nav-emoji{display:none;}
+html[data-depth="on"] .nav-icon .nav-glyph{display:inline-block;}
 .nav-badge{margin-left:auto;background:var(--accent2);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;font-family:'IBM Plex Mono',monospace;}
 
 .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
@@ -555,6 +620,326 @@ textarea.form-control{resize:vertical;min-height:64px;}
 .kpi-clickable { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
 .kpi-clickable:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.18); }
 
+/* ═══════ v6.0 FAZ 2 — Derinlikli Bileşenler (opt-in + global toggle) ═══════
+   İki yolu vardır:
+     1) BİLEŞEN OPT-IN: bir .btn'e .btn-3d sınıfı ekle → o element
+        her koşulda v6.0 dilinde görünür.
+     2) GLOBAL TOGGLE (Faz 2.5): kullanıcı Ayarlar'dan "Derinlik Modu"nu
+        açar → <html data-depth="on"> bindirilir → tüm .btn / .kpi
+        elementleri (.no-depth ile opt-out'lananlar hariç) v6.0'a geçer.
+
+   Renk her temada `var(--accent)` (veya .kpi'daki --kpi-color) üzerinden
+   üretildiğinden default / assos / inventist temaları korunur.
+   `color-mix` modern browser (Chrome 111+, Safari 16.2+ — 2023-);
+   parse edemeyen tarayıcı flat fallback görür. */
+
+/* -- Derinlikli düğme ---------------------------------------------------- */
+.btn.btn-3d,
+html[data-depth="on"] .btn:not(.no-depth) {
+  position: relative; isolation: isolate;
+  border-radius: var(--radius-md);
+  padding: 11px 18px;
+  font-size: 12.5px;
+  transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
+  overflow: hidden;
+}
+.btn.btn-3d::before,
+html[data-depth="on"] .btn:not(.no-depth)::before {
+  /* Üst kenar ışık dudağı — parlak keskin bir çizgi hissi */
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none; z-index: 1;
+  background: linear-gradient(180deg, var(--rim-hot), transparent 45%, var(--shade-md));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.btn.btn-3d > *,
+html[data-depth="on"] .btn:not(.no-depth) > * { position: relative; z-index: 2; }
+.btn.btn-3d:hover,
+html[data-depth="on"] .btn:not(.no-depth):hover { transform: translateY(-1px); filter: brightness(1.05); }
+.btn.btn-3d:active,
+html[data-depth="on"] .btn:not(.no-depth):active { transform: translateY(1px); }
+
+/* Primary (v6.0): mevcut var(--accent) rengi üzerine 3-stop gradient */
+.btn-primary.btn-3d,
+html[data-depth="on"] .btn-primary:not(.no-depth) {
+  /* fallback flat (color-mix parse edemezse) */
+  background: var(--accent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 45%,
+    color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -8px 14px rgba(0,0,0,.22),
+    var(--glow-accent),
+    0 4px 10px -2px var(--shade-lo);
+}
+
+/* Outline (v6.0): cam yüzey — accent border-ish glow */
+.btn-outline.btn-3d,
+html[data-depth="on"] .btn-outline:not(.no-depth) {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  border: 1px solid var(--border2);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-sm) 10px -4px var(--shade-md);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+
+/* Danger (v6.0): red gradient + danger glow */
+.btn-danger.btn-3d,
+html[data-depth="on"] .btn-danger:not(.no-depth) {
+  background: var(--danger);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--danger) 30%, #fff) 0%,
+    var(--danger) 45%,
+    color-mix(in srgb, var(--danger) 75%, #000) 100%);
+  color: #fff;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -8px 14px rgba(80,10,15,.35),
+    var(--glow-danger),
+    0 4px 10px -2px var(--shade-lo);
+}
+
+/* Gold (v6.0): amber gradient */
+.btn-gold.btn-3d,
+html[data-depth="on"] .btn-gold:not(.no-depth) {
+  background: var(--gold);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--gold) 30%, #fff) 0%,
+    var(--gold) 45%,
+    color-mix(in srgb, var(--gold) 75%, #000) 100%);
+  color: #2a1e04;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -8px 14px rgba(80,55,10,.35),
+    var(--glow-gold),
+    0 4px 10px -2px var(--shade-lo);
+}
+
+/* -- Derinlikli KPI kartı ------------------------------------------------ */
+/* Renk kaynağı: .c-* varyantından türetilen --kpi-color CSS var'ı */
+.kpi.kpi-3d,
+html[data-depth="on"] .kpi:not(.no-depth) { --kpi-color: var(--accent); }
+.kpi.kpi-3d.c-teal,   html[data-depth="on"] .kpi.c-teal:not(.no-depth)   { --kpi-color: var(--accent); }
+.kpi.kpi-3d.c-green,  html[data-depth="on"] .kpi.c-green:not(.no-depth)  { --kpi-color: var(--green); }
+.kpi.kpi-3d.c-orange, html[data-depth="on"] .kpi.c-orange:not(.no-depth) { --kpi-color: var(--accent2); }
+.kpi.kpi-3d.c-purple, html[data-depth="on"] .kpi.c-purple:not(.no-depth) { --kpi-color: var(--accent3); }
+.kpi.kpi-3d.c-gold,   html[data-depth="on"] .kpi.c-gold:not(.no-depth)   { --kpi-color: var(--gold); }
+
+.kpi.kpi-3d,
+html[data-depth="on"] .kpi:not(.no-depth) {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius-lg);
+  padding: 20px 20px 22px;
+  border: 1px solid rgba(255,255,255,.06);
+  /* fallback flat */
+  background: var(--surface);
+  /* modern: alttan üste yumuşak elevation + üstten aşağı renk halkası */
+  background:
+    radial-gradient(120% 80% at 50% 0%,
+      color-mix(in srgb, var(--kpi-color) 22%, transparent),
+      transparent 55%),
+    linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-lg) 40px -22px var(--shade-md),
+    0 var(--lift-md) 22px -8px color-mix(in srgb, var(--kpi-color) 30%, transparent);
+}
+/* Faz 1 v5.34'te üst-kenar 2px renk şeridi vardı — v6.0'da halka onun yerine geçer */
+.kpi.kpi-3d::after,
+html[data-depth="on"] .kpi:not(.no-depth)::after { display: none; }
+.kpi.kpi-3d:hover,
+html[data-depth="on"] .kpi:not(.no-depth):hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-lg) 50px -22px var(--shade-hi),
+    0 var(--lift-md) 30px -8px color-mix(in srgb, var(--kpi-color) 45%, transparent);
+}
+.kpi.kpi-3d .kpi-value,
+html[data-depth="on"] .kpi:not(.no-depth) .kpi-value {
+  font-size: 34px;
+  color: var(--kpi-color) !important;  /* inline color style'ı tema-aware token ile ez */
+  text-shadow: 0 0 22px color-mix(in srgb, var(--kpi-color) 40%, transparent);
+}
+.kpi.kpi-3d .kpi-icon,
+html[data-depth="on"] .kpi:not(.no-depth) .kpi-icon {
+  /* Orbital ışıklı disk — eski solmuş emoji'nin yerine geçer */
+  position: absolute; top: 14px; right: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; opacity: 1;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 45%),
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--kpi-color) 55%, transparent),
+      color-mix(in srgb, var(--kpi-color) 8%, transparent));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 6px 12px -4px color-mix(in srgb, var(--kpi-color) 50%, transparent);
+}
+/* /Faz 2 */
+
+/* ═══════ v6.0 FAZ 4 — Sidebar cam yüzey + pill selection ═══════
+   Derinlik moduna (data-depth="on") bağlıdır. Kapalıyken v5.87 sidebar
+   aynen kalır. Açıkken:
+     - Sidebar zemini yumuşak cam (backdrop-filter blur + saturate)
+     - Nav item'lar padding'li, köşeleri yumuşak "pill" konteynerlar
+     - Aktif item için sol 2px teal çizgi yerine kabartılmış ışıklı pill
+     - Admin item'lar aktif olduğunda gold pill (mevcut ayrım korunur) */
+html[data-depth="on"] .sidebar {
+  background:
+    linear-gradient(180deg, var(--lift-face-1), rgba(255,255,255,.01));
+  border-right: 1px solid rgba(255,255,255,.06);
+  box-shadow: inset 0 1px 0 var(--rim), 8px 0 30px -12px var(--shade-md);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+}
+html[data-depth="on"] nav {
+  padding: 10px 6px;
+}
+html[data-depth="on"] .nav-section {
+  padding: 10px 12px 4px;  /* pill'lerle hizala */
+}
+html[data-depth="on"] .nav-item {
+  border-left: none;
+  margin: 2px 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  transition: color .12s ease, background .12s ease, box-shadow .18s ease;
+}
+html[data-depth="on"] .nav-item:hover {
+  color: var(--text);
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  box-shadow: inset 0 1px 0 var(--rim);
+}
+/* Aktif teal pill — accent üzerinden gradient + rim + glow */
+html[data-depth="on"] .nav-item.active {
+  color: #041712;
+  border-left: none;
+  /* fallback flat */
+  background: var(--accent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -6px 12px rgba(0,0,0,.20),
+    0 var(--lift-md) 20px -8px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 4px 10px -2px var(--shade-lo);
+}
+/* İnventist temasında beyaz üzerinde koyu metin */
+html[data-depth="on"] [data-theme="inventist"] .nav-item.active { color: #0a0a0a; }
+/* Aktif gold pill — audit + admin sayfaları */
+html[data-depth="on"] .nav-item.admin-item.active {
+  color: #2a1e04;
+  background: var(--gold);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--gold) 35%, #fff) 0%,
+    var(--gold) 50%,
+    color-mix(in srgb, var(--gold) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -6px 12px rgba(60,40,10,.25),
+    0 var(--lift-md) 20px -8px color-mix(in srgb, var(--gold) 55%, transparent),
+    0 4px 10px -2px var(--shade-lo);
+}
+/* Nav badge — aktif pill üzerinde belirgin kalsın (light pill üstünde dark bg) */
+html[data-depth="on"] .nav-item.active .nav-badge {
+  background: rgba(0,0,0,.35); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+}
+/* Mobile hamburger — cam yüzey */
+html[data-depth="on"] .sidebar-toggle {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 12px -4px var(--shade-md);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+/* /Faz 4 */
+
+/* ═══════ v6.0 FAZ 6 — Cilalama: task satırı + modal + toast ═══════
+   Derinlik moduna bağlıdır (data-depth="on"). Kapalıyken v5.89 stilleri
+   aynen. v6.0 tamamlanma katmanı — mevcut opt-in .btn-3d/.kpi-3d dahil
+   olan tüm bileşenlerin son parçası. */
+
+/* -- Task-item satırı: hover'da cam kabartma ------------------------------ */
+html[data-depth="on"] .task-item {
+  border-bottom: none;
+  padding: 12px 12px;
+  margin: 4px 0;
+  border-radius: var(--radius-md);
+  transition: background .12s ease, box-shadow .18s ease, transform .12s ease;
+}
+html[data-depth="on"] .task-item:hover {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 12px -4px var(--shade-md);
+}
+/* İç ayraç için ince divider satır — mevcut border-bottom yerine */
+html[data-depth="on"] .task-item + .task-item {
+  position: relative;
+}
+html[data-depth="on"] .task-item + .task-item::before {
+  content: ""; position: absolute; top: -4px; left: 12px; right: 12px;
+  height: 1px; background: rgba(255,255,255,.04);
+}
+
+/* -- Modal: overlay backdrop-blur + kart derinliği ----------------------- */
+html[data-depth="on"] .modal-overlay {
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+html[data-depth="on"] .modal {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 30px 60px -20px var(--shade-hi),
+    0 12px 30px -8px var(--shade-md);
+}
+/* KB salt-okunur viewer modalı (Faz 3) ekstra kartıyla da uyum */
+html[data-depth="on"] #kb-viewer-modal .modal { padding: 24px 26px; }
+
+/* -- Toast: rim + renk-tonlu glow --------------------------------------- */
+html[data-depth="on"] .toast {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface2) 0%, var(--surface) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: none;  /* Faz 6 — sol 3px çizgi yerine tam rim + glow */
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-md) 24px -8px var(--shade-hi);
+  position: relative; overflow: hidden;
+}
+html[data-depth="on"] .toast::before {
+  /* Sol iç kenar 3 px renkli çubuk (border-left'in devamı, gradient + glow'lu) */
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--text-muted);  /* varsayılan */
+}
+html[data-depth="on"] .toast.ok {
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) 24px -8px var(--shade-hi), var(--glow-green);
+}
+html[data-depth="on"] .toast.ok::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--green) 40%, #fff), var(--green));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--green) 50%, transparent);
+}
+html[data-depth="on"] .toast.err {
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) 24px -8px var(--shade-hi), var(--glow-danger);
+}
+html[data-depth="on"] .toast.err::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 40%, #fff), var(--danger));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 50%, transparent);
+}
+/* /Faz 6 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
@@ -779,6 +1164,29 @@ textarea.form-control{resize:vertical;min-height:64px;}
 </head>
 <body>
 
+<!-- v5.87 — v6.0 Faz 2.6 · Nav ikon sprite (inline SVG symbol defs).
+     Body'nin en başında yer alır; hidden container. Nav item'lar
+     <use href="#ic-X"/> ile referans verir. currentColor ile temaya
+     uyumlu; stroke ve line-cap/join stilleri .nav-glyph CSS'inden gelir. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-dashboard" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/></symbol>
+  <symbol id="ic-firms" viewBox="0 0 24 24"><path d="M4 20V8h6v12M14 20V4h6v16M4 20h16M6 11h2M6 14h2M6 17h2M16 7h2M16 10h2M16 13h2M16 16h2"/></symbol>
+  <symbol id="ic-tasks" viewBox="0 0 24 24"><path d="M13 3L4 14h7l-1 7 9-11h-7z"/></symbol>
+  <symbol id="ic-support" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3l3.4 3.4M14.3 14.3l3.4 3.4M6.3 17.7l3.4-3.4M14.3 9.7l3.4-3.4"/></symbol>
+  <symbol id="ic-pool" viewBox="0 0 24 24"><path d="M12 3s-5 6-5 10a5 5 0 0 0 10 0c0-4-5-10-5-10z"/><path d="M9 13a3 3 0 0 0 3 3"/></symbol>
+  <symbol id="ic-archive" viewBox="0 0 24 24"><path d="M3 7h18v14H3zM3 7l2-4h14l2 4M9 12h6"/></symbol>
+  <symbol id="ic-projects" viewBox="0 0 24 24"><path d="M3 6h6l2 2h10v11H3z"/></symbol>
+  <symbol id="ic-scheduled" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></symbol>
+  <symbol id="ic-report" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20V13M2 20h20"/></symbol>
+  <symbol id="ic-backups" viewBox="0 0 24 24"><path d="M3 15h18M6 15V6h12v9M7 19h.01M11 19h.01"/></symbol>
+  <symbol id="ic-board" viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20c1-4 3-6 6-6s5 2 6 6M15 20c.4-2.6 1.8-4 4-4s3.6 1.4 4 4"/></symbol>
+  <symbol id="ic-audit" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-4 8-7 9-3-1-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="ic-kb" viewBox="0 0 24 24"><path d="M4 4h9a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM4 4v14M20 4h-4a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h5V4z"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="ic-notifications" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0v5l2 3H4l2-3zM10 19a2 2 0 0 0 4 0"/></symbol>
+</svg>
+
 <!-- ╔══════════════════════════════════════╗
      ║          O365 LOGIN PAGE             ║
      ╚══════════════════════════════════════╝ -->
@@ -841,26 +1249,26 @@ textarea.form-control{resize:vertical;min-height:64px;}
 
   <nav>
     <div class="nav-section">Görevler</div>
-    <a class="nav-item active" data-perm="all" data-click="nav" data-page="dashboard"><span class="nav-icon">⬡</span>Dashboard</a>
-    <a class="nav-item" data-perm="director" data-click="nav" data-page="managed-firms"><span class="nav-icon">⬡</span>Yönettiğim Firmalar</a>
-    <a class="nav-item" data-nav="tasks" data-perm="all" data-click="nav" data-page="tasks"><span class="nav-icon">⚡</span>Anlık Görevler</a>
-    <a class="nav-item" data-nav="support" data-perm="all" data-click="showTasksWithCat" data-cat="support"><span class="nav-icon">🆘</span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
-    <a class="nav-item" data-perm="all" data-click="nav" data-page="pool"><span class="nav-icon">🫧</span>Havuz<span class="nav-badge" id="pool-nav-badge" style="display:none;background:var(--accent);color:#06231d">0</span></a>
-    <a class="nav-item" data-perm="all" data-click="nav" data-page="archive"><span class="nav-icon">🗄️</span>Arşiv</a>
-    <a class="nav-item" data-perm="manager" data-click="nav" data-page="projects"><span class="nav-icon">📁</span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
-    <a class="nav-item" data-perm="manager" data-click="nav" data-page="scheduled"><span class="nav-icon">🔁</span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item active" data-perm="all" data-click="nav" data-page="dashboard"><span class="nav-icon"><span class="nav-emoji">⬡</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-dashboard"/></svg></span>Dashboard</a>
+    <a class="nav-item" data-perm="director" data-click="nav" data-page="managed-firms"><span class="nav-icon"><span class="nav-emoji">⬡</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-firms"/></svg></span>Yönettiğim Firmalar</a>
+    <a class="nav-item" data-nav="tasks" data-perm="all" data-click="nav" data-page="tasks"><span class="nav-icon"><span class="nav-emoji">⚡</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-tasks"/></svg></span>Anlık Görevler</a>
+    <a class="nav-item" data-nav="support" data-perm="all" data-click="showTasksWithCat" data-cat="support"><span class="nav-icon"><span class="nav-emoji">🆘</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-support"/></svg></span>Destek Talepleri<span class="nav-badge" id="support-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" data-perm="all" data-click="nav" data-page="pool"><span class="nav-icon"><span class="nav-emoji">🫧</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-pool"/></svg></span>Havuz<span class="nav-badge" id="pool-nav-badge" style="display:none;background:var(--accent);color:#06231d">0</span></a>
+    <a class="nav-item" data-perm="all" data-click="nav" data-page="archive"><span class="nav-icon"><span class="nav-emoji">🗄️</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-archive"/></svg></span>Arşiv</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="projects"><span class="nav-icon"><span class="nav-emoji">📁</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-projects"/></svg></span>Projeler<span class="nav-badge" id="proj-nav-badge" style="display:none">0</span></a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="scheduled"><span class="nav-icon"><span class="nav-emoji">🔁</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-scheduled"/></svg></span>Rutin Görevler<span class="nav-badge" id="sched-nav-badge" style="display:none">0</span></a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Raporlama</div>
-    <a class="nav-item" data-perm="manager" data-click="nav" data-page="report"><span class="nav-icon">⬕</span>Aylık Rapor</a>
-    <a class="nav-item" data-perm="manager" data-click="nav" data-page="backups"><span class="nav-icon">💾</span>Yedekler</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="report"><span class="nav-icon"><span class="nav-emoji">⬕</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-report"/></svg></span>Aylık Rapor</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="backups"><span class="nav-icon"><span class="nav-emoji">💾</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-backups"/></svg></span>Yedekler</a>
     <div class="nav-section" data-perm="board" style="margin-top:8px">Ortak Çalışma</div>
-    <a class="nav-item" data-perm="board" data-click="nav" data-page="board"><span class="nav-icon">📋</span>Ortak Alan</a>
+    <a class="nav-item" data-perm="board" data-click="nav" data-page="board"><span class="nav-icon"><span class="nav-emoji">📋</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-board"/></svg></span>Ortak Alan</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
-    <a class="nav-item admin-item" data-perm="manager" data-click="nav" data-page="admin"><span class="nav-icon">👥</span>Kullanıcılar</a>
-    <a class="nav-item admin-item" data-perm="director" data-click="nav" data-page="audit"><span class="nav-icon">🛡️</span>Denetim Kayıtları</a>
-    <a class="nav-item" data-perm="all" data-click="nav" data-page="kb"><span class="nav-icon">📚</span>Bilgi Bankası</a>
-    <a class="nav-item" data-perm="manager" data-click="nav" data-page="settings"><span class="nav-icon">⚙</span>Ayarlar</a>
+    <a class="nav-item admin-item" data-perm="manager" data-click="nav" data-page="admin"><span class="nav-icon"><span class="nav-emoji">👥</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-users"/></svg></span>Kullanıcılar</a>
+    <a class="nav-item admin-item" data-perm="director" data-click="nav" data-page="audit"><span class="nav-icon"><span class="nav-emoji">🛡️</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-audit"/></svg></span>Denetim Kayıtları</a>
+    <a class="nav-item" data-perm="all" data-click="nav" data-page="kb"><span class="nav-icon"><span class="nav-emoji">📚</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-kb"/></svg></span>Bilgi Bankası</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="settings"><span class="nav-icon"><span class="nav-emoji">⚙</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-settings"/></svg></span>Ayarlar</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
-    <a class="nav-item" data-perm="manager" data-click="nav" data-page="notifications"><span class="nav-icon">🔔</span>Bildirim Ayarları</a>
+    <a class="nav-item" data-perm="manager" data-click="nav" data-page="notifications"><span class="nav-icon"><span class="nav-emoji">🔔</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-notifications"/></svg></span>Bildirim Ayarları</a>
   </nav>
 
   <div class="sidebar-footer">
@@ -912,16 +1320,19 @@ textarea.form-control{resize:vertical;min-height:64px;}
         <div class="date-day" id="topbar-date-day"></div>
         <div class="date-full" id="topbar-date-full"></div>
       </div>
-      <button class="btn btn-primary btn-new-task" data-click="nav" data-page="add">＋ Yeni Görev</button>
+      <!-- v6.0 Faz 2 — opt-in .btn-3d: primary düğmenin gradient + rim + glow versiyonu -->
+      <button class="btn btn-primary btn-3d btn-new-task" data-click="nav" data-page="add">＋ Yeni Görev</button>
     </div>
   </div>
 
+  <!-- v6.0 Faz 2 — opt-in .kpi-3d: her KPI kartı kendi renk halkasıyla derinlik kazanır.
+       Mevcut .c-* varyantları .kpi-3d içinde --kpi-color üzerinden okunur. -->
   <div class="kpi-row">
-    <div class="kpi c-teal kpi-clickable" title="Tüm görevleri göster" data-click="kpiJump" data-kind="all"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
-    <div class="kpi c-green kpi-clickable" title="Tamamlanan görevleri göster" data-click="kpiJump" data-kind="done"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
-    <div class="kpi c-orange kpi-clickable" title="Açık görevleri göster" data-click="kpiJump" data-kind="open"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
-    <div class="kpi c-purple kpi-clickable" title="Geciken görevlere odaklan" data-click="kpiJump" data-kind="overdue"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
-    <div class="kpi c-gold kpi-clickable" title="Backup sayfasına git" data-click="kpiJump" data-kind="backup"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
+    <div class="kpi kpi-3d c-teal kpi-clickable" title="Tüm görevleri göster" data-click="kpiJump" data-kind="all"><div class="kpi-icon">📋</div><div class="kpi-label">Toplam Görev</div><div class="kpi-value" style="color:var(--accent)">24</div><div class="kpi-sub">Bu ay</div></div>
+    <div class="kpi kpi-3d c-green kpi-clickable" title="Tamamlanan görevleri göster" data-click="kpiJump" data-kind="done"><div class="kpi-icon">✅</div><div class="kpi-label">Tamamlanan</div><div class="kpi-value" style="color:var(--green)">17</div><div class="kpi-sub">%71 oran</div></div>
+    <div class="kpi kpi-3d c-orange kpi-clickable" title="Açık görevleri göster" data-click="kpiJump" data-kind="open"><div class="kpi-icon">⚡</div><div class="kpi-label">Devam Eden</div><div class="kpi-value" style="color:var(--accent2)">5</div><div class="kpi-sub">Aktif görev</div></div>
+    <div class="kpi kpi-3d c-purple kpi-clickable" title="Geciken görevlere odaklan" data-click="kpiJump" data-kind="overdue"><div class="kpi-icon">🔴</div><div class="kpi-label">Geciken</div><div class="kpi-value" style="color:var(--danger)">2</div><div class="kpi-sub">Müdahale gerek</div></div>
+    <div class="kpi kpi-3d c-gold kpi-clickable" title="Backup sayfasına git" data-click="kpiJump" data-kind="backup"><div class="kpi-icon">💾</div><div class="kpi-label">Config Backup</div><div class="kpi-value" style="color:var(--gold)">3</div><div class="kpi-sub">Dosya yüklendi</div></div>
   </div>
 
   <!-- v4.9 firma şeridi v4.10'da kaldırıldı: artık ayrı "Yönettiğim Firmalar" sayfası var. -->
@@ -1705,6 +2116,26 @@ textarea.form-control{resize:vertical;min-height:64px;}
           <button class="btn btn-outline btn-sm" data-click="toast" data-type="ok" data-msg="O365 OAuth sayfasına yönlendiriliyorsunuz...">Microsoft ile Bağlan</button>
         </div>
         <button class="btn btn-primary btn-sm" data-click="saveUserSettings">Kaydet</button>
+      </div>
+    </div>
+
+    <!-- v5.86 — Görsel Ayarlar (v6.0 Faz 2.5): Derinlik Modu toggle -->
+    <div class="card" id="settings-card-visual">
+      <div class="card-header"><div class="card-title">GÖRSEL AYARLAR</div></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              v6.0 Derinlik Modu
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;background:var(--accent-dim);color:var(--accent);padding:2px 7px;border-radius:5px;letter-spacing:.6px">BETA</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;max-width:360px">Tüm düğme ve KPI kartlarına iOS 26 Liquid Glass dilinde 3B derinlik uygular — üst kenar ışık dudağı, gradient yüz, renk-tonlu ışıltı. Kapalıyken düz stil geri gelir.</div>
+          </div>
+          <label class="aa-switch"><input type="checkbox" id="depth-toggle" data-change="toggleDepthMode"><span></span></label>
+        </div>
+        <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:6px;font-size:10.5px;color:var(--text-muted);line-height:1.5">
+          <span style="color:var(--accent3);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.6px">İPUCU</span> · Tercihiniz tarayıcınızda saklanır. Bir öğeyi manuel olarak eski hâlinde tutmak için sınıflarına <code style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">.no-depth</code> ekleyin.
+        </div>
       </div>
     </div>
 

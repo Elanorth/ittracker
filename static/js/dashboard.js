@@ -15,7 +15,7 @@
 //  Bare global (app.js klasik): Chart, FIRMS, showPage, onCatChange, onFirmUserChange
 //  (app.js modül olunca import'a döner).
 // ══════════════════════════════════════════════════════════
-import { _chartTheme, _cssVar, _centerTextPlugin, escapeHtml } from './utils.js';
+import { _chartTheme, _cssVar, _centerTextPlugin, escapeHtml, _depthOn, _barGradient, _areaGradient } from './utils.js';
 import { state } from './state.js';
 import { FIRMS, loadTasks, onCatChange, onFirmUserChange, showPage } from '../app.js';
 import { taskTiming, taskRow } from './tasks.js'; // KANONİK satır-render (ESM Faz 4e-1)
@@ -60,7 +60,15 @@ export function renderCategoryPie() {
     type: 'doughnut',
     data: {
       labels: entries.map(([c]) => _CAT_META[c].label),
-      datasets: [{ data: entries.map(([, n]) => n), backgroundColor: entries.map(([c]) => _cssVar(_CAT_META[c].v)), borderWidth: 0, hoverOffset: 6 }]
+      // v6.0 Faz 5 — derinlik açıkken segment aralarına rim (2px beyaz kenar)
+      // + hoverOffset artırılır (torus-üstü specular hissi).
+      datasets: [{
+        data: entries.map(([, n]) => n),
+        backgroundColor: entries.map(([c]) => _cssVar(_CAT_META[c].v)),
+        borderColor: _depthOn() ? 'rgba(255,255,255,.10)' : 'transparent',
+        borderWidth: _depthOn() ? 2 : 0,
+        hoverOffset: _depthOn() ? 10 : 6,
+      }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '66%',
@@ -91,7 +99,19 @@ export function renderFirmBars() {
   if (_firmChart) _firmChart.destroy();
   _firmChart = new Chart(document.getElementById('firm-canvas'), {
     type: 'bar',
-    data: { labels: names, datasets: [{ data: sorted.map(([, n]) => n), backgroundColor: sorted.map((_, i) => _cssVar(palette[i % palette.length])), borderRadius: 4, barThickness: 18 }] },
+    // v6.0 Faz 5 — derinlik açıkken her barın kendi rengiyle silindir-gradient.
+    // Chart.js backgroundColor function callback her draw'da çağrılır ve
+    // her bar'ın rengini per-index çözer.
+    data: { labels: names, datasets: [{
+      data: sorted.map(([, n]) => n),
+      backgroundColor: (bctx) => {
+        const c = _cssVar(palette[bctx.dataIndex % palette.length]);
+        const chart = bctx.chart;
+        return _depthOn() ? _barGradient(c, chart.ctx, chart.chartArea) : c;
+      },
+      borderRadius: 4,
+      barThickness: 18,
+    }] },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       onClick: (e, els) => { if (els.length) showTasksWithFirm(rawNames[els[0].index]); },
@@ -129,9 +149,28 @@ export function renderBars() {
     type: 'bar',
     data: {
       labels: days.map(d => d.label),
+      // v6.0 Faz 5 — derinlik açıkken her iki dataset gradient silindir.
       datasets: [
-        { label: 'Açılan', data: days.map(d => d.c), backgroundColor: _cssVar('--surface3'), borderRadius: 4 },
-        { label: 'Tamamlanan', data: days.map(d => d.d), backgroundColor: _cssVar('--accent'), borderRadius: 4 }
+        {
+          label: 'Açılan',
+          data: days.map(d => d.c),
+          backgroundColor: (bctx) => {
+            const c = _cssVar('--surface3');
+            const ch = bctx.chart;
+            return _depthOn() ? _barGradient(c, ch.ctx, ch.chartArea) : c;
+          },
+          borderRadius: 4,
+        },
+        {
+          label: 'Tamamlanan',
+          data: days.map(d => d.d),
+          backgroundColor: (bctx) => {
+            const c = _cssVar('--accent');
+            const ch = bctx.chart;
+            return _depthOn() ? _barGradient(c, ch.ctx, ch.chartArea) : c;
+          },
+          borderRadius: 4,
+        }
       ]
     },
     options: {
@@ -172,9 +211,45 @@ export async function loadWeeklyTrend() {
       type: 'line',
       data: {
         labels: d.labels,
+        // v6.0 Faz 5 — derinlik açıkken line altında rengiyle-tonlu area
+        // dolgusu (transparent → color-fade) + endpoint dot beyaz halka.
         datasets: [
-          { label: 'Açılan', data: d.opened, borderColor: _cssVar('--accent3'), backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 },
-          { label: 'Çözülen', data: d.resolved, borderColor: _cssVar('--green'), backgroundColor: 'transparent', tension: 0.3, pointRadius: 3, borderWidth: 2 }
+          {
+            label: 'Açılan',
+            data: d.opened,
+            borderColor: _cssVar('--accent3'),
+            backgroundColor: (bctx) => {
+              if (!_depthOn()) return 'transparent';
+              const c = _cssVar('--accent3');
+              const ch = bctx.chart;
+              return _areaGradient(c, ch.ctx, ch.chartArea);
+            },
+            fill: _depthOn(),
+            tension: 0.3,
+            pointRadius: _depthOn() ? 4 : 3,
+            pointBackgroundColor: _cssVar('--accent3'),
+            pointBorderColor: _depthOn() ? 'rgba(255,255,255,.7)' : _cssVar('--accent3'),
+            pointBorderWidth: _depthOn() ? 2 : 0,
+            borderWidth: 2,
+          },
+          {
+            label: 'Çözülen',
+            data: d.resolved,
+            borderColor: _cssVar('--green'),
+            backgroundColor: (bctx) => {
+              if (!_depthOn()) return 'transparent';
+              const c = _cssVar('--green');
+              const ch = bctx.chart;
+              return _areaGradient(c, ch.ctx, ch.chartArea);
+            },
+            fill: _depthOn(),
+            tension: 0.3,
+            pointRadius: _depthOn() ? 4 : 3,
+            pointBackgroundColor: _cssVar('--green'),
+            pointBorderColor: _depthOn() ? 'rgba(255,255,255,.7)' : _cssVar('--green'),
+            pointBorderWidth: _depthOn() ? 2 : 0,
+            borderWidth: 2,
+          }
         ]
       },
       options: {

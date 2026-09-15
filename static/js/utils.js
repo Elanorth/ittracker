@@ -45,6 +45,48 @@ export function _cssVar(name) {
 export function _chartTheme() {
   return { text: _cssVar('--text'), muted: _cssVar('--text-muted'), grid: _cssVar('--border2') || _cssVar('--border') };
 }
+// v6.0 Faz 5 — Chart.js derinlik yardımcıları.
+// Chart.js backgroundColor function-callback olarak kullanılır → chart her
+// draw'da tekrar sorgulanır. Depth off iken flat color; on iken CanvasGradient.
+export function _depthOn() {
+  return document.documentElement.getAttribute('data-depth') === 'on';
+}
+function _parseHexToRgb(hex) {
+  if (!hex || hex[0] !== '#') return null;
+  const c = hex.slice(1);
+  const full = c.length === 3 ? c.split('').map(x => x + x).join('') : c;
+  if (full.length !== 6) return null;
+  const b = parseInt(full, 16);
+  return isNaN(b) ? null : [(b >> 16) & 255, (b >> 8) & 255, b & 255];
+}
+function _mix(colorHex, toWhite, ratio) {
+  const a = _parseHexToRgb(colorHex);
+  if (!a) return colorHex;
+  const t = toWhite ? [255, 255, 255] : [0, 0, 0];
+  const m = a.map((v, i) => Math.round(v * ratio + t[i] * (1 - ratio)));
+  return `rgb(${m[0]},${m[1]},${m[2]})`;
+}
+// Bar için 3-stop dikey gradient (üst açık → orta ton → alt koyu = silindir hissi)
+export function _barGradient(color, ctx, area) {
+  if (!ctx || !area) return color;
+  const g = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+  g.addColorStop(0,    _mix(color, true,  0.4));
+  g.addColorStop(0.55, color);
+  g.addColorStop(1,    _mix(color, false, 0.75));
+  return g;
+}
+// Line altı gradient area (transparent → renk-hafif dolgu). Endpoint dot glow yerine
+// area üzerinden yumuşak volume hissi.
+export function _areaGradient(color, ctx, area) {
+  if (!ctx || !area) return 'transparent';
+  const a = _parseHexToRgb(color);
+  if (!a) return color;
+  const g = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+  g.addColorStop(0, `rgba(${a[0]},${a[1]},${a[2]},.35)`);
+  g.addColorStop(1, `rgba(${a[0]},${a[1]},${a[2]},0)`);
+  return g;
+}
+
 // Doughnut ortasına % yazan hafif plugin (tema-duyarlı)
 export const _centerTextPlugin = {
   id: 'centerText',
