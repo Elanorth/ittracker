@@ -940,6 +940,31 @@ html[data-depth="on"] .toast.err::before {
 }
 /* /Faz 6 */
 
+/* ═══════ v6.0 FAZ 7 — .card sistemi (opt-in, tek override) ═══════
+   Derinlik moduna bağlıdır. Kapalıyken v5.83 .card aynen. Açıkken tek
+   selector 40+ kart lokasyonunu v6.0 diline geçirir:
+     Dashboard: Bugünün Görevleri / Kategori Dağılımı / Firma Dağılımı /
+                Yaklaşan Rutin / Son 5 Gün / Haftalık Akış
+     Ayarlar: 8 kart (kullanıcı, firma, SMTP, otomatik atama, teams, KB,
+              vs., v5.86 GÖRSEL AYARLAR dahil)
+     Rutin Görevler: PERİYOT DAĞILIMI / FİLTRE / AKTİF DÖNEM / vb.
+     Bilgi Bankası: yayın/taslak listeleri
+     .mf-card (managed-firms), .firm-card, .proj-card, .board-card ayrı
+     sınıflar — Faz 10'da kendi override'ları alır. */
+html[data-depth="on"] .card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-md) 30px -18px var(--shade-md),
+    0 var(--lift-sm) 12px -4px var(--shade-lo);
+}
+html[data-depth="on"] .card-header {
+  border-bottom: 1px dashed rgba(255,255,255,.08);
+}
+/* /Faz 7 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
