@@ -1080,6 +1080,137 @@ html[data-depth="on"] .dl-badge.late {
 }
 /* /Faz 9 */
 
+/* ═══════ v6.0 FAZ 10 — Cilalama: yardımcı kartlar + task hover ═══════
+   Faz 7 .card, Faz 8 .form-control, Faz 9 rozetler zaten canlıda. Bu
+   son adım ayrı sınıf yaşayan yardımcı kartları (mf-card, firm-card,
+   proj-card, board-card) v6.0 dilinde tutarlar + Faz 6 task-item
+   hover'ını netleştirir. Derinlik moduna bağlı. */
+
+/* -- Yönettiğim Firmalar detay kartı ------------------------------------ */
+html[data-depth="on"] .mf-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-md) 30px -18px var(--shade-md);
+}
+/* Üstteki 2 px renk şeridi kalır ama daha ışıklı (gradient rim) */
+html[data-depth="on"] .mf-card::after {
+  height: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent3) 30%, transparent) 0%,
+    var(--accent3) 50%,
+    color-mix(in srgb, var(--accent3) 30%, transparent) 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent3) 45%, transparent);
+}
+html[data-depth="on"] .mf-card.fc-inv::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 30%, transparent) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 30%, transparent) 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+html[data-depth="on"] .mf-card.fc-assos::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 30%, transparent) 0%,
+    var(--gold) 50%,
+    color-mix(in srgb, var(--gold) 30%, transparent) 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+html[data-depth="on"] .mf-card-head {
+  border-bottom: 1px dashed rgba(255,255,255,.08);
+}
+
+/* -- Dashboard firma şeridi kartı --------------------------------------- */
+html[data-depth="on"] .firm-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 14px -6px var(--shade-md);
+}
+html[data-depth="on"] .firm-card::after {
+  height: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent3) 30%, transparent),
+    var(--accent3),
+    color-mix(in srgb, var(--accent3) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent3) 40%, transparent);
+}
+html[data-depth="on"] .firm-card.fc-inv::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 30%, transparent),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-depth="on"] .firm-card.fc-assos::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 30%, transparent),
+    var(--gold),
+    color-mix(in srgb, var(--gold) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 40%, transparent);
+}
+html[data-depth="on"] .firm-card:hover {
+  border-color: rgba(255,255,255,.14);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) 22px -8px var(--shade-hi);
+}
+html[data-depth="on"] .firm-card.active {
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 var(--lift-md) 24px -8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* -- Proje listesi satırı (sunken v6.0) --------------------------------- */
+html[data-depth="on"] .proj-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim);
+}
+html[data-depth="on"] .proj-card:hover {
+  border-color: rgba(255,255,255,.14);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 14px -4px var(--shade-md);
+}
+html[data-depth="on"] .proj-status-note {
+  background: linear-gradient(180deg, rgba(127,108,247,.10), rgba(127,108,247,.02));
+  border-left: 3px solid var(--accent3);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* -- Kanban kartları (data-color renk kimliği korunur) ------------------ */
+html[data-depth="on"] .board-card {
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 14px -6px var(--shade-md);
+}
+html[data-depth="on"] .board-card:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 var(--rim-hot), 0 var(--lift-md) 22px -8px var(--shade-hi);
+}
+/* border-left 4px renkli çubuk → 4px inset renkli rim */
+html[data-depth="on"] .board-card {
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+/* data-color background'ları zaten renkli — hafif gradient katmanla derinlik */
+html[data-depth="on"] .board-card[data-color="yellow"] { background: linear-gradient(180deg, #453c25 0%, #3d3520 100%); }
+html[data-depth="on"] .board-card[data-color="green"]  { background: linear-gradient(180deg, #22392e 0%, #1e3328 100%); }
+html[data-depth="on"] .board-card[data-color="blue"]   { background: linear-gradient(180deg, #1e2f45 0%, #1a2a3d 100%); }
+html[data-depth="on"] .board-card[data-color="pink"]   { background: linear-gradient(180deg, #452334 0%, #3d1e2e 100%); }
+html[data-depth="on"] .board-card[data-color="orange"] { background: linear-gradient(180deg, #45301f 0%, #3d2a1a 100%); }
+
+/* -- Task-item hover netleştirme (Faz 6 üstüne) ------------------------- */
+/* Faz 6'da task-item hover eklendi ama .card gradient bg'sinin üstünde
+   yeterince belirgin kalmıyordu. Hover'ı biraz daha yoğunlaştır. */
+html[data-depth="on"] .task-item:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  box-shadow: inset 0 1px 0 var(--rim-hot), 0 var(--lift-sm) 14px -4px var(--shade-md);
+}
+/* /Faz 10 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
