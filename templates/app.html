@@ -940,6 +940,277 @@ html[data-depth="on"] .toast.err::before {
 }
 /* /Faz 6 */
 
+/* ═══════ v6.0 FAZ 7 — .card sistemi (opt-in, tek override) ═══════
+   Derinlik moduna bağlıdır. Kapalıyken v5.83 .card aynen. Açıkken tek
+   selector 40+ kart lokasyonunu v6.0 diline geçirir:
+     Dashboard: Bugünün Görevleri / Kategori Dağılımı / Firma Dağılımı /
+                Yaklaşan Rutin / Son 5 Gün / Haftalık Akış
+     Ayarlar: 8 kart (kullanıcı, firma, SMTP, otomatik atama, teams, KB,
+              vs., v5.86 GÖRSEL AYARLAR dahil)
+     Rutin Görevler: PERİYOT DAĞILIMI / FİLTRE / AKTİF DÖNEM / vb.
+     Bilgi Bankası: yayın/taslak listeleri
+     .mf-card (managed-firms), .firm-card, .proj-card, .board-card ayrı
+     sınıflar — Faz 10'da kendi override'ları alır. */
+html[data-depth="on"] .card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-md) 30px -18px var(--shade-md),
+    0 var(--lift-sm) 12px -4px var(--shade-lo);
+}
+html[data-depth="on"] .card-header {
+  border-bottom: 1px dashed rgba(255,255,255,.08);
+}
+/* /Faz 7 */
+
+/* ═══════ v6.0 FAZ 8 — .form-control derinliği (opt-in) ═══════
+   Derinlik moduna bağlı. Kapalıyken v5.83 form-control aynen. Açıkken
+   tüm input / select / textarea v6.0 diline geçer — .card override'ı
+   ile uyumlu görsel dokular:
+     - Yumuşak zemin (linear-gradient face-1 → face-2)
+     - Focus'ta 3 px teal glow halkası (outline yerine box-shadow)
+     - Padding 9px 12px → 11px 14px (dokunmatik hedef 40 px+)
+     - Border-radius --radius-md (kart ile eşit yumuşaklık)
+   Etkilenen yerler: Yeni Görev modal formu, KB editör modal, Ayarlar
+   sekiz kartındaki tüm inputlar, arama alanları, filtre select'leri. */
+html[data-depth="on"] .form-control {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  color: var(--text);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    inset 0 -1px 0 rgba(0,0,0,.20);
+  transition: border-color .12s ease, box-shadow .15s ease, background .15s ease;
+}
+html[data-depth="on"] .form-control:hover {
+  border-color: rgba(255,255,255,.18);
+}
+html[data-depth="on"] .form-control:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  outline: none;
+}
+html[data-depth="on"] .form-control::placeholder {
+  color: var(--text-dim);
+}
+/* Select elemanı için sağda hafif caret ipucu — native chrome ok'unu
+   bırakırız (browser tema-uyumlu), ama alanı biraz daha ayrıştırırız */
+html[data-depth="on"] select.form-control {
+  cursor: pointer;
+  padding-right: 30px;
+  background:
+    linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+}
+/* Textarea min-height'ı 64px → 72px, daha rahat dokunmatik alan */
+html[data-depth="on"] textarea.form-control {
+  min-height: 72px;
+  line-height: 1.55;
+}
+/* Form-group label: karta zıt, daha net letter-spacing */
+html[data-depth="on"] .form-group label {
+  letter-spacing: 1.1px;
+  color: var(--text-muted);
+}
+/* /Faz 8 */
+
+/* ═══════ v6.0 FAZ 9 — Etiket & rozet sistemi (opt-in) ═══════
+   Görev satırındaki tüm rozetleri (.tag, .prio-badge, .dl-badge,
+   .firm-chip, .next-run-chip) gradient pill diline geçirir. Renk
+   kaynağı her varyantın `--pill-color` var'ı — tek gradient
+   formülünden geçer, tema-aware ve DRY. */
+
+/* Renk kaynakları (varyant başına --pill-color set) */
+html[data-depth="on"] .tag.routine,
+html[data-depth="on"] .next-run-chip.upcoming,
+html[data-depth="on"] .firm-chip.inventist  { --pill-color: var(--accent); }
+html[data-depth="on"] .tag.support,
+html[data-depth="on"] .tag.task              { --pill-color: var(--accent3); }
+html[data-depth="on"] .tag.infra,
+html[data-depth="on"] .prio-badge.high,
+html[data-depth="on"] .next-run-chip.overdue { --pill-color: var(--accent2); }
+html[data-depth="on"] .tag.backup,
+html[data-depth="on"] .firm-chip.assos,
+html[data-depth="on"] .prio-badge.med,
+html[data-depth="on"] .next-run-chip.today,
+html[data-depth="on"] .dl-badge.warn         { --pill-color: var(--gold); }
+html[data-depth="on"] .tag.project,
+html[data-depth="on"] .prio-badge.low,
+html[data-depth="on"] .next-run-chip.done,
+html[data-depth="on"] .dl-badge.ok           { --pill-color: var(--green); }
+html[data-depth="on"] .tag.other             { --pill-color: var(--text-muted); }
+
+/* Ortak pill dokusu — tek yerden, tüm rozetler için */
+html[data-depth="on"] .tag,
+html[data-depth="on"] .prio-badge,
+html[data-depth="on"] .firm-chip,
+html[data-depth="on"] .next-run-chip,
+html[data-depth="on"] .dl-badge.ok,
+html[data-depth="on"] .dl-badge.warn {
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: none;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--pill-color, var(--text-muted)) 35%, transparent),
+    color-mix(in srgb, var(--pill-color, var(--text-muted)) 10%, transparent));
+  color: color-mix(in srgb, var(--pill-color, var(--text-muted)) 40%, #fff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+/* .dl-badge.late özel: geciken görev vurgusu — tam kırmızı gradient +
+   danger glow (görev listesinde dikkat çekmesi lazım). */
+html[data-depth="on"] .dl-badge.late {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--danger) 30%, #fff) 0%,
+    var(--danger) 50%,
+    color-mix(in srgb, var(--danger) 70%, #000) 100%);
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    0 var(--lift-sm) 12px -4px color-mix(in srgb, var(--danger) 45%, transparent);
+}
+/* /Faz 9 */
+
+/* ═══════ v6.0 FAZ 10 — Cilalama: yardımcı kartlar + task hover ═══════
+   Faz 7 .card, Faz 8 .form-control, Faz 9 rozetler zaten canlıda. Bu
+   son adım ayrı sınıf yaşayan yardımcı kartları (mf-card, firm-card,
+   proj-card, board-card) v6.0 dilinde tutarlar + Faz 6 task-item
+   hover'ını netleştirir. Derinlik moduna bağlı. */
+
+/* -- Yönettiğim Firmalar detay kartı ------------------------------------ */
+html[data-depth="on"] .mf-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-md) 30px -18px var(--shade-md);
+}
+/* Üstteki 2 px renk şeridi kalır ama daha ışıklı (gradient rim) */
+html[data-depth="on"] .mf-card::after {
+  height: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent3) 30%, transparent) 0%,
+    var(--accent3) 50%,
+    color-mix(in srgb, var(--accent3) 30%, transparent) 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent3) 45%, transparent);
+}
+html[data-depth="on"] .mf-card.fc-inv::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 30%, transparent) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 30%, transparent) 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+html[data-depth="on"] .mf-card.fc-assos::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 30%, transparent) 0%,
+    var(--gold) 50%,
+    color-mix(in srgb, var(--gold) 30%, transparent) 100%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 45%, transparent);
+}
+html[data-depth="on"] .mf-card-head {
+  border-bottom: 1px dashed rgba(255,255,255,.08);
+}
+
+/* -- Dashboard firma şeridi kartı --------------------------------------- */
+html[data-depth="on"] .firm-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 14px -6px var(--shade-md);
+}
+html[data-depth="on"] .firm-card::after {
+  height: 3px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent3) 30%, transparent),
+    var(--accent3),
+    color-mix(in srgb, var(--accent3) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent3) 40%, transparent);
+}
+html[data-depth="on"] .firm-card.fc-inv::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 30%, transparent),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+html[data-depth="on"] .firm-card.fc-assos::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 30%, transparent),
+    var(--gold),
+    color-mix(in srgb, var(--gold) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 40%, transparent);
+}
+html[data-depth="on"] .firm-card:hover {
+  border-color: rgba(255,255,255,.14);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-md) 22px -8px var(--shade-hi);
+}
+html[data-depth="on"] .firm-card.active {
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 var(--lift-md) 24px -8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* -- Proje listesi satırı (sunken v6.0) --------------------------------- */
+html[data-depth="on"] .proj-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim);
+}
+html[data-depth="on"] .proj-card:hover {
+  border-color: rgba(255,255,255,.14);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 14px -4px var(--shade-md);
+}
+html[data-depth="on"] .proj-status-note {
+  background: linear-gradient(180deg, rgba(127,108,247,.10), rgba(127,108,247,.02));
+  border-left: 3px solid var(--accent3);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* -- Kanban kartları (data-color renk kimliği korunur) ------------------ */
+html[data-depth="on"] .board-card {
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim), 0 var(--lift-sm) 14px -6px var(--shade-md);
+}
+html[data-depth="on"] .board-card:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 var(--rim-hot), 0 var(--lift-md) 22px -8px var(--shade-hi);
+}
+/* border-left 4px renkli çubuk → 4px inset renkli rim */
+html[data-depth="on"] .board-card {
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+/* data-color background'ları zaten renkli — hafif gradient katmanla derinlik */
+html[data-depth="on"] .board-card[data-color="yellow"] { background: linear-gradient(180deg, #453c25 0%, #3d3520 100%); }
+html[data-depth="on"] .board-card[data-color="green"]  { background: linear-gradient(180deg, #22392e 0%, #1e3328 100%); }
+html[data-depth="on"] .board-card[data-color="blue"]   { background: linear-gradient(180deg, #1e2f45 0%, #1a2a3d 100%); }
+html[data-depth="on"] .board-card[data-color="pink"]   { background: linear-gradient(180deg, #452334 0%, #3d1e2e 100%); }
+html[data-depth="on"] .board-card[data-color="orange"] { background: linear-gradient(180deg, #45301f 0%, #3d2a1a 100%); }
+
+/* -- Task-item hover netleştirme (Faz 6 üstüne) ------------------------- */
+/* Faz 6'da task-item hover eklendi ama .card gradient bg'sinin üstünde
+   yeterince belirgin kalmıyordu. Hover'ı biraz daha yoğunlaştır. */
+html[data-depth="on"] .task-item:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  box-shadow: inset 0 1px 0 var(--rim-hot), 0 var(--lift-sm) 14px -4px var(--shade-md);
+}
+/* /Faz 10 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
@@ -1337,12 +1608,13 @@ html[data-depth="on"] .toast.err::before {
 
   <!-- v4.9 firma şeridi v4.10'da kaldırıldı: artık ayrı "Yönettiğim Firmalar" sayfası var. -->
 
-  <!-- v4.5 — SLA (Destek Talepleri) -->
+  <!-- v4.5 — SLA (Destek Talepleri) · v5.93: 4 karta .kpi-3d eklendi (Faz 9);
+       ana KPI satırıyla aynı derinlik dilinde (halka + orbital disk). -->
   <div id="sla-kpi-row" class="kpi-row" style="grid-template-columns:repeat(4,1fr);display:none;margin-top:-8px;">
-    <div class="kpi c-teal"><div class="kpi-icon">🎯</div><div class="kpi-label">SLA Uyum</div><div class="kpi-value" id="sla-kpi-compliance" style="color:var(--accent)">—</div><div class="kpi-sub" id="sla-kpi-compliance-sub">Henüz veri yok</div></div>
-    <div class="kpi c-orange"><div class="kpi-icon">⚠️</div><div class="kpi-label">SLA İhlali</div><div class="kpi-value" id="sla-kpi-breached" style="color:var(--danger)">0</div><div class="kpi-sub" id="sla-kpi-breached-sub">—</div></div>
-    <div class="kpi c-purple"><div class="kpi-icon">⏱️</div><div class="kpi-label">Ort. Çözüm</div><div class="kpi-value" id="sla-kpi-avg" style="color:var(--accent3)">—</div><div class="kpi-sub" id="sla-kpi-avg-sub">Destek talepleri</div></div>
-    <div class="kpi c-green"><div class="kpi-icon">🎫</div><div class="kpi-label">Açık Ticket</div><div class="kpi-value" id="sla-kpi-open" style="color:var(--green)">0</div><div class="kpi-sub" id="sla-kpi-open-sub">—</div></div>
+    <div class="kpi kpi-3d c-teal"><div class="kpi-icon">🎯</div><div class="kpi-label">SLA Uyum</div><div class="kpi-value" id="sla-kpi-compliance" style="color:var(--accent)">—</div><div class="kpi-sub" id="sla-kpi-compliance-sub">Henüz veri yok</div></div>
+    <div class="kpi kpi-3d c-orange"><div class="kpi-icon">⚠️</div><div class="kpi-label">SLA İhlali</div><div class="kpi-value" id="sla-kpi-breached" style="color:var(--danger)">0</div><div class="kpi-sub" id="sla-kpi-breached-sub">—</div></div>
+    <div class="kpi kpi-3d c-purple"><div class="kpi-icon">⏱️</div><div class="kpi-label">Ort. Çözüm</div><div class="kpi-value" id="sla-kpi-avg" style="color:var(--accent3)">—</div><div class="kpi-sub" id="sla-kpi-avg-sub">Destek talepleri</div></div>
+    <div class="kpi kpi-3d c-green"><div class="kpi-icon">🎫</div><div class="kpi-label">Açık Ticket</div><div class="kpi-value" id="sla-kpi-open" style="color:var(--green)">0</div><div class="kpi-sub" id="sla-kpi-open-sub">—</div></div>
   </div>
 
   <div class="grid-3">
