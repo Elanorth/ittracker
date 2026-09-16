@@ -965,6 +965,61 @@ html[data-depth="on"] .card-header {
 }
 /* /Faz 7 */
 
+/* ═══════ v6.0 FAZ 8 — .form-control derinliği (opt-in) ═══════
+   Derinlik moduna bağlı. Kapalıyken v5.83 form-control aynen. Açıkken
+   tüm input / select / textarea v6.0 diline geçer — .card override'ı
+   ile uyumlu görsel dokular:
+     - Yumuşak zemin (linear-gradient face-1 → face-2)
+     - Focus'ta 3 px teal glow halkası (outline yerine box-shadow)
+     - Padding 9px 12px → 11px 14px (dokunmatik hedef 40 px+)
+     - Border-radius --radius-md (kart ile eşit yumuşaklık)
+   Etkilenen yerler: Yeni Görev modal formu, KB editör modal, Ayarlar
+   sekiz kartındaki tüm inputlar, arama alanları, filtre select'leri. */
+html[data-depth="on"] .form-control {
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  color: var(--text);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    inset 0 -1px 0 rgba(0,0,0,.20);
+  transition: border-color .12s ease, box-shadow .15s ease, background .15s ease;
+}
+html[data-depth="on"] .form-control:hover {
+  border-color: rgba(255,255,255,.18);
+}
+html[data-depth="on"] .form-control:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(180deg, var(--lift-face-2), var(--lift-face-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  outline: none;
+}
+html[data-depth="on"] .form-control::placeholder {
+  color: var(--text-dim);
+}
+/* Select elemanı için sağda hafif caret ipucu — native chrome ok'unu
+   bırakırız (browser tema-uyumlu), ama alanı biraz daha ayrıştırırız */
+html[data-depth="on"] select.form-control {
+  cursor: pointer;
+  padding-right: 30px;
+  background:
+    linear-gradient(180deg, var(--lift-face-2), var(--lift-face-1));
+}
+/* Textarea min-height'ı 64px → 72px, daha rahat dokunmatik alan */
+html[data-depth="on"] textarea.form-control {
+  min-height: 72px;
+  line-height: 1.55;
+}
+/* Form-group label: karta zıt, daha net letter-spacing */
+html[data-depth="on"] .form-group label {
+  letter-spacing: 1.1px;
+  color: var(--text-muted);
+}
+/* /Faz 8 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
