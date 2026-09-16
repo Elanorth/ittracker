@@ -1020,6 +1020,66 @@ html[data-depth="on"] .form-group label {
 }
 /* /Faz 8 */
 
+/* ═══════ v6.0 FAZ 9 — Etiket & rozet sistemi (opt-in) ═══════
+   Görev satırındaki tüm rozetleri (.tag, .prio-badge, .dl-badge,
+   .firm-chip, .next-run-chip) gradient pill diline geçirir. Renk
+   kaynağı her varyantın `--pill-color` var'ı — tek gradient
+   formülünden geçer, tema-aware ve DRY. */
+
+/* Renk kaynakları (varyant başına --pill-color set) */
+html[data-depth="on"] .tag.routine,
+html[data-depth="on"] .next-run-chip.upcoming,
+html[data-depth="on"] .firm-chip.inventist  { --pill-color: var(--accent); }
+html[data-depth="on"] .tag.support,
+html[data-depth="on"] .tag.task              { --pill-color: var(--accent3); }
+html[data-depth="on"] .tag.infra,
+html[data-depth="on"] .prio-badge.high,
+html[data-depth="on"] .next-run-chip.overdue { --pill-color: var(--accent2); }
+html[data-depth="on"] .tag.backup,
+html[data-depth="on"] .firm-chip.assos,
+html[data-depth="on"] .prio-badge.med,
+html[data-depth="on"] .next-run-chip.today,
+html[data-depth="on"] .dl-badge.warn         { --pill-color: var(--gold); }
+html[data-depth="on"] .tag.project,
+html[data-depth="on"] .prio-badge.low,
+html[data-depth="on"] .next-run-chip.done,
+html[data-depth="on"] .dl-badge.ok           { --pill-color: var(--green); }
+html[data-depth="on"] .tag.other             { --pill-color: var(--text-muted); }
+
+/* Ortak pill dokusu — tek yerden, tüm rozetler için */
+html[data-depth="on"] .tag,
+html[data-depth="on"] .prio-badge,
+html[data-depth="on"] .firm-chip,
+html[data-depth="on"] .next-run-chip,
+html[data-depth="on"] .dl-badge.ok,
+html[data-depth="on"] .dl-badge.warn {
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: none;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--pill-color, var(--text-muted)) 35%, transparent),
+    color-mix(in srgb, var(--pill-color, var(--text-muted)) 10%, transparent));
+  color: color-mix(in srgb, var(--pill-color, var(--text-muted)) 40%, #fff);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+/* .dl-badge.late özel: geciken görev vurgusu — tam kırmızı gradient +
+   danger glow (görev listesinde dikkat çekmesi lazım). */
+html[data-depth="on"] .dl-badge.late {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--danger) 30%, #fff) 0%,
+    var(--danger) 50%,
+    color-mix(in srgb, var(--danger) 70%, #000) 100%);
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.45),
+    0 var(--lift-sm) 12px -4px color-mix(in srgb, var(--danger) 45%, transparent);
+}
+/* /Faz 9 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
@@ -1417,12 +1477,13 @@ html[data-depth="on"] .form-group label {
 
   <!-- v4.9 firma şeridi v4.10'da kaldırıldı: artık ayrı "Yönettiğim Firmalar" sayfası var. -->
 
-  <!-- v4.5 — SLA (Destek Talepleri) -->
+  <!-- v4.5 — SLA (Destek Talepleri) · v5.93: 4 karta .kpi-3d eklendi (Faz 9);
+       ana KPI satırıyla aynı derinlik dilinde (halka + orbital disk). -->
   <div id="sla-kpi-row" class="kpi-row" style="grid-template-columns:repeat(4,1fr);display:none;margin-top:-8px;">
-    <div class="kpi c-teal"><div class="kpi-icon">🎯</div><div class="kpi-label">SLA Uyum</div><div class="kpi-value" id="sla-kpi-compliance" style="color:var(--accent)">—</div><div class="kpi-sub" id="sla-kpi-compliance-sub">Henüz veri yok</div></div>
-    <div class="kpi c-orange"><div class="kpi-icon">⚠️</div><div class="kpi-label">SLA İhlali</div><div class="kpi-value" id="sla-kpi-breached" style="color:var(--danger)">0</div><div class="kpi-sub" id="sla-kpi-breached-sub">—</div></div>
-    <div class="kpi c-purple"><div class="kpi-icon">⏱️</div><div class="kpi-label">Ort. Çözüm</div><div class="kpi-value" id="sla-kpi-avg" style="color:var(--accent3)">—</div><div class="kpi-sub" id="sla-kpi-avg-sub">Destek talepleri</div></div>
-    <div class="kpi c-green"><div class="kpi-icon">🎫</div><div class="kpi-label">Açık Ticket</div><div class="kpi-value" id="sla-kpi-open" style="color:var(--green)">0</div><div class="kpi-sub" id="sla-kpi-open-sub">—</div></div>
+    <div class="kpi kpi-3d c-teal"><div class="kpi-icon">🎯</div><div class="kpi-label">SLA Uyum</div><div class="kpi-value" id="sla-kpi-compliance" style="color:var(--accent)">—</div><div class="kpi-sub" id="sla-kpi-compliance-sub">Henüz veri yok</div></div>
+    <div class="kpi kpi-3d c-orange"><div class="kpi-icon">⚠️</div><div class="kpi-label">SLA İhlali</div><div class="kpi-value" id="sla-kpi-breached" style="color:var(--danger)">0</div><div class="kpi-sub" id="sla-kpi-breached-sub">—</div></div>
+    <div class="kpi kpi-3d c-purple"><div class="kpi-icon">⏱️</div><div class="kpi-label">Ort. Çözüm</div><div class="kpi-value" id="sla-kpi-avg" style="color:var(--accent3)">—</div><div class="kpi-sub" id="sla-kpi-avg-sub">Destek talepleri</div></div>
+    <div class="kpi kpi-3d c-green"><div class="kpi-icon">🎫</div><div class="kpi-label">Açık Ticket</div><div class="kpi-value" id="sla-kpi-open" style="color:var(--green)">0</div><div class="kpi-sub" id="sla-kpi-open-sub">—</div></div>
   </div>
 
   <div class="grid-3">
