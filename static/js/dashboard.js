@@ -15,7 +15,7 @@
 //  Bare global (app.js klasik): Chart, FIRMS, showPage, onCatChange, onFirmUserChange
 //  (app.js modül olunca import'a döner).
 // ══════════════════════════════════════════════════════════
-import { _chartTheme, _cssVar, _centerTextPlugin, escapeHtml, _depthOn, _barGradient, _areaGradient } from './utils.js';
+import { _chartTheme, _centerTextPlugin, escapeHtml, _depthOn, _barGradient, _areaGradient } from './utils.js';
 import { state } from './state.js';
 import { FIRMS, loadTasks, onCatChange, onFirmUserChange, showPage } from '../app.js';
 import { taskTiming, taskRow } from './tasks.js'; // KANONİK satır-render (ESM Faz 4e-1)
@@ -37,10 +37,26 @@ function _destroyDashCharts() {
   _catChart = _firmChart = _activityChart = _weeklyChart = null;
 }
 
+// v5.96 — Tema-agnostik chart palette. Chart data serileri için sabit v6.0
+// renkleri; tema değişimi (default/assos/inventist) chart renklerini
+// etkilemez → İnventist grafit temasında bile canlı kalır. Text ve grid
+// renkleri hâlâ _chartTheme() üzerinden tema-aware olarak gelir.
+const V6_CHART = {
+  teal:    '#00e5c0',
+  violet:  '#7f6cf7',
+  coral:   '#ff5f6d',
+  gold:    '#f4b942',
+  green:   '#34d058',
+  neutral: '#3d4756',
+};
+
 const _CAT_META = {
-  routine: { label: 'Rutin', v: '--accent' }, support: { label: 'Destek', v: '--accent3' },
-  infra: { label: 'Altyapı', v: '--accent2' }, backup: { label: 'Backup', v: '--gold' },
-  project: { label: 'Proje', v: '--green' }, other: { label: 'Diğer', v: '--surface3' }
+  routine: { label: 'Rutin',   color: V6_CHART.teal   },
+  support: { label: 'Destek',  color: V6_CHART.violet },
+  infra:   { label: 'Altyapı', color: V6_CHART.coral  },
+  backup:  { label: 'Backup',  color: V6_CHART.gold   },
+  project: { label: 'Proje',   color: V6_CHART.green  },
+  other:   { label: 'Diğer',   color: V6_CHART.neutral},
 };
 
 export function renderCategoryPie() {
@@ -60,11 +76,11 @@ export function renderCategoryPie() {
     type: 'doughnut',
     data: {
       labels: entries.map(([c]) => _CAT_META[c].label),
-      // v6.0 Faz 5 — derinlik açıkken segment aralarına rim (2px beyaz kenar)
-      // + hoverOffset artırılır (torus-üstü specular hissi).
+      // v6.0 Faz 5 — segment aralarına rim + hoverOffset. v5.96: renk
+      // kaynağı tema-agnostik V6_CHART.color (_CAT_META üzerinden).
       datasets: [{
         data: entries.map(([, n]) => n),
-        backgroundColor: entries.map(([c]) => _cssVar(_CAT_META[c].v)),
+        backgroundColor: entries.map(([c]) => _CAT_META[c].color),
         borderColor: _depthOn() ? 'rgba(255,255,255,.10)' : 'transparent',
         borderWidth: _depthOn() ? 2 : 0,
         hoverOffset: _depthOn() ? 10 : 6,
@@ -93,19 +109,19 @@ export function renderFirmBars() {
   if (!sorted.length) { if (_firmChart) { _firmChart.destroy(); _firmChart = null; } el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">Henüz görev yok</div>'; return; }
   const names = sorted.map(([n]) => (FIRMS[n] && FIRMS[n].label) || n);
   const rawNames = sorted.map(([n]) => n);
-  const palette = ['--accent', '--gold', '--accent3', '--accent2', '--green', '--surface3'];
+  // v5.96 — tema-agnostik V6_CHART palette (sabit v6.0 renkler)
+  const palette = [V6_CHART.teal, V6_CHART.gold, V6_CHART.violet, V6_CHART.coral, V6_CHART.green, V6_CHART.neutral];
   el.innerHTML = '<div style="position:relative;height:' + Math.max(120, sorted.length * 34) + 'px"><canvas id="firm-canvas"></canvas></div>';
   const th = _chartTheme();
   if (_firmChart) _firmChart.destroy();
   _firmChart = new Chart(document.getElementById('firm-canvas'), {
     type: 'bar',
     // v6.0 Faz 5 — derinlik açıkken her barın kendi rengiyle silindir-gradient.
-    // Chart.js backgroundColor function callback her draw'da çağrılır ve
-    // her bar'ın rengini per-index çözer.
+    // v5.96 — renk kaynağı tema-agnostik palette.
     data: { labels: names, datasets: [{
       data: sorted.map(([, n]) => n),
       backgroundColor: (bctx) => {
-        const c = _cssVar(palette[bctx.dataIndex % palette.length]);
+        const c = palette[bctx.dataIndex % palette.length];
         const chart = bctx.chart;
         return _depthOn() ? _barGradient(c, chart.ctx, chart.chartArea) : c;
       },
@@ -150,12 +166,13 @@ export function renderBars() {
     data: {
       labels: days.map(d => d.label),
       // v6.0 Faz 5 — derinlik açıkken her iki dataset gradient silindir.
+      // v5.96 — renkler tema-agnostik V6_CHART palette'inden.
       datasets: [
         {
           label: 'Açılan',
           data: days.map(d => d.c),
           backgroundColor: (bctx) => {
-            const c = _cssVar('--surface3');
+            const c = V6_CHART.neutral;
             const ch = bctx.chart;
             return _depthOn() ? _barGradient(c, ch.ctx, ch.chartArea) : c;
           },
@@ -165,7 +182,7 @@ export function renderBars() {
           label: 'Tamamlanan',
           data: days.map(d => d.d),
           backgroundColor: (bctx) => {
-            const c = _cssVar('--accent');
+            const c = V6_CHART.teal;
             const ch = bctx.chart;
             return _depthOn() ? _barGradient(c, ch.ctx, ch.chartArea) : c;
           },
@@ -211,42 +228,40 @@ export async function loadWeeklyTrend() {
       type: 'line',
       data: {
         labels: d.labels,
-        // v6.0 Faz 5 — derinlik açıkken line altında rengiyle-tonlu area
-        // dolgusu (transparent → color-fade) + endpoint dot beyaz halka.
+        // v6.0 Faz 5 — line altında area gradient + endpoint dot beyaz halka.
+        // v5.96 — renkler tema-agnostik V6_CHART palette'inden.
         datasets: [
           {
             label: 'Açılan',
             data: d.opened,
-            borderColor: _cssVar('--accent3'),
+            borderColor: V6_CHART.violet,
             backgroundColor: (bctx) => {
               if (!_depthOn()) return 'transparent';
-              const c = _cssVar('--accent3');
               const ch = bctx.chart;
-              return _areaGradient(c, ch.ctx, ch.chartArea);
+              return _areaGradient(V6_CHART.violet, ch.ctx, ch.chartArea);
             },
             fill: _depthOn(),
             tension: 0.3,
             pointRadius: _depthOn() ? 4 : 3,
-            pointBackgroundColor: _cssVar('--accent3'),
-            pointBorderColor: _depthOn() ? 'rgba(255,255,255,.7)' : _cssVar('--accent3'),
+            pointBackgroundColor: V6_CHART.violet,
+            pointBorderColor: _depthOn() ? 'rgba(255,255,255,.7)' : V6_CHART.violet,
             pointBorderWidth: _depthOn() ? 2 : 0,
             borderWidth: 2,
           },
           {
             label: 'Çözülen',
             data: d.resolved,
-            borderColor: _cssVar('--green'),
+            borderColor: V6_CHART.green,
             backgroundColor: (bctx) => {
               if (!_depthOn()) return 'transparent';
-              const c = _cssVar('--green');
               const ch = bctx.chart;
-              return _areaGradient(c, ch.ctx, ch.chartArea);
+              return _areaGradient(V6_CHART.green, ch.ctx, ch.chartArea);
             },
             fill: _depthOn(),
             tension: 0.3,
             pointRadius: _depthOn() ? 4 : 3,
-            pointBackgroundColor: _cssVar('--green'),
-            pointBorderColor: _depthOn() ? 'rgba(255,255,255,.7)' : _cssVar('--green'),
+            pointBackgroundColor: V6_CHART.green,
+            pointBorderColor: _depthOn() ? 'rgba(255,255,255,.7)' : V6_CHART.green,
             pointBorderWidth: _depthOn() ? 2 : 0,
             borderWidth: 2,
           }

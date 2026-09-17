@@ -117,33 +117,40 @@
 [data-theme="assos"] .logo-hex { background: #1e73be; }
 [data-theme="assos"] .cal-cell.today .cal-day-num { background: #1e73be; color: #fff; }
 
-/* ═══════ İNVENTİST TEMA (Siyah-Beyaz) ═══════ */
+/* ═══════ İNVENTİST TEMA (Tech-Grafit · v5.96) ═══════
+   Önceki saf siyah-beyaz palet v6.0 derinlik dilinin ışık-gölge
+   katmanlarını yutuyordu ve chart renklerini beyaz+gri'ye çeviriyordu.
+   v5.96'da hafif blue-tinted grafit palete geçildi:
+     bg #0e1216 (saf siyahtan bir tık, blue bias)
+     accent #cbd5e1 (silver-grafit, saf beyaz değil)
+     accent3 #94a3b8 (mid silver, violet slot için)
+   Marka "grafit-tech" kalır; derinlik dili artık okunur, chart'lar canlı. */
 [data-theme="inventist"] {
-  --bg: #0a0a0a;
-  --surface: #111111;
-  --surface2: #1a1a1a;
-  --surface3: #222222;
-  --border: #2a2a2a;
-  --border2: #333333;
-  --accent: #ffffff;
-  --accent-dim: rgba(255,255,255,.08);
-  --accent2: #ff5f3d;
-  --accent2-dim: rgba(255,95,61,.1);
-  --accent3: #a0a0a0;
-  --accent3-dim: rgba(160,160,160,.1);
+  --bg: #0e1216;
+  --surface: #161c24;
+  --surface2: #1d242e;
+  --surface3: #252d38;
+  --border: #303945;
+  --border2: #3d4753;
+  --accent: #cbd5e1;
+  --accent-dim: rgba(203,213,225,.10);
+  --accent2: #ff6b52;
+  --accent2-dim: rgba(255,107,82,.12);
+  --accent3: #94a3b8;
+  --accent3-dim: rgba(148,163,184,.12);
   --gold: #f4b942;
   --gold-dim: rgba(244,185,66,.1);
   --green: #34d058;
   --green-dim: rgba(52,208,88,.1);
   --danger: #f85149;
-  --text: #e8e8e8;
-  --text-muted: #777777;
-  --text-dim: #444444;
-  /* v6.0 Faz 1 — İnventist teması siyah-beyaz: glow nötr, biraz daha güçlü rim */
+  --text: #eaeef4;
+  --text-muted: #8896a8;
+  --text-dim: #4a5563;
+  /* v6.0 Faz 1 — grafit palette için depth token override */
   --rim: rgba(255,255,255,.12);
-  --rim-hot: rgba(255,255,255,.25);
-  --glow-accent: 0 var(--lift-md) 22px -8px rgba(255,255,255,.25);
-  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(160,160,160,.35);
+  --rim-hot: rgba(255,255,255,.22);
+  --glow-accent: 0 var(--lift-md) 22px -8px rgba(203,213,225,.35);
+  --glow-accent3: 0 var(--lift-md) 22px -8px rgba(148,163,184,.35);
 }
 [data-theme="inventist"] .btn-primary { background: #ffffff; color: #0a0a0a; }
 [data-theme="inventist"] .btn-primary:hover { background: #d0d0d0; }
