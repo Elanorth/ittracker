@@ -1211,6 +1211,251 @@ html[data-depth="on"] .task-item:hover {
 }
 /* /Faz 10 */
 
+/* ═══════ v6.0 FAZ 11 — Konsolidasyon: son tutarsızlıkları temizler ═══════
+   Prod'a çıkan v5.94'ten sonra kalan görsel-tutarsızlık alanlarını tek
+   pakette v6.0 diline geçirir. Üç alt grup:
+     A) Tabs / view-toggle / aa-switch (10+ yerde alt-çizgi tab dili)
+     B) Sidebar iç detaylar (logo-hex, avatar, date-display)
+     C) Notif dropdown + data-table + progress + checklist-cb
+
+   Hepsi opt-in html[data-depth="on"] altında. Backend değişikliği yok. */
+
+/* ──────── A · Tabs / toggles ──────── */
+
+/* .tabs alt-çizgisini kaldır, tab'lar pill grubuna dönüşür */
+html[data-depth="on"] .tabs {
+  border-bottom: none;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 0 0 1px rgba(255,255,255,.04);
+  display: inline-flex;
+  align-self: flex-start;
+}
+html[data-depth="on"] .tab {
+  padding: 6px 12px;
+  border-radius: calc(var(--radius-md) - 2px);
+  border-bottom: none;  /* alt-çizgi kaldırıldı */
+  transition: background .12s ease, color .12s ease, box-shadow .12s ease;
+}
+html[data-depth="on"] .tab:hover {
+  color: var(--text);
+  background: rgba(255,255,255,.04);
+}
+html[data-depth="on"] .tab.active {
+  color: #041712;
+  border-bottom: none;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 var(--lift-sm) 10px -4px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+[data-theme="inventist"][data-depth="on"] .tab.active { color: #0a0a0a; }
+
+/* .view-toggle — Rutin Görevler "Liste/Takvim" segmented control */
+html[data-depth="on"] .view-toggle {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.005));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--rim);
+  padding: 3px;
+  gap: 2px;
+  overflow: visible;
+}
+html[data-depth="on"] .view-toggle-btn {
+  border-radius: calc(var(--radius-md) - 3px);
+  padding: 6px 12px;
+  transition: background .12s ease, color .12s ease, box-shadow .12s ease;
+}
+html[data-depth="on"] .view-toggle-btn:hover {
+  background: rgba(255,255,255,.05);
+}
+html[data-depth="on"] .view-toggle-btn.active {
+  color: #041712;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 var(--lift-sm) 10px -4px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+[data-theme="inventist"][data-depth="on"] .view-toggle-btn.active { color: #0a0a0a; }
+
+/* .aa-switch / .alarm-switch — toggle switch derinliği */
+html[data-depth="on"] .aa-switch span {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.20));
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.05);
+}
+html[data-depth="on"] .aa-switch span::before {
+  background: linear-gradient(180deg, #fff 0%, #e0e0e0 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 4px rgba(0,0,0,.35);
+}
+html[data-depth="on"] .aa-switch input:checked + span {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 75%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+/* .alarm-switch (Zamanlanmış Görevler alarm toggle) aynı davranış */
+html[data-depth="on"] .alarm-switch {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.20));
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.05);
+}
+html[data-depth="on"] .alarm-switch::after {
+  background: linear-gradient(180deg, #fff 0%, #e0e0e0 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 4px rgba(0,0,0,.35);
+}
+html[data-depth="on"] .alarm-switch.on {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 35%, #fff) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 75%, #000) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* ──────── B · Sidebar iç detaylar ──────── */
+
+/* .logo-hex — düz clip-path yerine gradient + rim (Faz 1 mockup dili) */
+html[data-depth="on"] .logo-hex {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--accent) 30%, #fff),
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 60%, #000));
+  filter: drop-shadow(0 var(--lift-sm) 8px color-mix(in srgb, var(--accent) 45%, transparent));
+}
+
+/* .avatar — cam kart üstünde inset rim + gradient face */
+html[data-depth="on"] .avatar {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.28), transparent 55%),
+    linear-gradient(160deg, var(--accent3) 0%, var(--accent) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    0 var(--lift-sm) 8px -2px color-mix(in srgb, var(--accent3) 40%, transparent);
+}
+
+/* .date-display — cam minyatür kart */
+html[data-depth="on"] .date-display {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-md);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    0 var(--lift-sm) 12px -4px var(--shade-md);
+}
+html[data-depth="on"] .date-display .date-day {
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* ──────── C · Notif dropdown + data-table + progress + checklist ──────── */
+
+/* .notif-dropdown — modal ile aynı derinlik dili + backdrop-blur */
+html[data-depth="on"] .notif-dropdown {
+  background: linear-gradient(180deg, rgba(22,32,48,.85), rgba(11,19,30,.9));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 var(--rim-hot),
+    0 30px 60px -20px var(--shade-hi),
+    0 12px 30px -8px var(--shade-md);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+html[data-depth="on"] .notif-header {
+  border-bottom: 1px dashed rgba(255,255,255,.10);
+}
+html[data-depth="on"] .notif-item {
+  border-bottom: none;
+  margin: 2px 6px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  transition: background .12s ease, box-shadow .12s ease;
+}
+html[data-depth="on"] .notif-item:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  box-shadow: inset 0 1px 0 var(--rim);
+}
+html[data-depth="on"] .notif-item.unread {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 12%, transparent),
+    color-mix(in srgb, var(--accent) 3%, transparent));
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+html[data-depth="on"] .notif-footer-link {
+  border-top: 1px dashed rgba(255,255,255,.10);
+}
+
+/* .data-table + .mf-users-table — subtle bg + hover cam kabartma */
+html[data-depth="on"] .data-table th,
+html[data-depth="on"] .mf-users-table th {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  border-bottom: 1px dashed rgba(255,255,255,.10);
+  box-shadow: inset 0 1px 0 var(--rim);
+  border-radius: 0;
+}
+html[data-depth="on"] .data-table td,
+html[data-depth="on"] .mf-users-table td {
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+html[data-depth="on"] .data-table tr:hover td {
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+}
+
+/* .progress-bar — kart üzerinde inset ışıklı oluk + gradient dolgu */
+html[data-depth="on"] .progress-bar {
+  background: linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.15));
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.35), inset 0 -1px 0 rgba(255,255,255,.04);
+  border-radius: 999px;
+  height: 6px;
+}
+html[data-depth="on"] .progress-fill {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 40%, transparent),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 60%, #fff));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 999px;
+}
+
+/* .checklist-cb — Faz 6 .cb.done ile eş gradient (görev satır cb'siyle bütün) */
+html[data-depth="on"] .checklist-cb {
+  border: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 0 0 1px rgba(255,255,255,.06);
+  border-radius: 6px;
+  width: 18px; height: 18px;
+}
+html[data-depth="on"] .checklist-cb.checked {
+  background: linear-gradient(180deg, #6cffb0 0%, #34d058 45%, #1d9c3f 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    0 var(--lift-sm) 10px -4px color-mix(in srgb, var(--green) 55%, transparent);
+}
+html[data-depth="on"] .checklist-cb.checked::after {
+  color: #041a0c;
+  font-size: 11px;
+}
+
+/* Bildirim rozetleri — Faz 9 pill dili ile uyum */
+html[data-depth="on"] .notif-tag,
+html[data-depth="on"] .mail-sent-badge,
+html[data-depth="on"] .unread-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+/* /Faz 11 */
+
 /* ═══════ v4.9 — YÖNETİLEN FİRMALAR ŞERİDİ ═══════
    IT Müdürü dashboard'ında yönettiği her firmanın özet KPI'sini gösterir.
    Yatay scroll-snap (tablet/mobile dostu); kart sayısı 1 ise gizlenir. */
