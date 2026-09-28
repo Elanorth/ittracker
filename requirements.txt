@@ -12,3 +12,8 @@ sentry-sdk[flask]>=2.0
 flask-migrate>=4.0
 alembic>=1.13
 psycopg2-binary>=2.9
+# v5.98 — SQLAlchemy 2.1 default PostgreSQL dialect'i psycopg (v3)'e taşıdı;
+# "postgresql://" URL şeması artık v3 driver arıyor ve psycopg2-binary tek başına
+# yetmiyor. Her iki driver'ı da tutuyoruz: URL scheme'i +psycopg2 → v2, +psycopg
+# veya plain → v3 çalışır. Böylece .env formatı değişse de deploy kırılmaz.
+psycopg[binary]>=3.1
