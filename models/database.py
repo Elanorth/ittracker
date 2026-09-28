@@ -436,8 +436,21 @@ class Task(db.Model):
     # Hem IT listesindeki 'yeni yanıt' rozetini hem bildirim zilini besler.
     it_unread = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # v5.99 — Soft-delete: DELETE endpoint fiziksel silme yerine bu iki alanı
+    # doldurur. Retention 60 gün (retention cron v5.100'de). deleted_at doluysa
+    # görev normal listelerde görünmez ("Silinenler" sekmesi hariç).
+    deleted_at = db.Column(db.DateTime, nullable=True, index=True)
+    deleted_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     backups = db.relationship("ConfigBackup", backref="task", lazy=True, cascade="all, delete-orphan")
     completions = db.relationship("TaskOccurrence", backref="task", lazy=True, cascade="all, delete-orphan")
+
+    @classmethod
+    def active(cls):
+        """v5.99 — Soft-delete'li olmayan görevlerin query'si.
+        Listeleme yerlerinde Task.query yerine Task.active() kullan.
+        Tekil erişim (Task.query.get) etkilenmez — restore ve admin görüntüleme
+        için silinmiş kayda id ile ulaşmak gerekir."""
+        return cls.query.filter(cls.deleted_at.is_(None))
 
     def is_done_now(self, today=None, occ_set=None):
         """v5.0 — Bu görev şu anda (bugün için) tamamlanmış mı? TEK KANONİK TANIM.
@@ -1213,6 +1226,14 @@ def init_db():
     _add_column_race_safe("tasks", "reporter_name", "TEXT")
     _add_column_race_safe("tasks", "reporter_anydesk", "TEXT")  # v5.17
     _add_column_race_safe("tasks", "it_unread", "BOOLEAN DEFAULT FALSE")  # v5.22
+    # v5.99 — Soft-delete kolonları
+    _add_column_race_safe("tasks", "deleted_at", "TIMESTAMP")
+    _add_column_race_safe("tasks", "deleted_by", "INTEGER")
+    try:
+        db.session.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_deleted_at ON tasks (deleted_at)"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()  # eşzamanlı process oluşturduysa idempotent devam
     # v5.18 — tasks.user_id NOT NULL kısıtını kaldır (havuz: atanmamış case user_id=None).
     # Yeni SQLite (tests) create_all zaten nullable üretir; bu ALTER mevcut Postgres
     # prod/staging tablosu için. SQLite ALTER DROP NOT NULL desteklemez → yalnız PG.
@@ -1316,3 +1337,40 @@ def init_db():
 # Sonraki commit'lerde bu modüller TaskOccurrence + period_key API'sine geçirilecek;
 # bu commit kapsamı dar (sadece model katmanı), bu yüzden alias şeffaf çalışsın.
 TaskCompletion = TaskOccurrence
+
+
+# ══════════════════════════════════════════════════════════════════
+# v5.99 — Task soft-delete otomatik filtresi (session-level)
+# ══════════════════════════════════════════════════════════════════
+# Task için tüm ORM SELECT sorgularına şeffaf şekilde `Task.deleted_at IS NULL`
+# ekler → 27 farklı Task.query.filter/filter_by yerine tek noktadan yönetim.
+# SQLAlchemy 2.x'te session.get(Task, id) ve query.get_or_404(id) da SELECT'e
+# derlenip do_orm_execute üzerinden geçer → filter uygulanır.
+#
+# Bypass: silinmiş görev fetch edilecekse (restore endpoint, admin "Silinenler"
+# listesi, retention cron v5.100) `execution_options(include_deleted=True)`:
+#   - Query: Task.query.execution_options(include_deleted=True).filter_by(...)
+#   - session.get: db.session.get(Task, id, execution_options={"include_deleted": True})
+def _install_soft_delete_listener():
+    from sqlalchemy.orm import Session, with_loader_criteria
+
+    @event.listens_for(Session, "do_orm_execute")
+    def _add_task_soft_delete_filter(execute_state):
+        # Sadece SELECT ve normal query'ler için (relationship/column load hariç);
+        # explicit bypass edilmediyse filter uygula.
+        if (
+            execute_state.is_select
+            and not execute_state.is_column_load
+            and not execute_state.is_relationship_load
+            and not execute_state.execution_options.get("include_deleted", False)
+        ):
+            execute_state.statement = execute_state.statement.options(
+                with_loader_criteria(
+                    Task,
+                    lambda cls: cls.deleted_at.is_(None),
+                    include_aliases=True,
+                )
+            )
+
+
+_install_soft_delete_listener()
