@@ -182,8 +182,11 @@ export async function addTask() {
 // ── ESM Faz 4d-2: Edit Task Modal + Case Mesajları + Backup Dosya ──
 //  EDIT TASK MODAL — API bağlı
 // ══════════════════════════════════════════════════════════
-export function openEditTask(id) {
-  const t = state.tasks.find(t => t.id === id); if (!t) return;
+export function openEditTask(id, taskArg = null) {
+  // v5.97 — taskArg: havuz gibi state.tasks dışında yaşayan listelerden gelen
+  // task nesnesini doğrudan ver. Böylece havuz "İncele" tuşu state.tasks
+  // içinde arayıp sessizce fail etmez.
+  const t = taskArg || state.tasks.find(t => t.id === id); if (!t) return;
   document.getElementById('edit-task-id').value       = id;
   document.getElementById('edit-task-title').value    = t.title;
   document.getElementById('edit-task-cat').value      = t.cat;
