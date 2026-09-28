@@ -194,3 +194,63 @@ class TestPoolEmailRecipients:
         emails = {c["email"] for c in calls}
         assert active.email in emails
         assert inactive.email not in emails, "pasif kullanıcı bildirim almamalı"
+
+
+class TestReporterReplyRecipients:
+    """v5.97 — Reporter portal'dan yanıt yazınca: case atanmışsa yalnız
+    sahibine, havuzdaysa firma kapsamındaki tüm aktif IT'ye mail atılmalı.
+    Önceki davranış: havuzdaki case'e yanıt gelince kimseye mail düşmüyordu.
+    """
+
+    def _capture(self, monkeypatch):
+        calls = []
+
+        def _fake(email, case_code, subject, reporter_name):
+            calls.append({"email": email, "case_code": case_code})
+
+        import services.mailer as mailer_mod
+
+        monkeypatch.setattr(mailer_mod, "send_case_user_replied", _fake)
+        return calls
+
+    def test_havuzdaki_case_yanit_tum_kapsam_ici_it(self, db, client, user_factory, monkeypatch):
+        junior = user_factory(username="rr_j", firm="inventist", permission_level="junior")
+        specialist = user_factory(username="rr_s", firm="inventist", permission_level="it_specialist")
+        assos_junior = user_factory(username="rr_a", firm="assos", permission_level="junior")
+        code = _open(client, "inventist")
+        task = _task(code)
+        assert task.user_id is None, "havuzda beklenir"
+
+        calls = self._capture(monkeypatch)
+        r = client.post(
+            "/portal/api/case/reply",
+            json={"case_code": code, "email": "ali@x.com", "body": "Ek bilgi paylaşıyorum, hâlâ sorun sürüyor."},
+        )
+        assert r.status_code == 201
+        emails = {c["email"] for c in calls}
+        assert junior.email in emails
+        assert specialist.email in emails
+        assert assos_junior.email not in emails, "kapsam dışı IT mail almamalı"
+
+    def test_atanmis_case_yanit_yalniz_sahibine(self, db, client, user_factory, monkeypatch, login_as):
+        owner = user_factory(username="rr_own", firm="inventist", permission_level="it_specialist")
+        other = user_factory(username="rr_oth", firm="inventist", permission_level="junior")
+        code = _open(client, "inventist")
+        task = _task(code)
+        # havuzdan üstlen → atanmış
+        login_as(owner)
+        r = client.post(f"/api/tasks/{task.id}/claim")
+        assert r.status_code == 200
+        # oturumu kapat ki portal endpoint anon çalışsın
+        with client.session_transaction() as s:
+            s.clear()
+
+        calls = self._capture(monkeypatch)
+        r = client.post(
+            "/portal/api/case/reply",
+            json={"case_code": code, "email": "ali@x.com", "body": "Yanıt teşekkürler, denemeye devam ediyorum."},
+        )
+        assert r.status_code == 201
+        emails = {c["email"] for c in calls}
+        assert owner.email in emails
+        assert other.email not in emails, "atanmış case'te yalnız sahibi mail almalı"

@@ -2612,13 +2612,21 @@ def portal_case_reply():
     db.session.add(msg)
     task.it_unread = True  # v5.22 — reporter yanıtı → IT ilgisi bekliyor (rozet + zil)
     db.session.commit()
-    # Atanan IT'yi bilgilendir (best-effort; anlık — digest beklemez)
+    # v5.97 — IT'yi bilgilendir (best-effort; anlık — digest beklemez).
+    # Atanmışsa yalnız sahibine, havuzdaysa firma kapsamındaki tüm aktif IT
+    # çalışanlarına mail at (havuz yanıtları da üstlenebilir birinin gözüne
+    # düşsün diye).
     try:
-        owner = db.session.get(User, task.user_id) if task.user_id else None
-        if owner and owner.email:
-            from services.mailer import send_case_user_replied
+        from services.mailer import send_case_user_replied
 
-            send_case_user_replied(owner.email, task.case_code, task.title, task.reporter_name or "")
+        if task.user_id:
+            owner = db.session.get(User, task.user_id)
+            recipients = [owner.email] if owner and owner.email else []
+        else:
+            candidates = User.query.filter(User.active == True).all()  # noqa: E712
+            recipients = [u.email for u in candidates if u.email and u.has_firm_scope(task.firm)]
+        for rcpt in dict.fromkeys(recipients):  # tekilleştir, sıra korunur
+            send_case_user_replied(rcpt, task.case_code, task.title, task.reporter_name or "")
     except Exception as e:
         print(f"[portal] IT bildirim hatası: {e}")
     return jsonify(_case_public_dict(task)), 201
