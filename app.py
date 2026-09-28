@@ -2496,8 +2496,10 @@ def portal_create_case():
         send_case_ack(email, name, case_code, subject, firm)
     except Exception as e:
         print(f"[portal] ACK mail hatası: {e}")
-    # v5.22 — IT'ye ANLIK bildirim: atanmışsa atanana, havuzdaysa firma
-    # triaj sorumlularına (it_director + super_admin, kapsam içi).
+    # v5.97 — IT'ye ANLIK bildirim: atanmışsa atanana, havuzdaysa firma
+    # kapsamındaki TÜM aktif IT çalışanlarına (junior→super_admin dahil).
+    # Havuzun mantığı: müsait olan arkadaş üstlensin — sadece director+
+    # bildirimi alırsa alt kademe hiç görmeden case havuzda bekliyor.
     try:
         from services.mailer import send_case_new_to_it
 
@@ -2505,11 +2507,8 @@ def portal_create_case():
         if assignee and assignee.email:
             recipients = [assignee.email]
         else:
-            triagers = User.query.filter(
-                User.active == True,  # noqa: E712
-                User.permission_level.in_(["it_director", "super_admin"]),
-            ).all()
-            recipients = [u.email for u in triagers if u.email and u.has_firm_scope(firm)]
+            candidates = User.query.filter(User.active == True).all()  # noqa: E712
+            recipients = [u.email for u in candidates if u.email and u.has_firm_scope(firm)]
         for rcpt in dict.fromkeys(recipients):  # tekilleştir, sıra korunur
             send_case_new_to_it(rcpt, case_code, subject, firm, name, bool(assignee))
     except Exception as e:
