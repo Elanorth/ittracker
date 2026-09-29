@@ -37,7 +37,8 @@
         "static/js/pool.js",
         "static/js/projects.js",
         "static/js/backup.js",
-        "static/js/archive.js"
+        "static/js/archive.js",
+        "static/js/trash.js"
       ],
       "parserOptions": {
         "sourceType": "module"

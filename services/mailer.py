@@ -358,6 +358,24 @@ IT Görev Takip Sistemi"""
     return _send_plain(it_email, f"Portal talebine kullanıcı yanıtı — {case_code}", body)
 
 
+def send_case_deleted(email, case_code, subject):
+    """v5.100 — Portal case IT tarafından silindi → talep sahibine bilgi.
+    60 gün içinde yanlış silme geri alınabilir; sonra kalıcı silinir."""
+    base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
+    body = f"""Merhaba,
+
+"{subject}" ({case_code}) konulu destek talebiniz IT ekibi tarafından iptal edildi.
+Yanlış olduğunu düşünüyorsanız kısa süre içinde geri getirilebilir; aksi halde
+60 gün sonra kalıcı olarak sistemden silinir.
+
+Yeni bir talep açmak isterseniz:
+
+{base}/portal
+
+IT Görev Takip Sistemi"""
+    return _send_plain(email, f"Talebiniz iptal edildi — {case_code}", body)
+
+
 def send_case_closed(email, case_code, subject):
     """v5.23 — Case çözüldü/kapandı → talep sahibine kapanış bildirimi."""
     base = os.environ.get("PORTAL_BASE_URL", "https://ittracker.inventist.com.tr")
