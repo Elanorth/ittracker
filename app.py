@@ -1339,7 +1339,84 @@ def delete_task(task_id):
         summary=f"'{task.title}' görevi silindi (soft-delete)",
     )
     db.session.commit()
+    # v5.100 — Portal case silindiyse reporter'a bilgi maili (best-effort;
+    # digest bekletmez). Undo edilirse ikinci mail atılmaz — reporter zaten
+    # portal'dan status'ü takip edebilir; nadir undo senaryosunda "iptal
+    # edildi" maili yanıltıcı olabilir ama alternatifi (silinen case reporter'a
+    # sessiz kalmak) daha kötü.
+    if task.source == "portal" and task.case_code and task.reporter_email:
+        try:
+            from services.mailer import send_case_deleted
+
+            send_case_deleted(task.reporter_email, task.case_code, task.title)
+        except Exception as e:
+            print(f"[portal] case iptal maili hatası: {e}")
     return jsonify({"ok": True, "restorable_until": (task.deleted_at + timedelta(days=60)).isoformat()})
+
+
+@app.route("/api/tasks/deleted", methods=["GET"])
+@login_required
+def list_deleted_tasks():
+    """v5.100 — Silinen görevler ("Geri Dönüşüm" panelinin veri kaynağı).
+    Yetki: director+/super_admin. Kapsam: director yalnız managed_firms;
+    super_admin tüm firmalar. Sonuç deleted_at DESC (en son silinen üstte)."""
+    me = _current_user()
+    if not me or not me.is_director_or_above:
+        return jsonify({"error": "Yetkisiz"}), 403
+    q = Task.query.execution_options(include_deleted=True).filter(Task.deleted_at.isnot(None))
+    if not me.is_super_admin:
+        # director → yalnız kapsam içi firmalar
+        scope = set(me.managed_firm_slugs) | ({me.firm} if me.firm else set())
+        q = q.filter(Task.firm.in_(scope))
+    rows = q.order_by(Task.deleted_at.desc()).limit(500).all()
+    out = []
+    for t in rows:
+        deleter = db.session.get(User, t.deleted_by) if t.deleted_by else None
+        out.append(
+            {
+                "id": t.id,
+                "title": t.title,
+                "category": t.category,
+                "firm": t.firm,
+                "team": t.team,
+                "source": t.source,
+                "case_code": t.case_code,
+                "deleted_at": t.deleted_at.isoformat() if t.deleted_at else None,
+                "deleted_by": (deleter.full_name or deleter.username) if deleter else None,
+                "restorable_until": (t.deleted_at + timedelta(days=60)).isoformat() if t.deleted_at else None,
+            }
+        )
+    return jsonify(out)
+
+
+@app.route("/api/tasks/<int:task_id>/hard", methods=["DELETE"])
+@login_required
+def hard_delete_task(task_id):
+    """v5.100 — Kalıcı silme. Yalnız super_admin. Zaten soft-delete edilmiş
+    olmalı (deleted_at IS NOT NULL). Bağlı CaseMessage/TaskCompletion/
+    ConfigBackup kayıtları cascade veya explicit ile silinir."""
+    me = _current_user()
+    if not me or not me.is_super_admin:
+        return jsonify({"error": "Bu işlem için super_admin yetkisi gerekir"}), 403
+    task = db.session.get(Task, task_id, execution_options={"include_deleted": True})
+    if task is None:
+        return jsonify({"error": "Görev bulunamadı"}), 404
+    if task.deleted_at is None:
+        return jsonify({"error": "Önce soft-delete edilmeli (kalıcı silme sadece silinmiş görevler için)"}), 400
+    log_audit(
+        me,
+        "task.hard_delete",
+        entity_type="task",
+        entity_id=task.id,
+        firm=task.firm,
+        summary=f"'{task.title}' görevi KALICI silindi",
+        details={"case_code": task.case_code, "source": task.source},
+    )
+    # CaseMessage cascade FK ile silinir; backups/completions Task relationship
+    # cascade="all, delete-orphan" ile silinir. Yani task delete yeterli.
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/tasks/<int:task_id>/restore", methods=["POST"])
@@ -3541,6 +3618,42 @@ def start_scheduler():
         "cron",
         minute=minute,
         id="hourly_notify",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # v5.100 — Günlük soft-delete retention temizliği (default 03:15).
+    # deleted_at < now - RETENTION_DAYS olan Task'lar kalıcı silinir. Cascade
+    # ile CaseMessage/TaskCompletion/ConfigBackup de temizlenir. Env:
+    #   TASK_RETENTION_DAYS (default 60), TASK_RETENTION_HOUR (default 3).
+    def _retention_wrapper():
+        with app.app_context():
+            try:
+                days = int(os.environ.get("TASK_RETENTION_DAYS", "60"))
+                cutoff = datetime.utcnow() - timedelta(days=days)
+                stale = (
+                    Task.query.execution_options(include_deleted=True)
+                    .filter(Task.deleted_at.isnot(None), Task.deleted_at < cutoff)
+                    .all()
+                )
+                if not stale:
+                    return
+                count = len(stale)
+                for t in stale:
+                    db.session.delete(t)
+                db.session.commit()
+                print(f"[scheduler] retention: {count} eski soft-delete kaydı kalıcı silindi (> {days}g)")
+            except Exception as e:
+                db.session.rollback()
+                print(f"[scheduler] retention job HATA: {e}")
+
+    retention_hour = int(os.environ.get("TASK_RETENTION_HOUR", "3"))
+    sch.add_job(
+        _retention_wrapper,
+        "cron",
+        hour=retention_hour,
+        minute=15,
+        id="task_retention",
         replace_existing=True,
         misfire_grace_time=3600,
     )

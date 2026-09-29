@@ -17,6 +17,7 @@ import { initReportPage } from './js/report.js';
 import { renderScheduledPage } from './js/scheduled.js';
 import { loadAutoAssign, loadSettingsFromServer, loadTeamsSettings, syncDepthToggle } from './js/settings.js';
 import { firmChip, renderFullList, taskRow, taskTiming } from './js/tasks.js';
+import { loadTrashList } from './js/trash.js';
 import { onClick, onChange, onEnter } from './js/events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Sidebar/genel navigasyon: <... data-click="nav" data-page="X">
@@ -418,6 +419,8 @@ export function showPage(name, opts = {}) {
   if (name === 'board' && !state.currentUser.can_access_board && level !== 'super_admin') return;
   // v4.4 — Denetim sayfası yalnızca director+
   if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
+  // v5.100 — Geri Dönüşüm yalnız director+
+  if (name === 'trash' && !(level === 'super_admin' || level === 'it_director')) return;
   // v5.24 — Bilgi Bankası yönetimi yalnızca director+
   if (name === 'kb' && !(level === 'super_admin' || level === 'it_director')) return;
 
@@ -514,6 +517,7 @@ export function showPage(name, opts = {}) {
   if (name==='report')    initReportPage();
   if (name==='board')     renderBoard();
   if (name==='pool')      loadPoolPage();
+  if (name==='trash')     loadTrashList();  // v5.100 — Geri Dönüşüm
 }
 
 // ══════════════════════════════════════════════════════════
