@@ -13,7 +13,7 @@ import {
   _periodCompletionLabel, _periodCompletionBadge,
 } from './utils.js';
 import { state } from './state.js';
-import { FIRMS, formatDateTR, normalizeTask, onCatChange, showPage, showToast } from '../app.js';
+import { FIRMS, formatDateTR, normalizeTask, onCatChange, showPage, showToast, showUndoToast } from '../app.js';
 import { downloadBackup, renderBackupList } from './backup.js';
 import { renderDashUpcoming, renderDashboardTaskList } from './dashboard.js';
 import { buildNotifications } from './notifications.js';
@@ -391,10 +391,14 @@ export async function saveAndCompleteTask() {
 export async function deleteTask() {
   const id = parseInt(document.getElementById('edit-task-id').value);
   if (!confirm('Bu görevi silmek istediğinizden emin misiniz?')) return;
+  // v5.99 — Soft-delete: 10 sn undo toast + restore endpoint. Silme sonrası
+  // hemen listeden çıkar (UI takıntısız); undo tıklanınca geri koy.
+  const removed = state.tasks.find(t => t.id === id);
   try {
     const res = await fetch(`/api/tasks/${id}`, { method:'DELETE' });
     if (!res.ok) throw new Error('Silme hatası');
-    state.tasks.splice(state.tasks.findIndex(t => t.id === id), 1);
+    const idx = state.tasks.findIndex(t => t.id === id);
+    if (idx >= 0) state.tasks.splice(idx, 1);
     closeEditTaskModal();
     renderDashboardTaskList();
     renderFullList(state.tasks);
@@ -402,7 +406,18 @@ export async function deleteTask() {
     buildNotifications();
     if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
     if (document.getElementById('page-projects')?.classList.contains('active')) renderProjectsPage();
-    showToast('ok', 'Görev silindi');
+    showUndoToast('Görev silindi', async () => {
+      const rr = await fetch(`/api/tasks/${id}/restore`, { method:'POST' });
+      if (!rr.ok) throw new Error((await rr.json()).error || 'Geri alınamadı');
+      if (removed) state.tasks.push(removed);
+      renderDashboardTaskList();
+      renderFullList(state.tasks);
+      renderDashUpcoming();
+      buildNotifications();
+      if (document.getElementById('page-backups')?.classList.contains('active')) renderBackupList();
+      if (document.getElementById('page-projects')?.classList.contains('active')) renderProjectsPage();
+      showToast('ok', '↩ Görev geri getirildi');
+    });
   } catch(e) { showToast('err', e.message); }
 }
 export function closeEditTaskModal() { document.getElementById('edit-task-modal').classList.add('hidden'); }

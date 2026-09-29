@@ -1188,8 +1188,10 @@ def create_task():
 @app.route("/api/tasks/<int:task_id>", methods=["PATCH"])
 @login_required
 def update_task(task_id):
+    # v5.99 — filter_by ile SELECT path'i (session-level soft-delete filter'ın
+    # uygulanması için); silinmiş görevde PATCH engellenir.
     me = _current_user()
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.filter_by(id=task_id).first_or_404()
     # Sahibi veya director+ (firma bazlı) düzenleyebilir
     if task.user_id != me.id:
         owner = db.session.get(User, task.user_id)
@@ -1314,12 +1316,19 @@ def update_task(task_id):
 @app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
 @login_required
 def delete_task(task_id):
+    """v5.99 — Soft-delete: silmek yerine deleted_at doldur. 60 gün retention
+    içinde restore edilebilir (undo toast ya da Silinenler paneli). Zaten
+    silinmiş bir görev için 404."""
     me = _current_user()
     task = Task.query.get_or_404(task_id)
+    if task.deleted_at is not None:
+        return jsonify({"error": "Bu görev zaten silinmiş"}), 404
     owner = db.session.get(User, task.user_id)
     if task.user_id != me.id:
         if not _can_modify_owned_task(me, owner):
             return jsonify({"error": "Bu görevi silme yetkiniz yok"}), 403
+    task.deleted_at = datetime.utcnow()
+    task.deleted_by = me.id
     log_audit(
         me,
         "task.delete",
@@ -1327,9 +1336,43 @@ def delete_task(task_id):
         entity_id=task.id,
         target_user=owner,
         firm=task.firm,
-        summary=f"'{task.title}' görevi silindi",
+        summary=f"'{task.title}' görevi silindi (soft-delete)",
     )
-    db.session.delete(task)
+    db.session.commit()
+    return jsonify({"ok": True, "restorable_until": (task.deleted_at + timedelta(days=60)).isoformat()})
+
+
+@app.route("/api/tasks/<int:task_id>/restore", methods=["POST"])
+@login_required
+def restore_task(task_id):
+    """v5.99 — Soft-delete edilmiş görevi geri getir. Yetki: silen kişi,
+    task sahibi ya da director+ (kapsam içi). deleted_at IS NULL ise no-op.
+
+    Bypass: session-level soft-delete filter'ı silinmiş görevi normalde
+    gizler; execution_options ile bypass ederek fetch ediyoruz.
+    """
+    me = _current_user()
+    task = db.session.get(Task, task_id, execution_options={"include_deleted": True})
+    if task is None:
+        return jsonify({"error": "Görev bulunamadı"}), 404
+    if task.deleted_at is None:
+        return jsonify({"ok": True, "already_active": True})
+    owner = db.session.get(User, task.user_id)
+    is_self_deleter = task.deleted_by == me.id
+    can_scope = _can_modify_owned_task(me, owner) or (task.user_id == me.id)
+    if not (is_self_deleter or can_scope):
+        return jsonify({"error": "Bu görevi geri getirme yetkiniz yok"}), 403
+    task.deleted_at = None
+    task.deleted_by = None
+    log_audit(
+        me,
+        "task.restore",
+        entity_type="task",
+        entity_id=task.id,
+        target_user=owner,
+        firm=task.firm,
+        summary=f"'{task.title}' görevi geri getirildi",
+    )
     db.session.commit()
     return jsonify({"ok": True})
 
@@ -2197,7 +2240,7 @@ def test_smtp():
 def update_task_alarm(task_id):
     """Tek görevin alarm_enabled durumunu günceller."""
     me = _current_user()
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.filter_by(id=task_id).first_or_404()  # v5.99 — silinmiş görev 404
     if task.user_id != me.id:
         owner = db.session.get(User, task.user_id)
         if not _can_modify_owned_task(me, owner):
@@ -2651,7 +2694,7 @@ def _can_view_task(me, task):
 def list_case_messages(task_id):
     """IT: bir case'in TÜM mesajları (reporter + it + internal). Görünürlük IT'de."""
     me = _current_user()
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.filter_by(id=task_id).first_or_404()  # v5.99 — silinmiş görev 404
     if not _can_view_task(me, task):
         return jsonify({"error": "Bu talebi görüntüleme yetkiniz yok"}), 403
     # v5.22 — IT case'i açtı → 'yeni' işareti temizlensin (rozet + zil düşsün)
@@ -2669,7 +2712,7 @@ def list_case_messages(task_id):
 def add_case_message(task_id):
     """IT mesaj ekler. sender_type: 'it' (kullanıcıya yanıt → mail) | 'internal' (iç not)."""
     me = _current_user()
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.filter_by(id=task_id).first_or_404()  # v5.99 — silinmiş görev 404
     if not _can_view_task(me, task):
         return jsonify({"error": "Bu talebe yazma yetkiniz yok"}), 403
     data = request.get_json() or {}
@@ -2737,7 +2780,7 @@ def support_pool():
 def claim_task(task_id):
     """Havuzdaki case'i üstlen (kendine ata). Firma kapsamı kontrol edilir."""
     me = _current_user()
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.filter_by(id=task_id).first_or_404()  # v5.99 — silinmiş görev 404
     scope = _user_firm_scope(me)
     if scope is not None and task.firm not in scope:
         return jsonify({"error": "Bu talep sizin firma kapsamınızda değil"}), 403
@@ -2764,7 +2807,7 @@ def claim_task(task_id):
 def release_task(task_id):
     """Case'i havuza geri bırak (user_id=None). Sahibi veya director+ yapabilir."""
     me = _current_user()
-    task = Task.query.get_or_404(task_id)
+    task = Task.query.filter_by(id=task_id).first_or_404()  # v5.99 — silinmiş görev 404
     if task.user_id != me.id and not _can_modify_owned_task(me, db.session.get(User, task.user_id)):
         return jsonify({"error": "Bu talebi havuza bırakma yetkiniz yok"}), 403
     task.user_id = None

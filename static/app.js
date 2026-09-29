@@ -735,6 +735,29 @@ export function showToast(type, msg) {
   t.innerHTML = `<span>${type==='ok'?'✓':'✗'}</span> ${escapeHtml(msg)}`;
   wrap.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
+// v5.99 — "Geri Al" butonu içeren toast (soft-delete için). onUndo tıklanınca
+// çağrılır; süre dolmadan tetiklenirse otomatik kaldırma iptal olur.
+export function showUndoToast(msg, onUndo, duration = 10000) {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div'); t.className = 'toast ok';
+  t.style.gap = '12px';
+  const label = document.createElement('span'); label.innerHTML = `✓ ${escapeHtml(msg)}`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '↩ Geri Al';
+  btn.style.cssText = 'background:rgba(255,255,255,.14);color:inherit;border:1px solid rgba(255,255,255,.22);'
+    + 'border-radius:6px;padding:2px 10px;font-size:11px;cursor:pointer;font-family:inherit';
+  const timer = setTimeout(() => t.remove(), duration);
+  btn.addEventListener('click', async () => {
+    clearTimeout(timer);
+    btn.disabled = true;
+    btn.textContent = '…';
+    try { await onUndo(); } catch (e) { showToast('err', 'Geri alma hatası: ' + e.message); }
+    t.remove();
+  });
+  t.appendChild(label); t.appendChild(btn);
+  wrap.appendChild(t);
+}
 
 // ══════════════════════════════════════════════════════════
 //  TARİH YARDIMCILARI
