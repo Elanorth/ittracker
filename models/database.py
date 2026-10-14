@@ -515,6 +515,15 @@ class Task(db.Model):
             return 0
         today = today or _date.today()
         done_keys = {o.period_key for o in self.completions}
+        # v5.101 — Aktif period tamamlanmışsa geriye dönük saymayı durdur.
+        # Senaryo: kullanıcı tatilde W40-W42'yi kaçırdı, W43'te döndü ve
+        # bugünkü periyodu yakaladı. Mantıken artık geciken uyarısı almamalı
+        # (eski davranış: her gün 3 "atlanmış" period mail'i gelmeye devam).
+        # Rapor hâlâ period_key'lere baktığı için ay içindeki eksikler oranda
+        # görünür — sadece bildirim susar.
+        current_key = _period_key(self.period, today)
+        if current_key and current_key in done_keys:
+            return 0
         created = self.created_at.date() if self.created_at else None
         count = 0
         cursor = today
