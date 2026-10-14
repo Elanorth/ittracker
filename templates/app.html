@@ -1788,6 +1788,7 @@ html[data-depth="on"] .unread-badge {
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Yönetim</div>
     <a class="nav-item admin-item" data-perm="manager" data-click="nav" data-page="admin"><span class="nav-icon"><span class="nav-emoji">👥</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-users"/></svg></span>Kullanıcılar</a>
     <a class="nav-item admin-item" data-perm="director" data-click="nav" data-page="audit"><span class="nav-icon"><span class="nav-emoji">🛡️</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-audit"/></svg></span>Denetim Kayıtları</a>
+    <a class="nav-item admin-item" data-perm="director" data-click="nav" data-page="trash"><span class="nav-icon"><span class="nav-emoji">🗑️</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-audit"/></svg></span>Geri Dönüşüm</a>
     <a class="nav-item" data-perm="all" data-click="nav" data-page="kb"><span class="nav-icon"><span class="nav-emoji">📚</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-kb"/></svg></span>Bilgi Bankası</a>
     <a class="nav-item" data-perm="manager" data-click="nav" data-page="settings"><span class="nav-icon"><span class="nav-emoji">⚙</span><svg class="nav-glyph" aria-hidden="true"><use href="#ic-settings"/></svg></span>Ayarlar</a>
     <div class="nav-section" data-perm="manager" style="margin-top:8px">Bildirim</div>
@@ -2537,6 +2538,42 @@ html[data-depth="on"] .unread-badge {
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── GERİ DÖNÜŞÜM (v5.100 · silinen görevler) ─── -->
+<div id="page-trash" class="page-section">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Geri <span>Dönüşüm</span></div>
+      <div class="page-sub">60 gün içinde silinmiş görevler · geri getirilebilir; süre bitiminde otomatik kalıcı silinir</div>
+    </div>
+    <button class="btn btn-primary btn-sm" data-click="loadTrashList">Yenile</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">SİLİNMİŞ GÖREVLER</div>
+      <span id="trash-count-label" style="font-size:11px;color:var(--text-muted)"></span>
+    </div>
+    <div class="card-body" style="padding:0;overflow-x:auto">
+      <table class="data-table" id="trash-table">
+        <thead>
+          <tr>
+            <th>BAŞLIK</th>
+            <th>KATEGORİ</th>
+            <th>FİRMA</th>
+            <th>KAYNAK</th>
+            <th>SİLEN</th>
+            <th>SİLİNME</th>
+            <th>KALICI SİLİNECEK</th>
+            <th style="text-align:right">İŞLEM</th>
+          </tr>
+        </thead>
+        <tbody id="trash-tbody"></tbody>
+      </table>
+      <div id="trash-empty" style="text-align:center;padding:28px;color:var(--text-muted);font-size:12px;display:none">🗑️ Geri dönüşüm boş — silinen görev yok.</div>
     </div>
   </div>
 </div>

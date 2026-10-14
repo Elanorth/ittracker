@@ -17,6 +17,7 @@ import { initReportPage } from './js/report.js';
 import { renderScheduledPage } from './js/scheduled.js';
 import { loadAutoAssign, loadSettingsFromServer, loadTeamsSettings, syncDepthToggle } from './js/settings.js';
 import { firmChip, renderFullList, taskRow, taskTiming } from './js/tasks.js';
+import { loadTrashList } from './js/trash.js';
 import { onClick, onChange, onEnter } from './js/events.js'; // ESM Faz 5 — event delegation
 
 // ESM Faz 5 — Sidebar/genel navigasyon: <... data-click="nav" data-page="X">
@@ -418,6 +419,8 @@ export function showPage(name, opts = {}) {
   if (name === 'board' && !state.currentUser.can_access_board && level !== 'super_admin') return;
   // v4.4 — Denetim sayfası yalnızca director+
   if (name === 'audit' && !(level === 'super_admin' || level === 'it_director')) return;
+  // v5.100 — Geri Dönüşüm yalnız director+
+  if (name === 'trash' && !(level === 'super_admin' || level === 'it_director')) return;
   // v5.24 — Bilgi Bankası yönetimi yalnızca director+
   if (name === 'kb' && !(level === 'super_admin' || level === 'it_director')) return;
 
@@ -514,6 +517,7 @@ export function showPage(name, opts = {}) {
   if (name==='report')    initReportPage();
   if (name==='board')     renderBoard();
   if (name==='pool')      loadPoolPage();
+  if (name==='trash')     loadTrashList();  // v5.100 — Geri Dönüşüm
 }
 
 // ══════════════════════════════════════════════════════════
@@ -734,6 +738,29 @@ export function showToast(type, msg) {
   const t = document.createElement('div'); t.className = `toast ${type}`;
   t.innerHTML = `<span>${type==='ok'?'✓':'✗'}</span> ${escapeHtml(msg)}`;
   wrap.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+// v5.99 — "Geri Al" butonu içeren toast (soft-delete için). onUndo tıklanınca
+// çağrılır; süre dolmadan tetiklenirse otomatik kaldırma iptal olur.
+export function showUndoToast(msg, onUndo, duration = 10000) {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div'); t.className = 'toast ok';
+  t.style.gap = '12px';
+  const label = document.createElement('span'); label.innerHTML = `✓ ${escapeHtml(msg)}`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '↩ Geri Al';
+  btn.style.cssText = 'background:rgba(255,255,255,.14);color:inherit;border:1px solid rgba(255,255,255,.22);'
+    + 'border-radius:6px;padding:2px 10px;font-size:11px;cursor:pointer;font-family:inherit';
+  const timer = setTimeout(() => t.remove(), duration);
+  btn.addEventListener('click', async () => {
+    clearTimeout(timer);
+    btn.disabled = true;
+    btn.textContent = '…';
+    try { await onUndo(); } catch (e) { showToast('err', 'Geri alma hatası: ' + e.message); }
+    t.remove();
+  });
+  t.appendChild(label); t.appendChild(btn);
+  wrap.appendChild(t);
 }
 
 // ══════════════════════════════════════════════════════════
