@@ -818,6 +818,43 @@ class TestOverduePeriodCount:
         assert t1.overdue_period_count() == 0
         assert t2.overdue_period_count() == 0
 
+    @freeze_time("2026-06-08")  # ISO W24, Pazartesi
+    def test_aktif_period_tamamlandiginda_eski_kacirilanlar_sayilmaz(self, db, user_factory, task_factory):
+        """v5.101 — Tatilden dönüp aktif periyodu yakalayan kullanıcı için
+        eski kaçırılan periyot sayımı sıfırlanır (uyarı mail'leri durur).
+
+        Senaryo: W21, W22, W23 tatilde kaçırıldı. Bugün W24, kullanıcı bu
+        hafta tamamladı. overdue_period_count 0 dönmeli ki notifier geriye
+        dönük spam atmasın. Rapor hâlâ period_key'lere baktığı için eski
+        eksikler oranda görünür — bu sadece bildirim davranışı.
+        """
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="opc6", firm="inventist")
+        t = task_factory(user_id=u.id, title="Firewall bakım", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 5, 1)
+        # W21-W23 kaçırıldı, bugünkü W24 tamamlandı
+        db.session.add(TaskOccurrence(task_id=t.id, period_key="2026-W24"))
+        db.session.commit()
+
+        assert t.overdue_period_count() == 0, "Aktif period done ise geriye dönük spam durmalı"
+
+    @freeze_time("2026-06-08")
+    def test_aktif_period_yapilmadi_eski_kacirilanlar_sayilir(self, db, user_factory, task_factory):
+        """v5.101 kontrol: aktif period eksikse eski davranış korunur —
+        geriye dönük sayım devam eder."""
+        from models.database import TaskOccurrence
+
+        u = user_factory(username="opc7", firm="inventist")
+        t = task_factory(user_id=u.id, title="Switch bakım", category="routine", period="Haftalık")
+        t.created_at = datetime(2026, 5, 1)
+        # W21, W22, W23 kaçırıldı; W24 (aktif) de yapılmadı
+        db.session.add(TaskOccurrence(task_id=t.id, period_key="2026-W20"))
+        db.session.commit()
+
+        # Aktif W24 hariç; W23, W22, W21 → W20 tamamlanmış → sayım 3'te durur
+        assert t.overdue_period_count() == 3
+
 
 class TestToDictRoutineV51:
     """v5.1 — to_dict rutin kanonik alanları (is_overdue, overdue_periods, vb.)."""
