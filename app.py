@@ -44,7 +44,7 @@ from models.database import (
 from services.mailer import send_invite_email, send_report_email
 from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
 from services.report import generate_monthly_pdf
-from services.storage import get_kb_pdf_path, save_backup_file, save_kb_pdf
+from services.storage import save_backup_file, save_kb_pdf
 
 try:
     import msal
@@ -3531,9 +3531,7 @@ def _kb_pdf_response(art):
         download_name=art.pdf_filename or f"kb{art.id}.pdf",
     )
     # Tarayıcıda satır içi görüntüleme (iframe/object) için
-    resp.headers["Content-Disposition"] = (
-        f'inline; filename="{art.pdf_filename or f"kb{art.id}.pdf"}"'
-    )
+    resp.headers["Content-Disposition"] = f'inline; filename="{art.pdf_filename or f"kb{art.id}.pdf"}"'
     return resp
 
 
