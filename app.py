@@ -44,7 +44,7 @@ from models.database import (
 from services.mailer import send_invite_email, send_report_email
 from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
 from services.report import generate_monthly_pdf
-from services.storage import save_backup_file
+from services.storage import save_backup_file, save_kb_pdf
 
 try:
     import msal
@@ -3459,6 +3459,114 @@ def kb_modify(art_id):
     )
     db.session.commit()
     return jsonify(art.to_dict())
+
+
+# ── v6.1 — KB PDF ek yönetimi ─────────────────────────────────────────────
+@app.route("/api/kb/<int:art_id>/pdf", methods=["POST", "DELETE"])
+@director_required
+def kb_pdf_manage(art_id):
+    """IT tarafı: makaleye PDF ekle/değiştir (POST) veya kaldır (DELETE)."""
+    me = _current_user()
+    art = KbArticle.query.get_or_404(art_id)
+    if not _kb_scope_ok(me, art.firm):
+        return jsonify({"error": "Bu makaleyi düzenleme yetkiniz yok"}), 403
+    if request.method == "DELETE":
+        if art.pdf_path:
+            try:
+                if os.path.exists(art.pdf_path):
+                    os.remove(art.pdf_path)
+            except OSError:
+                pass
+            art.pdf_path = None
+            art.pdf_filename = None
+            art.pdf_size_bytes = None
+            log_audit(
+                me,
+                "kb.pdf.delete",
+                entity_type="kb",
+                entity_id=art.id,
+                firm=art.firm,
+                summary=f"KB PDF kaldırıldı: {art.title[:80]}",
+            )
+            db.session.commit()
+        return jsonify(art.to_dict())
+    f = request.files.get("pdf")
+    if not f or not f.filename:
+        return jsonify({"error": "Dosya seçilmedi"}), 400
+    old = art.pdf_path
+    try:
+        path, display, size = save_kb_pdf(f, art.id)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    art.pdf_path = path
+    art.pdf_filename = display
+    art.pdf_size_bytes = size
+    # Eski dosyayı sadece yeni başarı ile değiştirince sil.
+    if old and old != path:
+        try:
+            if os.path.exists(old):
+                os.remove(old)
+        except OSError:
+            pass
+    log_audit(
+        me,
+        "kb.pdf.upload",
+        entity_type="kb",
+        entity_id=art.id,
+        firm=art.firm,
+        summary=f"KB PDF yüklendi: {art.title[:80]} ({display})",
+    )
+    db.session.commit()
+    return jsonify(art.to_dict())
+
+
+def _kb_pdf_response(art):
+    """Satır içi PDF stream (inline, attachment DEĞİL)."""
+    if not art.pdf_path or not os.path.exists(art.pdf_path):
+        return jsonify({"error": "PDF bulunamadı"}), 404
+    resp = send_file(
+        art.pdf_path,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=art.pdf_filename or f"kb{art.id}.pdf",
+    )
+    # Tarayıcıda satır içi görüntüleme (iframe/object) için
+    resp.headers["Content-Disposition"] = f'inline; filename="{art.pdf_filename or f"kb{art.id}.pdf"}"'
+    return resp
+
+
+@app.route("/api/kb/<int:art_id>/pdf", methods=["GET"])
+@login_required
+def kb_pdf_download(art_id):
+    """IT tarafı: PDF satır içi (iframe) görüntüleme. kb_detail ile aynı yetki."""
+    me = _current_user()
+    art = KbArticle.query.get_or_404(art_id)
+    scope = _user_firm_scope(me)
+    if scope is not None and art.firm and art.firm not in scope:
+        return jsonify({"error": "Bulunamadı"}), 404
+    if not me.is_director_or_above and not art.published:
+        return jsonify({"error": "Bulunamadı"}), 404
+    return _kb_pdf_response(art)
+
+
+@app.route("/portal/api/kb/<int:art_id>/pdf")
+def portal_kb_pdf(art_id):
+    """Portal: yayınlanmış + firma kapsamındaki makalenin PDF'ini satır içi döner."""
+    ip = request.remote_addr or "?"
+    if _kb_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
+    art = KbArticle.query.filter(
+        KbArticle.id == art_id,
+        KbArticle.published == True,  # noqa: E712
+        KbArticle.firm.in_([firm, ""]),
+    ).first()
+    if not art:
+        return jsonify({"error": "Makale bulunamadı"}), 404
+    return _kb_pdf_response(art)
 
 
 @app.route("/api/board/cards", methods=["GET"])

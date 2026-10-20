@@ -1,4 +1,4 @@
-"""Config Backup Dosya Depolama Servisi"""
+"""Config Backup + KB PDF Dosya Depolama Servisi"""
 
 import os
 import uuid
@@ -7,6 +7,11 @@ from werkzeug.utils import secure_filename
 
 BACKUP_DIR = os.environ.get("BACKUP_DIR", "/srv/it_tracker/backups")
 ALLOWED_EXTENSIONS = {".cfg", ".conf", ".txt", ".bin", ".xml", ".json", ".tar", ".gz", ".zip", ".backup"}
+
+# v6.1 — KB makalelerine ekli PDF kılavuzları için ayrı klasör.
+KB_DIR = os.environ.get("KB_DIR", "/srv/it_tracker/kb")
+KB_ALLOWED_EXTENSIONS = {".pdf"}
+KB_MAX_PDF_BYTES = int(os.environ.get("KB_MAX_PDF_BYTES", str(20 * 1024 * 1024)))  # 20 MB
 
 
 def save_backup_file(file_obj, task_id: int, user_id: int) -> str:
@@ -30,3 +35,39 @@ def save_backup_file(file_obj, task_id: int, user_id: int) -> str:
 
 def get_backup_path(filename: str) -> str:
     return os.path.join(BACKUP_DIR, filename)
+
+
+def save_kb_pdf(file_obj, article_id: int) -> tuple[str, str, int]:
+    """KB makalesine ekli PDF'i kaydeder. (full_path, original_filename, size_bytes) döner.
+
+    - Sadece .pdf uzantısı kabul edilir.
+    - İçerik baş imzası %PDF ile başlamıyorsa ValueError.
+    - KB_MAX_PDF_BYTES üstü ValueError.
+    """
+    orig = secure_filename(file_obj.filename or "")
+    ext = os.path.splitext(orig)[1].lower()
+    if ext not in KB_ALLOWED_EXTENSIONS:
+        raise ValueError("Sadece .pdf dosyası yüklenebilir")
+    # İçerik imzası — uzantı taklidini engeller
+    head = file_obj.stream.read(5)
+    file_obj.stream.seek(0)
+    if not head.startswith(b"%PDF-"):
+        raise ValueError("Geçerli bir PDF dosyası değil")
+    os.makedirs(KB_DIR, exist_ok=True)
+    fname = f"kb{article_id}_{uuid.uuid4().hex[:8]}.pdf"
+    path = os.path.join(KB_DIR, fname)
+    file_obj.save(path)
+    size = os.path.getsize(path)
+    if size > KB_MAX_PDF_BYTES:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise ValueError(f"PDF boyutu {KB_MAX_PDF_BYTES // (1024 * 1024)} MB sınırını aşıyor")
+    # Orijinal adı güvenli hale getirip ekle (yoksa generic ad)
+    display_name = orig or f"kb{article_id}.pdf"
+    return path, display_name, size
+
+
+def get_kb_pdf_path(filename: str) -> str:
+    return os.path.join(KB_DIR, filename)
