@@ -32,6 +32,19 @@ body.has-authbar .split{padding-top:48px;height:100vh}
 /* Kilit maskesi: giriş yoksa Case/KB CTA'ları işaretle */
 body:not(.portal-logged-in) .b-cta[data-need-auth]{opacity:.42;cursor:not-allowed;position:relative}
 body:not(.portal-logged-in) .b-cta[data-need-auth]::after{content:'🔒';position:absolute;top:50%;right:38px;transform:translateY(-50%);font-size:11px;opacity:.9}
+/* v5.104 — Karşı firma kilidi: giriş yapılmış ama tıklanan panel kullanıcının
+   firma'sı DEĞİL → CTA soluk + 🔒; tıklamada yönlendirme değil, hint banner. */
+body.portal-firm-inventist .half.assos .b-cta[data-need-auth],
+body.portal-firm-assos .half.inv .b-cta[data-need-auth]{opacity:.38;cursor:not-allowed;position:relative}
+body.portal-firm-inventist .half.assos .b-cta[data-need-auth]::after,
+body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';position:absolute;top:50%;right:38px;transform:translateY(-50%);font-size:11px;opacity:.9}
+/* Firma uyuşmazlığı hint banner — yarım panelin altında, kısa süreli */
+.firm-mismatch{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:70;background:#161d26;border:1px solid #f4b942;border-left-width:4px;border-radius:10px;padding:12px 18px;max-width:520px;font-size:13px;color:#dce6f0;box-shadow:0 10px 30px -10px rgba(0,0,0,.6);animation:fmIn .18s ease-out}
+.firm-mismatch b{color:#f4b942}
+.firm-mismatch .close{margin-left:14px;background:transparent;border:none;color:#7d92a8;cursor:pointer;font-size:16px;line-height:1;padding:2px 4px}
+.firm-mismatch .close:hover{color:#dce6f0}
+.firm-mismatch .fm-link{display:inline-block;margin-left:8px;color:#00e5c0;cursor:pointer;text-decoration:underline;font-weight:600;font-size:12px}
+@keyframes fmIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
 /* ── Landing split ── */
 .split{display:flex;height:100vh}
 .half{flex:1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:flex .5s cubic-bezier(.22,.9,.3,1),filter .5s}
@@ -541,6 +554,9 @@ async function fetchPortalMe(){
     if(r.ok){
       _portalMe = await r.json();
       document.body.classList.add('portal-logged-in');
+      // v5.104 — oturum firma'sını body'ye tag'le (karşı firma CTA'ları kilitlensin)
+      document.body.classList.remove('portal-firm-inventist','portal-firm-assos');
+      document.body.classList.add(_portalMe.firm === 'assos' ? 'portal-firm-assos' : 'portal-firm-inventist');
       document.getElementById('ab-anon').classList.add('hidden');
       const lg = document.getElementById('ab-logged');
       lg.classList.remove('hidden');
@@ -549,17 +565,47 @@ async function fetchPortalMe(){
         '· ' + (_portalMe.firm === 'assos' ? 'Assos' : 'İnventist');
     } else {
       _portalMe = null;
-      document.body.classList.remove('portal-logged-in');
+      document.body.classList.remove('portal-logged-in','portal-firm-inventist','portal-firm-assos');
     }
   }catch(e){ _portalMe = null; }
 }
 async function portalLogout(){
   try{ await fetch('/portal/auth/logout', {method:'POST'}); }catch(e){}
   _portalMe = null;
-  document.body.classList.remove('portal-logged-in');
+  document.body.classList.remove('portal-logged-in','portal-firm-inventist','portal-firm-assos');
   document.getElementById('ab-anon').classList.remove('hidden');
   document.getElementById('ab-logged').classList.add('hidden');
   show('s-landing');
+}
+
+/* v5.104 — Firma uyuşmazlığı uyarısı: oturum firma'sı ≠ tıklanan firma.
+   Kullanıcıyı yanlış firma kaydına yönlendirmemek için click'i iptal eder,
+   kısa bir hint banner göster ve çıkış seçeneği sunar. */
+let _fmTimer = null;
+function showFirmMismatch(clickedFirm){
+  const myFirm = _portalMe && _portalMe.firm;
+  const myLabel = myFirm === 'assos' ? 'Assos' : 'İnventist';
+  const otherLabel = clickedFirm === 'assos' ? 'Assos' : 'İnventist';
+  // Önceki banner varsa kaldır
+  const prev = document.getElementById('firm-mismatch-banner');
+  if(prev) prev.remove();
+  if(_fmTimer){ clearTimeout(_fmTimer); _fmTimer = null; }
+  const el = document.createElement('div');
+  el.className = 'firm-mismatch';
+  el.id = 'firm-mismatch-banner';
+  el.innerHTML =
+    '<b>' + esc(otherLabel) + '</b> talebi için ' + esc(otherLabel) + ' hesabıyla giriş gerekir — ' +
+    'şu an <b>' + esc(myLabel) + '</b> olarak girdiniz (' + esc(_portalMe.email) + ').' +
+    '<a class="fm-link" onclick="portalLogout()">Çıkış yap &amp; başka hesapla gir →</a>' +
+    '<button class="close" aria-label="Kapat" onclick="this.parentElement.remove()">✕</button>';
+  document.body.appendChild(el);
+  _fmTimer = setTimeout(() => { if(el.parentElement) el.remove(); _fmTimer = null; }, 7000);
+}
+function firmAllowed(clicked){
+  if(!_portalMe) return false;
+  if(_portalMe.firm === clicked) return true;
+  showFirmMismatch(clicked);
+  return false;
 }
 /* v5.82 — Portal geri düğmesi tıklaması. Browser history stack'i varsa
    history.back() → doğal geri (popstate → show); yoksa doğrudan
@@ -583,8 +629,8 @@ function requireLogin(){
 }
 function openForm(b){
   if(!requireLogin()) return;
-  // Firma oturumdan geliyor — body'de override edilmiyor; UI yine seçilen marka
-  // için kullanılabilir ama back-end session.portal_firm kazanır.
+  // v5.104 — Karşı firma CTA'sına basıldıysa iptal + hint (yanlış kayıt açılmasın)
+  if(!firmAllowed(b)) return;
   const brand = _portalMe.firm === 'assos' ? 'assos' : 'inventist';
   setBrand(brand);
   document.getElementById('f-name').textContent = BRANDS[brand].name;
@@ -742,7 +788,8 @@ let _kbFirm='inventist', _kbCat='', _kbArtId=null, _kbT=null;
 /* v5.103 — Eski e-posta kapısı kaldırıldı; O365 oturumu kilidi atar. */
 function openKb(firm){
   if(!requireLogin()) return;
-  // Firma oturumdan kazanır — ipucu yalnızca başlık ve tema için.
+  // v5.104 — Karşı firma KB'sine basıldıysa iptal + hint
+  if(!firmAllowed(firm)) return;
   _kbFirm = _portalMe.firm === 'assos' ? 'assos' : 'inventist';
   document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
   document.getElementById('kb-firmtabs').innerHTML =
