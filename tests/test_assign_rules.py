@@ -40,12 +40,14 @@ def _rule(target, firm="inventist", category="", keyword="", priority=100, enabl
 
 
 def _open(client, firm="inventist", subject="Yazıcı arızası", category="support"):
+    # v5.103 — portal case açma O365 oturumu gerektirir
+    with client.session_transaction() as s:
+        s["portal_email"] = f"ali@{'inventist.com.tr' if firm == 'inventist' else 'assospharma.com'}"
+        s["portal_firm"] = firm
+        s["portal_name"] = "Ali Veli"
     return client.post(
         "/portal/api/cases",
         json={
-            "firm": firm,
-            "name": "Ali Veli",
-            "email": "ali@x.com",
             "subject": subject,
             "category": category,
             "description": "Otomatik atama testi için en az altmış karakter olması gereken uzun açıklama metni.",

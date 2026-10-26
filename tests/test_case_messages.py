@@ -21,12 +21,14 @@ def _reset_portal_limiter():
 
 
 def _open_case(client):
+    # v5.103 — portal case açma O365 oturumu gerektirir; test için doğrudan kuruyoruz
+    with client.session_transaction() as s:
+        s["portal_email"] = "ahmet@inventist.com.tr"
+        s["portal_firm"] = "inventist"
+        s["portal_name"] = "Ahmet Yılmaz"
     r = client.post(
         "/portal/api/cases",
         json={
-            "firm": "inventist",
-            "name": "Ahmet Yılmaz",
-            "email": "ahmet@inventist.com.tr",
             "subject": "Portal Faz B testi",
             "category": "support",
             "description": "Bu bir Faz B yazışma testidir, açıklama en az altmış karakter olmalı bu yüzden uzatıyorum.",

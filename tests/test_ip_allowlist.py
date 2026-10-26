@@ -53,13 +53,15 @@ class TestEnabled:
         monkeypatch.setenv("APP_IP_ALLOWLIST", "1.2.3.4")
         # İzinsiz IP olsa da portal + portal API açık
         assert _get(client, "/portal", ip="9.9.9.9").status_code == 200
+        # v5.103 — portal case açma O365 oturumu gerektirir
+        with client.session_transaction() as s:
+            s["portal_email"] = "dis@inventist.com.tr"
+            s["portal_firm"] = "inventist"
+            s["portal_name"] = "Dış Kullanıcı"
         r = client.post(
             "/portal/api/cases",
             headers={"CF-Connecting-IP": "9.9.9.9"},
             json={
-                "firm": "inventist",
-                "name": "Dış Kullanıcı",
-                "email": "dis@inventist.com.tr",
                 "subject": "Portal açık mı",
                 "category": "support",
                 "description": "IP allowlist iç uygulamayı kısıtlar ama portal dış erişime açık kalmalı — bu test onu doğrular.",

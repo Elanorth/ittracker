@@ -25,10 +25,18 @@ def _reset_portal_limiter():
 
 
 def _verify(client, email="calisan@inventist.com.tr"):
-    """v5.28 — KB e-posta kapısı: portal KB testleri önce doğrulama yapar."""
-    r = client.post("/portal/api/kb/verify", json={"email": email})
-    assert r.status_code == 200
-    return r.get_json()["firm"]
+    """v5.103 — Eski e-posta kapısı kaldırıldı; O365 oturumu doğrudan kurulur
+    (SSO callback eşdeğeri)."""
+    import app as _app
+
+    email = email.lower()
+    domain = email.rsplit("@", 1)[-1]
+    firm = _app._kb_domain_map().get(domain, "")
+    with client.session_transaction() as s:
+        s["portal_email"] = email
+        s["portal_firm"] = firm
+        s["portal_name"] = email.split("@")[0]
+    return firm
 
 
 def _art(title="Yazıcı sıfırlama", firm="inventist", category="donanım", published=True, body="", keywords=""):
