@@ -44,7 +44,7 @@ from models.database import (
 from services.mailer import send_invite_email, send_report_email
 from services.notifier import collect_user_alerts, run_breach_check, run_digest_job
 from services.report import generate_monthly_pdf
-from services.storage import save_backup_file
+from services.storage import save_backup_file, save_kb_pdf
 
 try:
     import msal
@@ -123,6 +123,12 @@ O365_CLIENT_SECRET = os.environ.get("O365_CLIENT_SECRET", "")
 O365_TENANT_ID = os.environ.get("O365_TENANT_ID", "common")
 O365_REDIRECT_URI = os.environ.get("O365_REDIRECT_URI", "http://localhost:5000/auth/callback")
 O365_SCOPES = ["User.Read", "Mail.Send"]
+# v5.103 — Portal (son kullanıcı) O365 girişi IT ekibi girişinden ayrı bir
+# redirect URI'si kullanır. Env verilmezse /auth/callback kalıbından türetilir.
+O365_PORTAL_REDIRECT_URI = os.environ.get(
+    "O365_PORTAL_REDIRECT_URI",
+    O365_REDIRECT_URI.replace("/auth/callback", "/portal/auth/callback"),
+)
 
 db.init_app(app)
 
@@ -2538,33 +2544,158 @@ def _gen_case_code(firm_slug):
 
 @app.route("/portal")
 def portal_home():
-    """Public intranet portal SPA — login gerektirmez."""
+    """Public intranet portal SPA — ana sayfa açık; case açma ve KB O365 gerektirir."""
     return render_template("portal.html", version=APP_VERSION)
+
+
+# ── v5.103 — PORTAL O365 SSO (son kullanıcı girişi) ──
+# IT ekibi /auth/o365 akışından ayrı: portal kullanıcısına User kaydı AÇILMAZ,
+# sadece oturum anahtarları (portal_email/portal_firm/portal_name) doldurulur.
+# Case açma ve KB erişimi bu oturumu şart koşar.
+
+
+def _portal_require_auth():
+    """Portal API'si için oturum zorunlu — (email, firm, name, hata_yaniti)."""
+    email = session.get("portal_email")
+    firm = session.get("portal_firm")
+    if not email or not firm:
+        return (
+            None,
+            None,
+            None,
+            (
+                jsonify({"error": "Giriş gerekli", "login_required": True}),
+                401,
+            ),
+        )
+    name = session.get("portal_name") or email.split("@")[0]
+    return email, firm, name, None
+
+
+@app.route("/portal/auth/o365")
+def portal_auth_o365():
+    """Portal O365 girişini başlatır. MSAL yoksa 503."""
+    if not MSAL_AVAILABLE:
+        return "MSAL kurulu değil", 503
+    if not O365_CLIENT_ID or not O365_CLIENT_SECRET:
+        return "O365 yapılandırması eksik", 503
+    state = secrets.token_urlsafe(16)
+    session["portal_oauth_state"] = state
+    msal_app = msal.ConfidentialClientApplication(
+        O365_CLIENT_ID,
+        authority=f"https://login.microsoftonline.com/{O365_TENANT_ID}",
+        client_credential=O365_CLIENT_SECRET,
+    )
+    return redirect(
+        msal_app.get_authorization_request_url(
+            ["User.Read"],
+            state=state,
+            redirect_uri=O365_PORTAL_REDIRECT_URI,
+            prompt="select_account",
+        )
+    )
+
+
+@app.route("/portal/auth/callback")
+def portal_auth_callback():
+    """Microsoft'un döndürdüğü authorization code'u token'a çevirir ve
+    oturum anahtarlarını (portal_email/portal_firm/portal_name) doldurur."""
+    if not MSAL_AVAILABLE:
+        return "MSAL kurulu değil", 503
+    expected_state = session.pop("portal_oauth_state", None)
+    if not expected_state or request.args.get("state") != expected_state:
+        return render_template("error.html", msg="Geçersiz oturum durumu — lütfen tekrar deneyin.")
+    code = request.args.get("code")
+    if not code:
+        err = request.args.get("error_description") or "yetkilendirme iptal edildi"
+        return render_template("error.html", msg=f"Giriş tamamlanamadı: {err}")
+    msal_app = msal.ConfidentialClientApplication(
+        O365_CLIENT_ID,
+        authority=f"https://login.microsoftonline.com/{O365_TENANT_ID}",
+        client_credential=O365_CLIENT_SECRET,
+    )
+    result = msal_app.acquire_token_by_authorization_code(
+        code, scopes=["User.Read"], redirect_uri=O365_PORTAL_REDIRECT_URI
+    )
+    if "error" in result:
+        return render_template(
+            "error.html",
+            msg=f"Giriş hatası: {result.get('error_description', '')}",
+        )
+    claims = result.get("id_token_claims", {}) or {}
+    email = (claims.get("preferred_username") or "").strip().lower()
+    name = (claims.get("name") or email).strip()
+    if not _EMAIL_RE.match(email):
+        return render_template("error.html", msg="Microsoft hesabından e-posta alınamadı.")
+    domain = email.rsplit("@", 1)[-1]
+    firm = _kb_domain_map().get(domain)
+    if not firm:
+        return render_template(
+            "error.html",
+            msg=(
+                "Portal'a yalnız şirket Microsoft 365 hesabı ile giriş yapılabilir. "
+                f"({email} desteklenen bir kurumsal domain değil.)"
+            ),
+        )
+    session["portal_email"] = email
+    session["portal_firm"] = firm
+    session["portal_name"] = name[:120]
+    log_audit(
+        None,
+        "portal.login",
+        entity_type="portal",
+        firm=firm,
+        summary=f"Portal O365 girişi: {email}",
+    )
+    db.session.commit()
+    return redirect(url_for("portal_home"))
+
+
+@app.route("/portal/auth/logout", methods=["POST"])
+def portal_auth_logout():
+    """Portal oturumunu temizler (Microsoft tarafında global çıkış yapılmaz)."""
+    for k in ("portal_email", "portal_firm", "portal_name", "portal_oauth_state"):
+        session.pop(k, None)
+    return jsonify({"ok": True})
+
+
+@app.route("/portal/api/me")
+def portal_me():
+    """Portal client'ı için oturum durumu — 401 veya {email, firm, name}."""
+    email = session.get("portal_email")
+    firm = session.get("portal_firm")
+    if not email or not firm:
+        return jsonify({"error": "Giriş yapılmadı", "login_required": True}), 401
+    return jsonify(
+        {
+            "email": email,
+            "firm": firm,
+            "name": session.get("portal_name") or email.split("@")[0],
+        }
+    )
 
 
 @app.route("/portal/api/cases", methods=["POST"])
 def portal_create_case():
-    """Portaldan yeni destek talebi — LOGIN YOK. Case No üretir + ACK mail."""
+    """Portaldan yeni destek talebi — O365 OTURUMU ZORUNLU. Case No + ACK mail."""
     ip = request.remote_addr or "?"
     if _portal_rate_limited(ip):
         return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
     _portal_register_hit(ip)
+    email, firm, name, err = _portal_require_auth()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
-    firm = (data.get("firm") or "").strip().lower()
-    name = (data.get("name") or "").strip()
-    email = (data.get("email") or "").strip().lower()
     subject = (data.get("subject") or "").strip()
     category = (data.get("category") or "other").strip()
     description = (data.get("description") or "").strip()
     # AnyDesk ID — opsiyonel; kontrol karakterleri temizlenir, 40 kr tavan
     anydesk = " ".join((data.get("anydesk") or "").split())[:40]
-    # Doğrulama (form kuralları: ad+mail+konu zorunlu, açıklama ≥60)
+    # Doğrulama (form kuralları: konu zorunlu, açıklama ≥60; firma + reporter oturumdan)
     if firm not in _CASE_PREFIX:
-        return jsonify({"error": "Geçersiz firma"}), 400
-    if not name or not subject:
-        return jsonify({"error": "Ad-soyad ve konu zorunludur"}), 400
-    if not _EMAIL_RE.match(email):
-        return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
+        return jsonify({"error": "Firma desteklenmiyor"}), 400
+    if not subject:
+        return jsonify({"error": "Konu zorunludur"}), 400
     if len(description) < 60:
         return jsonify({"error": "Açıklama en az 60 karakter olmalı"}), 400
     # v5.18 — HAVUZ modeli: portal case'i varsayılan olarak ATANMAMIŞ açılır
@@ -3236,34 +3367,18 @@ def _kb_domain_map():
     return out
 
 
-@app.route("/portal/api/kb/verify", methods=["POST"])
-def portal_kb_verify():
-    """v5.28 — KB e-posta kapısı: şirket e-postası doğrulanır, domain firması
-    oturuma KİLİTLENİR (imzalı cookie). İçerik yalnız çalışanlara açılır; erişim
-    audit'e yazılır. Sıkı portal limiter'ı (brute-force koruması)."""
-    ip = request.remote_addr or "?"
-    if _portal_rate_limited(ip):
-        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
-    _portal_register_hit(ip)
-    email = ((request.get_json(silent=True) or {}).get("email") or "").strip().lower()
-    if not _EMAIL_RE.match(email):
-        return jsonify({"error": "Geçerli bir e-posta adresi girin"}), 400
-    domain = email.rsplit("@", 1)[-1]
-    firm = _kb_domain_map().get(domain)
-    if not firm:
-        return jsonify({"error": "Bilgi Bankası yalnızca şirket e-posta adresiyle kullanılabilir"}), 403
-    session["kb_email"] = email
-    session["kb_firm"] = firm
-    log_audit(None, "kb.access", entity_type="kb", firm=firm, summary=f"KB erişimi doğrulandı: {email}")
-    db.session.commit()
-    return jsonify({"ok": True, "firm": firm})
-
-
 def _kb_gate():
-    """KB içerik endpoint'leri için oturum kapısı → (firma, hata_yaniti)."""
-    if not session.get("kb_email") or not session.get("kb_firm"):
-        return None, (jsonify({"error": "E-posta doğrulaması gerekli", "verify_required": True}), 401)
-    return session["kb_firm"], None
+    """KB içerik endpoint'leri için oturum kapısı → (firma, hata_yaniti).
+
+    v5.103 — Eski e-posta kapısı (/portal/api/kb/verify) kaldırıldı; portal
+    O365 girişinin bıraktığı portal_email + portal_firm oturum anahtarları
+    kullanılır. Giriş yoksa 401 + login_required."""
+    if not session.get("portal_email") or not session.get("portal_firm"):
+        return None, (
+            jsonify({"error": "Giriş gerekli", "login_required": True}),
+            401,
+        )
+    return session["portal_firm"], None
 
 
 @app.route("/portal/api/kb")
@@ -3459,6 +3574,114 @@ def kb_modify(art_id):
     )
     db.session.commit()
     return jsonify(art.to_dict())
+
+
+# ── v6.1 — KB PDF ek yönetimi ─────────────────────────────────────────────
+@app.route("/api/kb/<int:art_id>/pdf", methods=["POST", "DELETE"])
+@director_required
+def kb_pdf_manage(art_id):
+    """IT tarafı: makaleye PDF ekle/değiştir (POST) veya kaldır (DELETE)."""
+    me = _current_user()
+    art = KbArticle.query.get_or_404(art_id)
+    if not _kb_scope_ok(me, art.firm):
+        return jsonify({"error": "Bu makaleyi düzenleme yetkiniz yok"}), 403
+    if request.method == "DELETE":
+        if art.pdf_path:
+            try:
+                if os.path.exists(art.pdf_path):
+                    os.remove(art.pdf_path)
+            except OSError:
+                pass
+            art.pdf_path = None
+            art.pdf_filename = None
+            art.pdf_size_bytes = None
+            log_audit(
+                me,
+                "kb.pdf.delete",
+                entity_type="kb",
+                entity_id=art.id,
+                firm=art.firm,
+                summary=f"KB PDF kaldırıldı: {art.title[:80]}",
+            )
+            db.session.commit()
+        return jsonify(art.to_dict())
+    f = request.files.get("pdf")
+    if not f or not f.filename:
+        return jsonify({"error": "Dosya seçilmedi"}), 400
+    old = art.pdf_path
+    try:
+        path, display, size = save_kb_pdf(f, art.id)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    art.pdf_path = path
+    art.pdf_filename = display
+    art.pdf_size_bytes = size
+    # Eski dosyayı sadece yeni başarı ile değiştirince sil.
+    if old and old != path:
+        try:
+            if os.path.exists(old):
+                os.remove(old)
+        except OSError:
+            pass
+    log_audit(
+        me,
+        "kb.pdf.upload",
+        entity_type="kb",
+        entity_id=art.id,
+        firm=art.firm,
+        summary=f"KB PDF yüklendi: {art.title[:80]} ({display})",
+    )
+    db.session.commit()
+    return jsonify(art.to_dict())
+
+
+def _kb_pdf_response(art):
+    """Satır içi PDF stream (inline, attachment DEĞİL)."""
+    if not art.pdf_path or not os.path.exists(art.pdf_path):
+        return jsonify({"error": "PDF bulunamadı"}), 404
+    resp = send_file(
+        art.pdf_path,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=art.pdf_filename or f"kb{art.id}.pdf",
+    )
+    # Tarayıcıda satır içi görüntüleme (iframe/object) için
+    resp.headers["Content-Disposition"] = f'inline; filename="{art.pdf_filename or f"kb{art.id}.pdf"}"'
+    return resp
+
+
+@app.route("/api/kb/<int:art_id>/pdf", methods=["GET"])
+@login_required
+def kb_pdf_download(art_id):
+    """IT tarafı: PDF satır içi (iframe) görüntüleme. kb_detail ile aynı yetki."""
+    me = _current_user()
+    art = KbArticle.query.get_or_404(art_id)
+    scope = _user_firm_scope(me)
+    if scope is not None and art.firm and art.firm not in scope:
+        return jsonify({"error": "Bulunamadı"}), 404
+    if not me.is_director_or_above and not art.published:
+        return jsonify({"error": "Bulunamadı"}), 404
+    return _kb_pdf_response(art)
+
+
+@app.route("/portal/api/kb/<int:art_id>/pdf")
+def portal_kb_pdf(art_id):
+    """Portal: yayınlanmış + firma kapsamındaki makalenin PDF'ini satır içi döner."""
+    ip = request.remote_addr or "?"
+    if _kb_rate_limited(ip):
+        return jsonify({"error": "Çok fazla istek — birkaç dakika sonra tekrar deneyin"}), 429
+    _kb_register_hit(ip)
+    firm, err = _kb_gate()
+    if err:
+        return err
+    art = KbArticle.query.filter(
+        KbArticle.id == art_id,
+        KbArticle.published == True,  # noqa: E712
+        KbArticle.firm.in_([firm, ""]),
+    ).first()
+    if not art:
+        return jsonify({"error": "Makale bulunamadı"}), 404
+    return _kb_pdf_response(art)
 
 
 @app.route("/api/board/cards", methods=["GET"])

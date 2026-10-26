@@ -1044,6 +1044,11 @@ class KbArticle(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # v6.1 — İsteğe bağlı PDF eki (satır içi gösterilir). body alanı korunur:
+    # kısa açıklama/özet metinde kalır, uzun kılavuzlar PDF olarak eklenir.
+    pdf_path = db.Column(db.String(500), nullable=True)
+    pdf_filename = db.Column(db.String(255), nullable=True)
+    pdf_size_bytes = db.Column(db.Integer, nullable=True)
 
     def _snippet(self, n=160):
         b = (self.body or "").strip().replace("\n", " ")
@@ -1056,9 +1061,13 @@ class KbArticle(db.Model):
             "title": self.title,
             "category": self.category or "genel",
             "firm": self.firm or "",
+            "has_pdf": bool(self.pdf_path),
         }
         if full:
             d["body"] = self.body or ""
+            if self.pdf_path:
+                d["pdf_filename"] = self.pdf_filename or ""
+                d["pdf_size_bytes"] = self.pdf_size_bytes or 0
         else:
             d["snippet"] = self._snippet()
         return d
@@ -1079,6 +1088,9 @@ class KbArticle(db.Model):
             "author_id": self.author_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "has_pdf": bool(self.pdf_path),
+            "pdf_filename": self.pdf_filename or "",
+            "pdf_size_bytes": self.pdf_size_bytes or 0,
         }
 
 
@@ -1257,6 +1269,11 @@ def init_db():
         db.session.commit()
     except Exception:
         db.session.rollback()  # eşzamanlı process oluşturduysa idempotent devam
+
+    # v6.1 — KB makalesine ekli PDF kılavuzu (satır içi gösterim) için kolonlar.
+    _add_column_race_safe("kb_articles", "pdf_path", "VARCHAR(500)")
+    _add_column_race_safe("kb_articles", "pdf_filename", "VARCHAR(255)")
+    _add_column_race_safe("kb_articles", "pdf_size_bytes", "INTEGER")
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")

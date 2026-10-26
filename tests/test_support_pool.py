@@ -21,12 +21,14 @@ def _reset_portal_limiter():
 
 
 def _open(client, firm="inventist"):
+    # v5.103 — portal case açma O365 oturumu gerektirir
+    with client.session_transaction() as s:
+        s["portal_email"] = f"ali@{'inventist.com.tr' if firm == 'inventist' else 'assospharma.com'}"
+        s["portal_firm"] = firm
+        s["portal_name"] = "Ali Veli"
     return client.post(
         "/portal/api/cases",
         json={
-            "firm": firm,
-            "name": "Ali Veli",
-            "email": "ali@x.com",
             "subject": f"{firm} havuz testi",
             "category": "support",
             "description": "Havuz testi için açıklama, en az altmış karakter olması gerektiğinden bu cümleyi uzatıyorum.",

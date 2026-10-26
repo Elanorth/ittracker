@@ -94,6 +94,31 @@ def login_as(client):
 
 
 @pytest.fixture
+def portal_login(client):
+    """v5.103 — Portal O365 oturumu kur: callback'in bıraktığı session
+    anahtarlarını (portal_email / portal_firm / portal_name) doğrudan ayarlar.
+    Testler SSO flow'unu dolaşmak zorunda kalmaz.
+
+    Kullanım:
+        portal_login()                                        # inventist default
+        portal_login(email="ali@assospharma.com", name="Ali")  # assos
+    """
+    from app import _kb_domain_map
+
+    def _login(email="ahmet@inventist.com.tr", name="Ahmet Yılmaz"):
+        email = email.lower()
+        domain = email.rsplit("@", 1)[-1]
+        firm = _kb_domain_map().get(domain, "")
+        with client.session_transaction() as s:
+            s["portal_email"] = email
+            s["portal_firm"] = firm
+            s["portal_name"] = name
+        return {"email": email, "firm": firm, "name": name}
+
+    return _login
+
+
+@pytest.fixture
 def user_factory(db):
     """
     Kullanıcı fabrikası: her test için bağımsız kullanıcı oluşturur.

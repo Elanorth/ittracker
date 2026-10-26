@@ -85,12 +85,14 @@ class TestPortalTrigger:
             return {"ok": True, "suppressed": True}
 
         monkeypatch.setattr("services.webhook.notify_teams", _fake)
+        # v5.103 — portal case açma O365 oturumu gerektirir
+        with client.session_transaction() as s:
+            s["portal_email"] = "ali@inventist.com.tr"
+            s["portal_firm"] = "inventist"
+            s["portal_name"] = "Ali Veli"
         r = client.post(
             "/portal/api/cases",
             json={
-                "firm": "inventist",
-                "name": "Ali Veli",
-                "email": "ali@inventist.com.tr",
                 "subject": "Teams tetik testi",
                 "category": "support",
                 "description": "Teams webhook tetiklenmesi için en az altmış karakter olması gereken açıklama metni.",

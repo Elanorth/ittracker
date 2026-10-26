@@ -139,13 +139,14 @@ class TestPortalCaseDeleteMail:
         return calls
 
     def test_portal_case_silinince_reporter_mail(self, db, client, admin, monkeypatch):
-        # Portal'dan yeni case aç
+        # v5.103 — portal case açma O365 oturumu gerektirir
+        with client.session_transaction() as s:
+            s["portal_email"] = "ali@inventist.com.tr"
+            s["portal_firm"] = "inventist"
+            s["portal_name"] = "Ali Veli"
         r = client.post(
             "/portal/api/cases",
             json={
-                "firm": "inventist",
-                "name": "Ali Veli",
-                "email": "ali@x.com",
                 "subject": "Yazıcı arızası",
                 "category": "support",
                 "description": "Uzun bir açıklama metni portal case testinde en az altmış karakter olmalı.",
@@ -160,7 +161,7 @@ class TestPortalCaseDeleteMail:
         rd = client.delete(f"/api/tasks/{task.id}")
         assert rd.status_code == 200
         assert len(calls) == 1
-        assert calls[0]["email"] == "ali@x.com"
+        assert calls[0]["email"] == "ali@inventist.com.tr"
         assert calls[0]["case_code"] == code
 
     def test_manuel_gorev_silinince_reporter_mail_yok(self, db, client, admin, monkeypatch):

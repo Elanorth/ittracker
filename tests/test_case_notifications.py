@@ -24,12 +24,14 @@ def _reset_portal_limiter():
 
 
 def _open(client, firm="inventist", subject="Yazıcı arızası"):
+    # v5.103 — portal case açma O365 oturumu gerektirir
+    with client.session_transaction() as s:
+        s["portal_email"] = f"ali@{'inventist.com.tr' if firm == 'inventist' else 'assospharma.com'}"
+        s["portal_firm"] = firm
+        s["portal_name"] = "Ali Veli"
     return client.post(
         "/portal/api/cases",
         json={
-            "firm": firm,
-            "name": "Ali Veli",
-            "email": "ali@x.com",
             "subject": subject,
             "category": "support",
             "description": "Bildirim testi için en az altmış karakter olması gereken uzunca bir açıklama metni.",
@@ -62,7 +64,9 @@ class TestUnreadLifecycle:
         login_as(admin)
         client.get(f"/api/tasks/{task.id}/messages")  # temizle
         # reporter yanıt (login yok)
-        client.post("/portal/api/case/reply", json={"case_code": code, "email": "ali@x.com", "body": "Devam ediyor"})
+        client.post(
+            "/portal/api/case/reply", json={"case_code": code, "email": "ali@inventist.com.tr", "body": "Devam ediyor"}
+        )
         assert db.session.get(Task, task.id).it_unread is True
 
     def test_it_yaniti_temizler(self, db, client, user_factory, login_as):
@@ -94,7 +98,7 @@ class TestCaseClosure:
         assert t2.is_done is True
         assert t2.it_unread is False  # kapanınca ilgi bayrağı düşer
         # Portal takip: status resolved
-        pub = client.post("/portal/api/lookup", json={"case_code": code, "email": "ali@x.com"}).get_json()
+        pub = client.post("/portal/api/lookup", json={"case_code": code, "email": "ali@inventist.com.tr"}).get_json()
         assert pub["status"] == "resolved"
 
     def test_yeniden_ac(self, db, client, user_factory, login_as):
@@ -104,7 +108,7 @@ class TestCaseClosure:
         login_as(admin)
         client.patch(f"/api/tasks/{task.id}", json={"is_done": True})
         client.patch(f"/api/tasks/{task.id}", json={"is_done": False})
-        pub = client.post("/portal/api/lookup", json={"case_code": code, "email": "ali@x.com"}).get_json()
+        pub = client.post("/portal/api/lookup", json={"case_code": code, "email": "ali@inventist.com.tr"}).get_json()
         assert pub["status"] in ("received", "in_progress")  # resolved değil
 
 
@@ -224,7 +228,11 @@ class TestReporterReplyRecipients:
         calls = self._capture(monkeypatch)
         r = client.post(
             "/portal/api/case/reply",
-            json={"case_code": code, "email": "ali@x.com", "body": "Ek bilgi paylaşıyorum, hâlâ sorun sürüyor."},
+            json={
+                "case_code": code,
+                "email": "ali@inventist.com.tr",
+                "body": "Ek bilgi paylaşıyorum, hâlâ sorun sürüyor.",
+            },
         )
         assert r.status_code == 201
         emails = {c["email"] for c in calls}
@@ -248,7 +256,11 @@ class TestReporterReplyRecipients:
         calls = self._capture(monkeypatch)
         r = client.post(
             "/portal/api/case/reply",
-            json={"case_code": code, "email": "ali@x.com", "body": "Yanıt teşekkürler, denemeye devam ediyorum."},
+            json={
+                "case_code": code,
+                "email": "ali@inventist.com.tr",
+                "body": "Yanıt teşekkürler, denemeye devam ediyorum.",
+            },
         )
         assert r.status_code == 201
         emails = {c["email"] for c in calls}

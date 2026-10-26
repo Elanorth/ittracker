@@ -11,6 +11,27 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .mono{font-family:'IBM Plex Mono',monospace}
 .screen{display:none;min-height:100vh}.screen.active{display:block}
 .hidden{display:none!important}
+/* v5.103 — Portal O365 oturum çubuğu (üstte sabit).
+   Giriş yoksa M365 giriş butonu; varsa email · firma · çıkış. */
+.authbar{position:fixed;top:0;left:0;right:0;z-index:60;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(10,13,18,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid #2b3646;font-size:12px}
+.authbar .ab-logo{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2.5px;color:#00e5c0;font-weight:700}
+.authbar .ab-right{display:flex;align-items:center;gap:12px}
+.authbar .ab-anon{display:flex;align-items:center;gap:12px;color:#9aa0ad;font-size:11px}
+.authbar .ab-dot{width:7px;height:7px;border-radius:50%;background:#f4b942;flex-shrink:0}
+.authbar .ab-dot.live{background:#28b487}
+.authbar .ab-logged{display:flex;align-items:center;gap:10px}
+.authbar .ab-logged .ab-mail{font-family:'IBM Plex Mono',monospace;color:#dce6f0}
+.authbar .ab-logged .ab-firm{color:#7d92a8;font-size:11px}
+.ab-login-btn{display:inline-flex;align-items:center;gap:9px;background:#fff;color:#1a1a1a;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:12px;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;text-decoration:none;transition:.12s}
+.ab-login-btn:hover{background:#eee;transform:translateY(-1px)}
+.ab-logout{color:#7d92a8;font-size:11px;cursor:pointer;text-decoration:none;font-family:'IBM Plex Mono',monospace;background:transparent;border:none;padding:4px 6px}
+.ab-logout:hover{color:#dce6f0}
+@media(max-width:720px){.authbar{padding:0 12px}.authbar .ab-anon span.ab-hint{display:none}}
+/* Varyant A — split üstüne auth bar için üstten boşluk */
+body.has-authbar .split{padding-top:48px;height:100vh}
+/* Kilit maskesi: giriş yoksa Case/KB CTA'ları işaretle */
+body:not(.portal-logged-in) .b-cta[data-need-auth]{opacity:.42;cursor:not-allowed;position:relative}
+body:not(.portal-logged-in) .b-cta[data-need-auth]::after{content:'🔒';position:absolute;top:50%;right:38px;transform:translateY(-50%);font-size:11px;opacity:.9}
 /* ── Landing split ── */
 .split{display:flex;height:100vh}
 .half{flex:1;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:flex .5s cubic-bezier(.22,.9,.3,1),filter .5s}
@@ -239,6 +260,28 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 </head>
 <body>
 
+<!-- v5.103 — Portal O365 oturum çubuğu. JS'de state fetch edilince
+     'portal-logged-in' body sınıfı eklenir, kilitli CTA'lar açılır. -->
+<div class="authbar" id="authbar" aria-live="polite">
+  <div class="ab-logo">IT//TRACKER · DESTEK</div>
+  <div class="ab-right">
+    <div class="ab-anon" id="ab-anon">
+      <span class="ab-dot"></span>
+      <span class="ab-hint">Giriş yapılmadı — Talep &amp; Bilgi Bankası için</span>
+      <a class="ab-login-btn" href="/portal/auth/o365" aria-label="Microsoft 365 ile Giriş Yap">
+        <svg width="14" height="14" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        Microsoft 365 ile Giriş Yap
+      </a>
+    </div>
+    <div class="ab-logged hidden" id="ab-logged">
+      <span class="ab-dot live"></span>
+      <span class="ab-mail" id="ab-mail"></span>
+      <span class="ab-firm" id="ab-firm"></span>
+      <button class="ab-logout" type="button" onclick="portalLogout()">Çıkış</button>
+    </div>
+  </div>
+</div>
+
 <!-- 1 · LANDING -->
 <!-- v5.82 — Varyant A: her firma panelinde ikili CTA (Talep + KB).
      Panelin kendisi artık tıklanabilir değil; iki hakiki `<button>` var.
@@ -255,11 +298,11 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
         <h1>İnventist<br>BT Destek</h1>
         <p>İnventist lokasyonları için — talep aç veya çözüm makalelerine göz at.</p>
         <div class="ctas">
-          <button class="b-cta primary" onclick="openForm('inventist')" aria-label="İnventist için yeni destek talebi oluştur">
+          <button class="b-cta primary" data-need-auth onclick="openForm('inventist')" aria-label="İnventist için yeni destek talebi oluştur">
             <span class="b-cta-lbl"><span class="b-cta-txt"><span class="b-cta-t">Talep Oluştur</span><span class="b-cta-s">Yeni destek talebi aç</span></span></span>
             <span class="b-cta-arr">→</span>
           </button>
-          <button class="b-cta secondary" onclick="openKb('inventist')" aria-label="İnventist Bilgi Bankası'nı aç">
+          <button class="b-cta secondary" data-need-auth onclick="openKb('inventist')" aria-label="İnventist Bilgi Bankası'nı aç">
             <span class="b-cta-lbl">
               <span class="b-cta-glyph"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg></span>
               <span class="b-cta-txt"><span class="b-cta-t">Bilgi Bankası</span><span class="b-cta-s">Çözüm makalelerine göz at</span></span>
@@ -277,11 +320,11 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
         <h1>Assos<br>BT Destek</h1>
         <p>Assos lokasyonları için — talep aç veya çözüm makalelerine göz at.</p>
         <div class="ctas">
-          <button class="b-cta primary" onclick="openForm('assos')" aria-label="Assos için yeni destek talebi oluştur">
+          <button class="b-cta primary" data-need-auth onclick="openForm('assos')" aria-label="Assos için yeni destek talebi oluştur">
             <span class="b-cta-lbl"><span class="b-cta-txt"><span class="b-cta-t">Talep Oluştur</span><span class="b-cta-s">Yeni destek talebi aç</span></span></span>
             <span class="b-cta-arr">→</span>
           </button>
-          <button class="b-cta secondary" onclick="openKb('assos')" aria-label="Assos Bilgi Bankası'nı aç">
+          <button class="b-cta secondary" data-need-auth onclick="openKb('assos')" aria-label="Assos Bilgi Bankası'nı aç">
             <span class="b-cta-lbl">
               <span class="b-cta-glyph"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3h9a2 2 0 0 1 2 2v9l-2-1H4a2 2 0 0 1-2-2z"/></svg></span>
               <span class="b-cta-txt"><span class="b-cta-t">Bilgi Bankası</span><span class="b-cta-s">Çözüm makalelerine göz at</span></span>
@@ -317,16 +360,9 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
     </div>
     <div class="wrap">
       <div class="bhead"><div class="dot">📚</div><div><div class="nm">Bilgi Bankası</div><div class="sb">SIK SORULAN SORULAR · ÇÖZÜM ADIMLARI</div></div></div>
-      <!-- v5.28 — E-posta kapısı: içerik yalnız şirket çalışanlarına açılır -->
-      <div class="card" id="kb-gate">
-        <h2>Şirket e-postanızla devam edin</h2>
-        <div class="sub">Bilgi Bankası yalnızca İnventist &amp; Assos çalışanlarına açıktır. Şirket e-posta adresinizi girin — alan adınıza göre firmanızın makaleleri açılır.</div>
-        <div class="fg"><label>Şirket E-postası <span class="req">*</span></label><input id="kb-gate-email" type="email" placeholder="ad.soyad@inventist.com.tr" onkeydown="if(event.key==='Enter')kbVerify()"></div>
-        <button class="btn-b" onclick="kbVerify()">Doğrula ve Aç →</button>
-        <div class="formerr" id="kb-gate-err"></div>
-        <div class="kvkk">🔒 E-posta adresiniz yalnızca erişim doğrulaması için kullanılır ve erişim kaydı tutulur.</div>
-      </div>
-      <div id="kb-main" class="hidden">
+      <!-- v5.103 — Eski e-posta kapısı kaldırıldı. Erişim portal üstündeki
+           Microsoft 365 girişiyle sağlanır. -->
+      <div id="kb-main">
       <div class="kb-firmtabs" id="kb-firmtabs"></div>
       <div class="card">
         <div id="kb-list-view">
@@ -339,6 +375,13 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
           <h2 id="kb-a-title" style="margin-top:10px"></h2>
           <div class="kb-a-cat" id="kb-a-cat"></div>
           <div class="desc-box" id="kb-a-body" style="margin-top:14px"></div>
+          <div id="kb-a-pdf-wrap" class="hidden" style="margin-top:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+              <div style="font-size:12px;color:var(--mut)">📄 <span id="kb-a-pdf-name"></span></div>
+              <a id="kb-a-pdf-dl" class="btn-ghost" target="_blank" rel="noopener" style="font-size:11px">İndir</a>
+            </div>
+            <iframe id="kb-a-pdf-frame" title="KB PDF" style="width:100%;height:70vh;min-height:420px;border:1px solid var(--bd);border-radius:10px;background:#fff"></iframe>
+          </div>
           <div class="kb-helpful" id="kb-helpful">
             <span>Bu makale sorununuzu çözdü mü?</span>
             <button class="btn-ghost" onclick="kbFeedback(true)">👍 Evet</button>
@@ -366,9 +409,14 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
       <div class="card">
         <h2>Talebinizi anlatın</h2>
         <div class="sub">Talebiniz kaydedildiğinde size özel bir <b>Case No</b> üretilir ve onay e-postası gönderilir. IT ekibi iş saatleri içinde en kısa sürede dönüş yapar.</div>
-        <div class="grid2">
-          <div class="fg"><label>Ad Soyad <span class="req">*</span></label><input id="f-name-in" placeholder="Ahmet Yılmaz"></div>
-          <div class="fg"><label>E-posta <span class="req">*</span></label><input id="f-email" type="email" placeholder="ahmet@firma.com" oninput="formKbTryVerify()"><div class="hint">Onay ve yanıt bildirimleri bu adrese gönderilir.</div></div>
+        <!-- v5.103 — Oturum kimliği (readonly) — ad/email/firma Microsoft 365 oturumundan gelir. -->
+        <div class="fg" style="background:var(--pan2);border:1px solid var(--bd);border-radius:9px;padding:11px 13px;margin-bottom:14px">
+          <div style="font-size:10px;color:var(--mut);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:4px">OTURUM</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:baseline">
+            <span style="font-weight:600;font-size:13px" id="f-id-name">—</span>
+            <span class="mono" style="color:var(--mut);font-size:12px" id="f-id-mail">—</span>
+            <span style="margin-left:auto;font-size:11px;color:var(--mut)">Firma: <b id="f-id-firm" style="color:var(--tx)">—</b></span>
+          </div>
         </div>
         <div class="grid2">
           <div class="fg"><label>Kategori</label><select id="f-cat"><option value="support">Genel Destek</option><option value="infra">Ağ / İnternet</option><option value="other">Diğer</option></select></div>
@@ -477,12 +525,42 @@ window.addEventListener('popstate', e => {
 });
 // Sayfa yüklenirken doğrudan #hash ile gelinirse (deep-link) ilgili ekranı aç
 window.addEventListener('DOMContentLoaded', () => {
+  document.body.classList.add('has-authbar');
+  fetchPortalMe();
   const h = (location.hash||'').replace(/^#/,'');
   if(h && document.getElementById('s-'+h)) show('s-'+h, {fromPopState:true});
   // Başlangıç state'ini history'ye yaz — böylece Landing'ten Portal'a
   // ilk kez gidildiğinde bile browser back'i doğru state'e döner.
   try { history.replaceState({screen: document.querySelector('.screen.active')?.id || 's-landing'}, '', location.hash || ' '); } catch(e){}
 });
+
+/* v5.103 — Portal O365 oturum durumu */
+async function fetchPortalMe(){
+  try{
+    const r = await fetch('/portal/api/me', {headers:{'Accept':'application/json'}});
+    if(r.ok){
+      _portalMe = await r.json();
+      document.body.classList.add('portal-logged-in');
+      document.getElementById('ab-anon').classList.add('hidden');
+      const lg = document.getElementById('ab-logged');
+      lg.classList.remove('hidden');
+      document.getElementById('ab-mail').textContent = _portalMe.email;
+      document.getElementById('ab-firm').textContent =
+        '· ' + (_portalMe.firm === 'assos' ? 'Assos' : 'İnventist');
+    } else {
+      _portalMe = null;
+      document.body.classList.remove('portal-logged-in');
+    }
+  }catch(e){ _portalMe = null; }
+}
+async function portalLogout(){
+  try{ await fetch('/portal/auth/logout', {method:'POST'}); }catch(e){}
+  _portalMe = null;
+  document.body.classList.remove('portal-logged-in');
+  document.getElementById('ab-anon').classList.remove('hidden');
+  document.getElementById('ab-logged').classList.add('hidden');
+  show('s-landing');
+}
 /* v5.82 — Portal geri düğmesi tıklaması. Browser history stack'i varsa
    history.back() → doğal geri (popstate → show); yoksa doğrudan
    landing'e döner. Referrer'ın portal-dışı olduğu durumda da
@@ -497,40 +575,42 @@ function goBackToLanding(){
 }
 function setBrand(b){_brand=b;['form-branded','ok-branded','case-branded'].forEach(id=>document.getElementById(id).setAttribute('data-brand',b));}
 
+// v5.103 — Portal O365 oturumu. /portal/api/me sonucu burada tutulur.
+let _portalMe = null;
+function requireLogin(){
+  if(!_portalMe){ window.location.href='/portal/auth/o365'; return false; }
+  return true;
+}
 function openForm(b){
-  setBrand(b);
-  document.getElementById('f-name').textContent = BRANDS[b].name;
-  document.getElementById('f-dot').textContent  = BRANDS[b].dot;
-  ['f-name-in','f-email','f-subject','f-desc','f-anydesk'].forEach(id=>document.getElementById(id).value='');
+  if(!requireLogin()) return;
+  // Firma oturumdan geliyor — body'de override edilmiyor; UI yine seçilen marka
+  // için kullanılabilir ama back-end session.portal_firm kazanır.
+  const brand = _portalMe.firm === 'assos' ? 'assos' : 'inventist';
+  setBrand(brand);
+  document.getElementById('f-name').textContent = BRANDS[brand].name;
+  document.getElementById('f-dot').textContent  = BRANDS[brand].dot;
+  // Readonly kimlik chip'ini doldur
+  document.getElementById('f-id-name').textContent = _portalMe.name || '—';
+  document.getElementById('f-id-mail').textContent = _portalMe.email || '—';
+  document.getElementById('f-id-firm').textContent = brand === 'assos' ? 'Assos' : 'İnventist';
+  ['f-subject','f-desc','f-anydesk'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-err').textContent='';
-  // v5.30 — deflection durumunu sıfırla
-  _fkbVerified=false; _fkbFirm=null;
+  // KB deflection — form girişinde oturum zaten var, direkt öneri açık
   document.getElementById('form-kb-suggest').classList.add('hidden');
   document.getElementById('fkb-list').innerHTML='';
   updateCnt();
   show('s-form');
 }
 
-/* v5.30 — Form-içi KB deflection: e-posta girilince sessiz verify (kapı), konu
-   yazılınca eşleşen makaleler; tam içerik yine kapılı (aynı oturum). */
-let _fkbVerified=false, _fkbFirm=null, _fkbET=null, _fkbST=null;
-function formKbTryVerify(){
-  clearTimeout(_fkbET);
-  _fkbET=setTimeout(async()=>{
-    const email=document.getElementById('f-email').value.trim().toLowerCase();
-    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
-    if(_fkbVerified) return;
-    try{
-      const r=await fetch('/portal/api/kb/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-      if(r.ok){ _fkbVerified=true; _fkbFirm=(await r.json()).firm; formKbSuggest(); }
-    }catch(e){}
-  },500);
-}
+/* v5.103 — Form-içi KB deflection: oturum zaten portal_firm'i kilitli;
+   konu yazılınca eşleşen makaleler sessizce yüklenir. */
+let _fkbST=null;
+function formKbTryVerify(){ /* v5.103 — artık no-op (O365 oturumuyla eşik aşılır) */ }
 function formKbSuggestDebounced(){ clearTimeout(_fkbST); _fkbST=setTimeout(formKbSuggest,350); }
 async function formKbSuggest(){
   const box=document.getElementById('form-kb-suggest'), list=document.getElementById('fkb-list');
   const q=document.getElementById('f-subject').value.trim();
-  if(!_fkbVerified || q.length<3){ box.classList.add('hidden'); return; }
+  if(!_portalMe || q.length<3){ box.classList.add('hidden'); return; }
   try{
     const r=await fetch('/portal/api/kb?q='+encodeURIComponent(q));
     if(!r.ok){ box.classList.add('hidden'); return; }
@@ -570,24 +650,24 @@ desc.addEventListener('input',updateCnt);
 
 async function submitCase(){
   const err=document.getElementById('f-err'); err.textContent='';
+  if(!requireLogin()) return;
+  // v5.103 — firm/name/email oturumdan alınır; body'de sadece konu+içerik.
   const body={
-    firm:_brand,
-    name:document.getElementById('f-name-in').value.trim(),
-    email:document.getElementById('f-email').value.trim(),
     subject:document.getElementById('f-subject').value.trim(),
     category:document.getElementById('f-cat').value,
     description:document.getElementById('f-desc').value.trim(),
     anydesk:document.getElementById('f-anydesk').value.trim()
   };
-  if(!body.name||!body.subject){err.textContent='Ad-soyad ve konu zorunludur.';return;}
+  if(!body.subject){err.textContent='Konu zorunludur.';return;}
   sub.disabled=true; sub.textContent='Gönderiliyor…';
   try{
     const r=await fetch('/portal/api/cases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();
+    if(r.status===401){ window.location.href='/portal/auth/o365'; return; }
     if(!r.ok) throw new Error(d.error||'Gönderilemedi');
     document.getElementById('ok-branded').setAttribute('data-brand',_brand);
     document.getElementById('ok-code').textContent=d.case_code;
-    document.getElementById('ok-email').textContent=body.email;
+    document.getElementById('ok-email').textContent=_portalMe.email;
     show('s-ok');
   }catch(e){ err.textContent=e.message; }
   finally{ sub.disabled=false; sub.textContent='Talebi Gönder'; updateCnt(); }
@@ -659,41 +739,17 @@ async function sendReply(){
 /* ── v5.24 Bilgi Bankası ── */
 const KB_CATS=[['','Tümü'],['genel','Genel'],['ağ','Ağ/İnternet'],['donanım','Donanım'],['yazılım','Yazılım'],['hesap','Hesap/Erişim'],['diğer','Diğer']];
 let _kbFirm='inventist', _kbCat='', _kbArtId=null, _kbT=null;
-/* v5.28 — E-posta kapısı: oturum doğrulanana dek içerik kapalı (sunucu 401 döner). */
-function kbShowGate(show){
-  document.getElementById('kb-gate').classList.toggle('hidden',!show);
-  document.getElementById('kb-main').classList.toggle('hidden',show);
-}
-/* v5.82 — Firma ipucu opsiyonel: landing'deki ikili CTA
-   `openKb('inventist'|'assos')` çağırır → gate teması ve e-posta
-   placeholder'ı o markaya göre gelir. Gate doğrulama yine
-   domain'e göre kilit atar (kullanıcı Assos butonuna basıp
-   İnventist e-postası ile girerse İnventist KB'sini görür). */
+/* v5.103 — Eski e-posta kapısı kaldırıldı; O365 oturumu kilidi atar. */
 function openKb(firm){
-  if(firm==='inventist' || firm==='assos'){
-    _kbFirm = firm;
-    const em = document.getElementById('kb-gate-email');
-    if(em) em.placeholder = firm==='assos' ? 'ad.soyad@assospharma.com' : 'ad.soyad@inventist.com.tr';
-  }
+  if(!requireLogin()) return;
+  // Firma oturumdan kazanır — ipucu yalnızca başlık ve tema için.
+  _kbFirm = _portalMe.firm === 'assos' ? 'assos' : 'inventist';
   document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
+  document.getElementById('kb-firmtabs').innerHTML =
+    '<span class="kb-firmtab active" style="cursor:default">'+
+    (_kbFirm==='assos'?'Assos Pharma':'İnventist')+' Bilgi Bankası</span>';
   renderKbChips(); kbBackToList(); show('s-kb');
-  kbSearch();  // oturum varsa listeyi açar; yoksa 401 → kapı görünür
-}
-async function kbVerify(){
-  const err=document.getElementById('kb-gate-err'); err.textContent='';
-  const email=document.getElementById('kb-gate-email').value.trim();
-  if(!email){err.textContent='E-posta adresinizi girin.';return;}
-  try{
-    const r=await fetch('/portal/api/kb/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-    const d=await r.json();
-    if(!r.ok) throw new Error(d.error||'Doğrulanamadı');
-    _kbFirm=d.firm;
-    document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
-    // Firma OTURUMA kilitli → sekme yerine etiket
-    document.getElementById('kb-firmtabs').innerHTML=
-      '<span class="kb-firmtab active" style="cursor:default">'+(d.firm==='assos'?'Assos Pharma':'İnventist')+' Bilgi Bankası</span>';
-    kbShowGate(false); kbSearch();
-  }catch(e){ err.textContent=e.message; }
+  kbSearch();
 }
 function renderKbChips(){
   document.getElementById('kb-chips').innerHTML=KB_CATS.map(c=>
@@ -707,8 +763,7 @@ async function kbSearch(){
   const params=new URLSearchParams(); if(q)params.set('q',q); if(_kbCat)params.set('category',_kbCat);
   try{
     const r=await fetch('/portal/api/kb?'+params.toString());
-    if(r.status===401){ kbShowGate(true); return; }  // v5.28 — doğrulama gerekli
-    kbShowGate(false);
+    if(r.status===401){ window.location.href='/portal/auth/o365'; return; }  // v5.103 — oturum gerekli
     const arts=await r.json();
     if(!arts.length){ box.innerHTML='<div class="kb-empty">Eşleşen makale bulunamadı.<br>Farklı bir kelime deneyin ya da destek talebi oluşturun.</div>'; return; }
     box.innerHTML=arts.map(a=>{
@@ -727,6 +782,17 @@ async function openKbArticle(id){
     const cl=(KB_CATS.find(c=>c[0]===a.category)||['','Genel'])[1];
     document.getElementById('kb-a-cat').textContent=cl;
     document.getElementById('kb-a-body').textContent=a.body||'';
+    const pdfWrap=document.getElementById('kb-a-pdf-wrap');
+    if(a.has_pdf){
+      const url='/portal/api/kb/'+id+'/pdf';
+      document.getElementById('kb-a-pdf-frame').src=url;
+      document.getElementById('kb-a-pdf-name').textContent=a.pdf_filename||'kılavuz.pdf';
+      document.getElementById('kb-a-pdf-dl').href=url;
+      pdfWrap.classList.remove('hidden');
+    }else{
+      document.getElementById('kb-a-pdf-frame').src='about:blank';
+      pdfWrap.classList.add('hidden');
+    }
     document.getElementById('kb-helpful').style.display='flex';
     document.getElementById('kb-list-view').classList.add('hidden');
     document.getElementById('kb-article-view').classList.remove('hidden');
@@ -734,6 +800,8 @@ async function openKbArticle(id){
   }catch(e){}
 }
 function kbBackToList(){
+  const fr=document.getElementById('kb-a-pdf-frame');
+  if(fr) fr.src='about:blank';
   document.getElementById('kb-article-view').classList.add('hidden');
   document.getElementById('kb-list-view').classList.remove('hidden');
 }

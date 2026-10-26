@@ -4,7 +4,10 @@ test_kb.py — v5.24 — Bilgi Bankası (portal self-service FAQ + IT yönetimi)
 - Portal (login yok): yayınlanmış makaleler firma+global; arama; kategori; view_count;
   feedback; taslak/kapsam-dışı gizli.
 - IT CRUD: director firma-kapsamlı; global yalnız super_admin.
+- v6.1: makaleye PDF ek yükleme + satır içi görüntüleme.
 """
+
+import io
 
 import pytest
 
@@ -22,10 +25,18 @@ def _reset_portal_limiter():
 
 
 def _verify(client, email="calisan@inventist.com.tr"):
-    """v5.28 — KB e-posta kapısı: portal KB testleri önce doğrulama yapar."""
-    r = client.post("/portal/api/kb/verify", json={"email": email})
-    assert r.status_code == 200
-    return r.get_json()["firm"]
+    """v5.103 — Eski e-posta kapısı kaldırıldı; O365 oturumu doğrudan kurulur
+    (SSO callback eşdeğeri)."""
+    import app as _app
+
+    email = email.lower()
+    domain = email.rsplit("@", 1)[-1]
+    firm = _app._kb_domain_map().get(domain, "")
+    with client.session_transaction() as s:
+        s["portal_email"] = email
+        s["portal_firm"] = firm
+        s["portal_name"] = email.split("@")[0]
+    return firm
 
 
 def _art(title="Yazıcı sıfırlama", firm="inventist", category="donanım", published=True, body="", keywords=""):
@@ -179,3 +190,147 @@ class TestKbReadForAllRoles:
         r = client.get(f"/api/kb/{a.id}")
         assert r.status_code == 200
         assert r.get_json()["body"] == "wip"
+
+
+def _pdf_bytes(payload=b"test"):
+    """Minimal geçerli PDF imzası + yük (yüklemenin başarılı olması için yeterli)."""
+    return b"%PDF-1.4\n" + payload + b"\n%%EOF\n"
+
+
+class TestKbPdfUpload:
+    """v6.1 — Makaleye PDF ek yükleme/kaldırma + satır içi görüntüleme."""
+
+    def test_director_pdf_yukler(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("Yazıcı kılavuzu", firm="inventist")
+        d = user_factory(username="kb_pdf_dir", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "kilavuz.pdf")}
+        r = client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["has_pdf"] is True
+        assert body["pdf_filename"] == "kilavuz.pdf"
+        assert body["pdf_size_bytes"] > 0
+
+    def test_izinsiz_uzanti_400(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist")
+        d = user_factory(username="kb_pdf_bad", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(b"MZ..."), "payload.exe")}
+        r = client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        assert r.status_code == 400
+
+    def test_pdf_imzasi_yoksa_400(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        """Uzantı .pdf ama içerik PDF değil → reddedilir (uzantı taklidi engellenir)."""
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist")
+        d = user_factory(username="kb_pdf_fake", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(b"not a pdf"), "fake.pdf")}
+        r = client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        assert r.status_code == 400
+
+    def test_kapsam_disi_direktor_403(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("Assos makale", firm="assos")
+        d = user_factory(username="kb_pdf_cross", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        r = client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        assert r.status_code == 403
+
+    def test_non_director_403(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist")
+        op = user_factory(username="kb_pdf_jr", firm="inventist", permission_level="junior")
+        login_as(op)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        r = client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        assert r.status_code == 403
+
+    def test_pdf_satir_ici_stream(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        """Yüklenen PDF /api/kb/<id>/pdf ile inline (attachment DEĞİL) döner."""
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist", published=True)
+        d = user_factory(username="kb_pdf_stream", firm="inventist", permission_level="it_director")
+        login_as(d)
+        payload = _pdf_bytes(b"icerik")
+        data = {"pdf": (io.BytesIO(payload), "k.pdf")}
+        assert client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data").status_code == 200
+        r = client.get(f"/api/kb/{a.id}/pdf")
+        assert r.status_code == 200
+        assert r.mimetype == "application/pdf"
+        assert "inline" in r.headers.get("Content-Disposition", "")
+        assert r.data.startswith(b"%PDF-")
+
+    def test_portal_pdf_satir_ici(self, db, client, tmp_path, monkeypatch, user_factory, login_as):
+        """Portal (login yok): yayınlanmış makalenin PDF'i e-posta kapısı sonrası inline döner."""
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist", published=True)
+        d = user_factory(username="kb_portal_up", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        assert client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data").status_code == 200
+        # IT oturumunu kapat; portal doğrulamayı yeniden kullansın
+        with client.session_transaction() as s:
+            s.clear()
+        _verify(client)
+        r = client.get(f"/portal/api/kb/{a.id}/pdf")
+        assert r.status_code == 200
+        assert r.mimetype == "application/pdf"
+        assert r.data.startswith(b"%PDF-")
+
+    def test_portal_pdf_dogrulama_yoksa_401(self, db, client, tmp_path, monkeypatch, user_factory, login_as):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist", published=True)
+        d = user_factory(username="kb_portal_up2", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        assert client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data").status_code == 200
+        with client.session_transaction() as s:
+            s.clear()
+        # KB kapısı doğrulamadan — 401
+        assert client.get(f"/portal/api/kb/{a.id}/pdf").status_code == 401
+
+    def test_portal_taslak_pdf_404(self, db, client, tmp_path, monkeypatch, user_factory, login_as):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("Taslak", firm="inventist", published=True)
+        d = user_factory(username="kb_portal_dr", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        assert client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data").status_code == 200
+        # Yayından kaldır
+        client.patch(f"/api/kb/{a.id}", json={"published": False})
+        with client.session_transaction() as s:
+            s.clear()
+        _verify(client)
+        assert client.get(f"/portal/api/kb/{a.id}/pdf").status_code == 404
+
+    def test_pdf_silme(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist")
+        d = user_factory(username="kb_pdf_del", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        r = client.delete(f"/api/kb/{a.id}/pdf")
+        assert r.status_code == 200
+        assert r.get_json()["has_pdf"] is False
+        assert db.session.get(KbArticle, a.id).pdf_path is None
+
+    def test_portal_detay_has_pdf_flag(self, db, client, tmp_path, monkeypatch, user_factory, login_as):
+        """Portal makale detayı has_pdf + pdf_filename alanlarını taşımalı."""
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist", published=True)
+        d = user_factory(username="kb_portal_meta", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data")
+        with client.session_transaction() as s:
+            s.clear()
+        _verify(client)
+        d2 = client.get(f"/portal/api/kb/{a.id}").get_json()
+        assert d2["has_pdf"] is True
+        assert d2["pdf_filename"] == "k.pdf"
