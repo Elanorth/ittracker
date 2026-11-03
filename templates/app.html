@@ -2996,6 +2996,23 @@ html[data-depth="on"] .unread-badge {
     <div class="form-group" style="margin-bottom:12px"><label>Başlık</label><input class="form-control" id="kb-edit-title" placeholder="Ör. VPN (AnyConnect) nasıl kurulur?"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Anahtar Kelimeler (arama için, virgülle)</label><input class="form-control" id="kb-edit-keywords" placeholder="vpn, uzak erişim, anyconnect"></div>
     <div class="form-group" style="margin-bottom:12px"><label>İçerik (çözüm adımları)</label><textarea class="form-control" id="kb-edit-body" style="min-height:180px;resize:vertical" placeholder="Adım adım çözüm…"></textarea></div>
+    <!-- v6.2 — PDF eki (ops.). Yeni makalede önce "Kaydet" sonra PDF seç.
+         Mevcut PDF varsa dosya adı + sil butonu görünür. 20 MB sınır, yalnız .pdf. -->
+    <div class="form-group" id="kb-edit-pdf-wrap" style="margin-bottom:10px">
+      <label>PDF Ek <span style="color:var(--text-muted);font-weight:400;font-size:11px">(opsiyonel · max 20 MB)</span></label>
+      <div id="kb-edit-pdf-current" class="hidden" style="display:flex;align-items:center;gap:10px;background:var(--surface2,#f3f6f9);border:1px solid var(--border,#dde3eb);border-radius:7px;padding:9px 12px;margin-bottom:8px;font-size:12px">
+        <span>📄</span>
+        <span id="kb-edit-pdf-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span id="kb-edit-pdf-size" style="color:var(--text-muted);font-size:11px"></span>
+        <button type="button" class="btn btn-outline btn-sm" data-click="kbPdfView" style="padding:3px 10px;font-size:11px">Aç</button>
+        <button type="button" class="btn btn-danger btn-sm" data-click="kbPdfDelete" style="padding:3px 10px;font-size:11px">Sil</button>
+      </div>
+      <div id="kb-edit-pdf-upload-row" style="display:flex;align-items:center;gap:8px">
+        <input type="file" id="kb-edit-pdf-file" accept="application/pdf,.pdf" style="flex:1;font-size:12px">
+        <button type="button" class="btn btn-primary btn-sm" data-click="kbPdfUpload" style="padding:5px 12px;font-size:12px">Yükle</button>
+      </div>
+      <div id="kb-edit-pdf-hint" style="font-size:11px;color:var(--text-muted);margin-top:5px">Yeni makalede önce <b>Kaydet</b> deyin — makale oluşunca PDF yükleyebilirsiniz.</div>
+    </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;cursor:pointer">
       <input type="checkbox" id="kb-edit-published"> <span>Yayınla (portalda kullanıcıya görünür olsun)</span>
     </label>
