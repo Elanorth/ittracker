@@ -179,3 +179,66 @@ class TestPortalMe:
         assert client.get("/portal/api/me").status_code == 200
         assert client.post("/portal/auth/logout").status_code == 200
         assert client.get("/portal/api/me").status_code == 401
+
+
+class TestMyCases:
+    """v5.106 — /portal/api/my-cases: login'li kullanıcının kendi talepleri."""
+
+    def test_oturumsuz_401(self, db, client):
+        r = client.get("/portal/api/my-cases")
+        assert r.status_code == 401
+        assert r.get_json().get("login_required") is True
+
+    def test_bos_liste(self, db, client, portal_login):
+        portal_login(email="ahmet@inventist.com.tr", name="Ahmet Yılmaz")
+        r = client.get("/portal/api/my-cases")
+        assert r.status_code == 200
+        assert r.get_json() == []
+
+    def test_kullanicinin_case_leri_doner(self, db, client, portal_login):
+        portal_login(email="ahmet@inventist.com.tr", name="Ahmet Yılmaz")
+        c1 = client.post("/portal/api/cases", json=_valid_body(subject="İlk talep")).get_json()["case_code"]
+        c2 = client.post("/portal/api/cases", json=_valid_body(subject="İkinci talep")).get_json()["case_code"]
+        r = client.get("/portal/api/my-cases")
+        assert r.status_code == 200
+        rows = r.get_json()
+        codes = {row["case_code"] for row in rows}
+        assert codes == {c1, c2}
+        # İç alanlar sızmamalı
+        assert all("manager_note" not in row and "user_id" not in row and "reporter_email" not in row for row in rows)
+
+    def test_baska_kullanicinin_case_i_gorunmez(self, db, client, portal_login):
+        # Ahmet bir case açar
+        portal_login(email="ahmet@inventist.com.tr", name="Ahmet Yılmaz")
+        c_ahmet = client.post("/portal/api/cases", json=_valid_body(subject="Ahmet")).get_json()["case_code"]
+        # Ali oturumuna geçer
+        portal_login(email="ali@inventist.com.tr", name="Ali")
+        c_ali = client.post("/portal/api/cases", json=_valid_body(subject="Ali")).get_json()["case_code"]
+        rows = client.get("/portal/api/my-cases").get_json()
+        codes = {row["case_code"] for row in rows}
+        assert c_ali in codes
+        assert c_ahmet not in codes
+
+    def test_firma_filtresi(self, db, client, portal_login):
+        # Assos oturumu → Assos case, sonra İnventist case
+        portal_login(email="ayse@assospharma.com", name="Ayşe")
+        c_assos = client.post("/portal/api/cases", json=_valid_body(subject="Assos")).get_json()["case_code"]
+        # Aynı email ile İnventist'e girilemez (domain farklı); İnventist case'i olmayacak
+        rows = client.get("/portal/api/my-cases").get_json()
+        assert all(row["firm"] == "assos" for row in rows)
+        assert any(row["case_code"] == c_assos for row in rows)
+
+    def test_silinmis_case_gorunmez(self, db, client, portal_login):
+        """soft-delete edilmiş case listede olmamalı."""
+        from datetime import datetime
+
+        from models.database import Task
+        from models.database import db as _db
+
+        portal_login(email="ahmet@inventist.com.tr", name="Ahmet Yılmaz")
+        code = client.post("/portal/api/cases", json=_valid_body(subject="Silinecek")).get_json()["case_code"]
+        t = Task.query.filter_by(case_code=code).first()
+        t.deleted_at = datetime.utcnow()
+        _db.session.commit()
+        rows = client.get("/portal/api/my-cases").get_json()
+        assert all(row["case_code"] != code for row in rows)
