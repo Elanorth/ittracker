@@ -20,6 +20,10 @@ onClick('deleteKbArticle', () => deleteKbArticle());
 // v6.0 — okuma modu handler'ları
 onClick('openKbViewer',    el => openKbViewer(+el.dataset.id));
 onClick('editFromViewer',  () => editFromViewer());
+// v6.2 — PDF yönetimi (upload / sil / aç)
+onClick('kbPdfUpload', () => kbPdfUpload());
+onClick('kbPdfDelete', () => kbPdfDelete());
+onClick('kbPdfView',   () => kbPdfView());
 // v6.0 — arama + kategori/durum filtresi (data-input / data-change)
 onInput('kbSearchDebounced', () => kbSearchDebounced());
 onChange('renderKbList',     () => renderKbList());
@@ -165,7 +169,81 @@ export function openKbEditor(id) {
   document.getElementById('kb-edit-body').value = a ? a.body : '';
   document.getElementById('kb-edit-published').checked = a ? a.published : false;
   document.getElementById('kb-edit-delete').style.display = editing ? '' : 'none';
+  // v6.2 — PDF durumunu yansıt (mevcut varsa dosya adı/boyut + sil butonu)
+  _kbRenderPdfState(a);
   document.getElementById('kb-editor-modal').classList.remove('hidden');
+}
+
+// v6.2 — PDF state render (çağrılan yerler: openKbEditor + upload/delete sonrası)
+function _kbRenderPdfState(a) {
+  const current = document.getElementById('kb-edit-pdf-current');
+  const uploadRow = document.getElementById('kb-edit-pdf-upload-row');
+  const hint = document.getElementById('kb-edit-pdf-hint');
+  const hasId = !!document.getElementById('kb-edit-id').value;
+  if (a && a.has_pdf) {
+    document.getElementById('kb-edit-pdf-name').textContent = a.pdf_filename || 'kılavuz.pdf';
+    const sz = a.pdf_size_bytes || 0;
+    const szTxt = sz >= 1048576 ? (sz / 1048576).toFixed(1) + ' MB' : sz >= 1024 ? Math.round(sz / 1024) + ' KB' : sz + ' B';
+    document.getElementById('kb-edit-pdf-size').textContent = szTxt;
+    current.classList.remove('hidden');
+    uploadRow.style.display = 'flex';
+    hint.textContent = 'Yeni PDF yüklerseniz eskisinin yerini alır.';
+  } else {
+    current.classList.add('hidden');
+    uploadRow.style.display = 'flex';
+    hint.textContent = hasId
+      ? 'PDF ekleyebilirsiniz (yalnız .pdf · max 20 MB).'
+      : 'Yeni makalede önce Kaydet deyin — makale oluşunca PDF yükleyebilirsiniz.';
+  }
+  // Dosya input'unu sıfırla
+  const f = document.getElementById('kb-edit-pdf-file');
+  if (f) f.value = '';
+}
+
+export async function kbPdfUpload() {
+  const id = document.getElementById('kb-edit-id').value;
+  if (!id) { showToast('err', 'Önce makaleyi Kaydet'); return; }
+  const file = document.getElementById('kb-edit-pdf-file').files[0];
+  if (!file) { showToast('err', 'Bir PDF dosyası seçin'); return; }
+  const fd = new FormData();
+  fd.append('pdf', file);
+  try {
+    const res = await fetch(`/api/kb/${id}/pdf`, { method: 'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Yüklenemedi');
+    showToast('ok', 'PDF yüklendi');
+    // Lokal cache + state güncelle
+    const idx = _kbArticles.findIndex(x => x.id === +id);
+    if (idx >= 0) {
+      _kbArticles[idx].has_pdf = true;
+      _kbArticles[idx].pdf_filename = d.pdf_filename;
+      _kbArticles[idx].pdf_size_bytes = d.pdf_size_bytes;
+    }
+    _kbRenderPdfState(_kbArticles.find(x => x.id === +id));
+  } catch (e) { showToast('err', e.message); }
+}
+
+export async function kbPdfDelete() {
+  const id = document.getElementById('kb-edit-id').value;
+  if (!id || !confirm('Bu makaleye bağlı PDF silinecek. Devam?')) return;
+  try {
+    const res = await fetch(`/api/kb/${id}/pdf`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    showToast('ok', 'PDF silindi');
+    const idx = _kbArticles.findIndex(x => x.id === +id);
+    if (idx >= 0) {
+      _kbArticles[idx].has_pdf = false;
+      _kbArticles[idx].pdf_filename = '';
+      _kbArticles[idx].pdf_size_bytes = 0;
+    }
+    _kbRenderPdfState(_kbArticles.find(x => x.id === +id));
+  } catch (e) { showToast('err', 'Silinemedi'); }
+}
+
+export function kbPdfView() {
+  const id = document.getElementById('kb-edit-id').value;
+  if (!id) return;
+  window.open(`/api/kb/${id}/pdf`, '_blank', 'noopener');
 }
 
 export async function saveKbArticle() {
