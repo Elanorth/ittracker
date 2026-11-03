@@ -2675,6 +2675,48 @@ def portal_me():
     )
 
 
+@app.route("/portal/api/my-cases")
+def portal_my_cases():
+    """v5.106 — Login'li kullanıcının açtığı portal case'lerini listeler.
+    Oturum email + firm filtresi; iç alanlar sızmaz; son 50 kayıt."""
+    email, firm, _name, err = _portal_require_auth()
+    if err:
+        return err
+    tasks = (
+        Task.query.filter(
+            Task.source == "portal",
+            Task.firm == firm,
+            db.func.lower(Task.reporter_email) == email.lower(),
+            Task.deleted_at.is_(None),
+        )
+        .order_by(Task.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    # Status hesabı _case_public_dict ile aynı mantık (received/in_progress/resolved)
+    out = []
+    for t in tasks:
+        has_it_reply = CaseMessage.query.filter_by(task_id=t.id, sender_type="it").first() is not None
+        if t.is_done:
+            status = "resolved"
+        elif has_it_reply:
+            status = "in_progress"
+        else:
+            status = "received"
+        out.append(
+            {
+                "case_code": t.case_code,
+                "subject": t.title,
+                "status": status,
+                "firm": t.firm,
+                "category": t.category,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+            }
+        )
+    return jsonify(out)
+
+
 @app.route("/portal/api/cases", methods=["POST"])
 def portal_create_case():
     """Portaldan yeni destek talebi — O365 OTURUMU ZORUNLU. Case No + ACK mail."""
