@@ -26,7 +26,24 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#0b0e12;color:#
 .ab-login-btn:hover{background:#eee;transform:translateY(-1px)}
 .ab-logout{color:#7d92a8;font-size:11px;cursor:pointer;text-decoration:none;font-family:'IBM Plex Mono',monospace;background:transparent;border:none;padding:4px 6px}
 .ab-logout:hover{color:#dce6f0}
-@media(max-width:720px){.authbar{padding:0 12px}.authbar .ab-anon span.ab-hint{display:none}}
+.ab-mycases{display:inline-flex;align-items:center;gap:6px;background:rgba(0,229,192,.1);color:#00e5c0;border:1px solid rgba(0,229,192,.3);border-radius:7px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:.12s;line-height:1}
+.ab-mycases:hover{background:rgba(0,229,192,.18);border-color:rgba(0,229,192,.6)}
+.ab-mycases-lbl{letter-spacing:.2px}
+@media(max-width:720px){.authbar{padding:0 12px}.authbar .ab-anon span.ab-hint{display:none}.ab-mycases{padding:5px 8px}.ab-mycases-lbl{display:none}}
+/* v5.106 — Login'li ise landing'deki anonim lookup bar gizli (Taleplerim ile değişti) */
+body.portal-logged-in .lookup{display:none}
+/* v5.106 — Taleplerim listesi */
+.mc-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--bd);border-radius:11px;background:var(--pan);margin-bottom:10px;cursor:pointer;transition:border-color .15s, transform .12s}
+.mc-item:last-child{margin-bottom:0}
+.mc-item:hover{border-color:var(--ac);transform:translateX(2px)}
+.mc-item .mc-code{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--ac);min-width:120px;letter-spacing:1px}
+.mc-item .mc-mid{flex:1;min-width:0}
+.mc-item .mc-title{font-size:13.5px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-item .mc-meta{font-size:10.5px;color:var(--mut);margin-top:3px;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+.mc-item .mc-status{flex-shrink:0;padding:5px 11px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
+.mc-status.received{background:rgba(244,185,66,.14);color:#f4b942;border:1px solid rgba(244,185,66,.35)}
+.mc-status.in_progress{background:rgba(0,229,192,.14);color:#00e5c0;border:1px solid rgba(0,229,192,.35)}
+.mc-status.resolved{background:rgba(40,180,135,.14);color:#28b487;border:1px solid rgba(40,180,135,.35)}
 /* Varyant A — split üstüne auth bar için üstten boşluk */
 body.has-authbar .split{padding-top:48px;height:100vh}
 /* Kilit maskesi: giriş yoksa Case/KB CTA'ları işaretle */
@@ -287,6 +304,7 @@ body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';po
       <span class="ab-dot live"></span>
       <span class="ab-mail" id="ab-mail"></span>
       <span class="ab-firm" id="ab-firm"></span>
+      <button class="ab-mycases" type="button" onclick="openMyCases()" aria-label="Taleplerim">📋<span class="ab-mycases-lbl">Taleplerim</span></button>
       <button class="ab-logout" type="button" onclick="portalLogout()">Çıkış</button>
     </div>
   </div>
@@ -355,6 +373,24 @@ body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';po
     </div>
     <div class="err" id="lk-err"></div>
     <div class="sec">🔒 Case No tek başına yeterli değildir — e-posta adresiyle birlikte doğrulanır.</div>
+  </div>
+</div>
+
+<!-- 1c · TALEPLERİM (v5.106) — login'li kullanıcının kendi case'leri -->
+<div class="screen" id="s-mycases">
+  <div class="branded" data-brand="inventist" id="mycases-branded">
+    <div class="brand-topbar">
+      <button class="back-btn" type="button" onclick="goBackToLanding()"><span class="arr">←</span>Portal</button>
+      <div class="brand-crumb"><span class="cur">Taleplerim</span></div>
+    </div>
+    <div class="wrap">
+      <div class="bhead"><div class="dot">📋</div><div><div class="nm">Taleplerim</div><div class="sb">AÇTIĞINIZ DESTEK TALEPLERİ</div></div></div>
+      <div class="card">
+        <div id="mycases-list" class="kb-results"></div>
+        <div id="mycases-empty" class="kb-empty hidden">Henüz portal üzerinden açtığınız bir talep yok.<br>Ana sayfadan <b>Talep Oluştur</b> ile başlayabilirsiniz.</div>
+        <div id="mycases-err" class="kb-empty hidden" style="color:#f85149">Taleplerinizi şu an yükleyemedik — birkaç dakika sonra tekrar deneyin.</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -768,6 +804,66 @@ async function sendReply(){
     if(!r.ok) throw new Error(d.error||'Gönderilemedi');
     ta.value=''; renderCase(d);
   }catch(e){ err.textContent=e.message; }
+}
+
+/* v5.106 — Taleplerim: login'li kullanıcının açtığı case'leri listele ve
+   seçileni mevcut Case görüntüleme ekranında aç. */
+const MC_STATUS_LABEL = {received:'● ALINDI', in_progress:'● İŞLEMDE', resolved:'● ÇÖZÜLDÜ'};
+async function openMyCases(){
+  if(!requireLogin()) return;
+  const brand = _portalMe.firm === 'assos' ? 'assos' : 'inventist';
+  document.getElementById('mycases-branded').setAttribute('data-brand', brand);
+  document.getElementById('mycases-empty').classList.add('hidden');
+  document.getElementById('mycases-err').classList.add('hidden');
+  const list = document.getElementById('mycases-list');
+  list.innerHTML = '<div class="kb-empty">Yükleniyor…</div>';
+  show('s-mycases');
+  try{
+    const r = await fetch('/portal/api/my-cases');
+    if(r.status === 401){ window.location.href='/portal/auth/o365'; return; }
+    if(!r.ok) throw new Error();
+    const rows = await r.json();
+    if(!rows.length){
+      list.innerHTML = '';
+      document.getElementById('mycases-empty').classList.remove('hidden');
+      return;
+    }
+    list.innerHTML = rows.map(renderMyCaseRow).join('');
+  }catch(e){
+    list.innerHTML = '';
+    document.getElementById('mycases-err').classList.remove('hidden');
+  }
+}
+function renderMyCaseRow(row){
+  const d = row.created_at ? new Date(row.created_at).toLocaleDateString('tr-TR') : '';
+  const label = MC_STATUS_LABEL[row.status] || '●';
+  return `<div class="mc-item" onclick="openCaseFromMyCases('${esc(row.case_code)}')">
+    <span class="mc-code">${esc(row.case_code)}</span>
+    <div class="mc-mid">
+      <div class="mc-title">${esc(row.subject || '—')}</div>
+      <div class="mc-meta">${esc(d)}${row.category ? ' · '+esc(row.category) : ''}</div>
+    </div>
+    <span class="mc-status ${esc(row.status)}">${esc(label)}</span>
+  </div>`;
+}
+async function openCaseFromMyCases(code){
+  // Mevcut lookup endpoint'ini kullan — body'de email session'dan geldiği
+  // için _portalMe.email'i yolla; backend aynı doğrulamadan geçer.
+  try{
+    const r = await fetch('/portal/api/lookup',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({case_code: code, email: _portalMe.email})
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Bulunamadı');
+    _caseCode = d.case_code; _caseEmail = _portalMe.email;
+    renderCase(d);
+    show('s-case');
+  }catch(e){
+    document.getElementById('mycases-err').textContent = e.message || 'Açılamadı';
+    document.getElementById('mycases-err').classList.remove('hidden');
+  }
 }
 
 /* ── v5.24 Bilgi Bankası ── */
