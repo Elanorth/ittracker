@@ -194,9 +194,6 @@ body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';po
    CTA kart) tamamen kaldırıldı. KB girişi artık her firmanın kendi hero
    panelinin içinde, `Talep Oluştur` ile eşit ağırlıklı ikinci CTA olarak
    yer alıyor (Varyant A — `.half .b-cta.secondary` üstte). */
-.kb-firmtabs{display:flex;gap:8px;margin-bottom:16px}
-.kb-firmtab{background:var(--pan2);border:1px solid var(--bd);color:var(--mut);border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
-.kb-firmtab.active{background:var(--ac);color:var(--acc);border-color:var(--ac)}
 .kb-search{width:100%;background:var(--pan2);border:1px solid var(--bd);border-radius:10px;color:var(--tx);padding:13px 15px;font-size:14px;font-family:'IBM Plex Sans',sans-serif;outline:none;margin-bottom:12px}
 .kb-search:focus{border-color:var(--ac)}
 .kb-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
@@ -376,7 +373,6 @@ body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';po
       <!-- v5.103 — Eski e-posta kapısı kaldırıldı. Erişim portal üstündeki
            Microsoft 365 girişiyle sağlanır. -->
       <div id="kb-main">
-      <div class="kb-firmtabs" id="kb-firmtabs"></div>
       <div class="card">
         <div id="kb-list-view">
           <input class="kb-search" id="kb-q" placeholder="🔍 Sorununuzu yazın (ör. yazıcı, vpn, şifre)…" oninput="kbSearchDebounced()">
@@ -422,15 +418,8 @@ body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';po
       <div class="card">
         <h2>Talebinizi anlatın</h2>
         <div class="sub">Talebiniz kaydedildiğinde size özel bir <b>Case No</b> üretilir ve onay e-postası gönderilir. IT ekibi iş saatleri içinde en kısa sürede dönüş yapar.</div>
-        <!-- v5.103 — Oturum kimliği (readonly) — ad/email/firma Microsoft 365 oturumundan gelir. -->
-        <div class="fg" style="background:var(--pan2);border:1px solid var(--bd);border-radius:9px;padding:11px 13px;margin-bottom:14px">
-          <div style="font-size:10px;color:var(--mut);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:4px">OTURUM</div>
-          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:baseline">
-            <span style="font-weight:600;font-size:13px" id="f-id-name">—</span>
-            <span class="mono" style="color:var(--mut);font-size:12px" id="f-id-mail">—</span>
-            <span style="margin-left:auto;font-size:11px;color:var(--mut)">Firma: <b id="f-id-firm" style="color:var(--tx)">—</b></span>
-          </div>
-        </div>
+        <!-- v5.105 — Oturum kimliği tek satır (ad/email/firma M365 oturumundan). -->
+        <div class="mono" style="font-size:11px;color:var(--mut);margin:-14px 0 18px" id="f-id-line">—</div>
         <div class="grid2">
           <div class="fg"><label>Kategori</label><select id="f-cat"><option value="support">Genel Destek</option><option value="infra">Ağ / İnternet</option><option value="other">Diğer</option></select></div>
           <div class="fg"><label>Konu <span class="req">*</span></label><input id="f-subject" placeholder="Kısa başlık" oninput="formKbSuggestDebounced()"></div>
@@ -452,7 +441,7 @@ body.portal-firm-assos .half.inv .b-cta[data-need-auth]::after{content:'🔒';po
         </div>
         <button class="btn-b" id="f-submit" disabled onclick="submitCase()">Talebi Gönder</button>
         <div class="formerr" id="f-err"></div>
-        <div class="kvkk">Gönderdiğinizde ad-soyad ve e-posta adresiniz yalnızca bu destek talebinin yürütülmesi amacıyla işlenir (KVKK).</div>
+        <div class="kvkk">Gönderdiğinizde Microsoft 365 hesabınızdaki ad ve e-posta adresiniz yalnızca bu destek talebinin yürütülmesi amacıyla işlenir (KVKK).</div>
       </div>
     </div>
   </div>
@@ -635,10 +624,10 @@ function openForm(b){
   setBrand(brand);
   document.getElementById('f-name').textContent = BRANDS[brand].name;
   document.getElementById('f-dot').textContent  = BRANDS[brand].dot;
-  // Readonly kimlik chip'ini doldur
-  document.getElementById('f-id-name').textContent = _portalMe.name || '—';
-  document.getElementById('f-id-mail').textContent = _portalMe.email || '—';
-  document.getElementById('f-id-firm').textContent = brand === 'assos' ? 'Assos' : 'İnventist';
+  // v5.105 — Tek satır oturum göstergesi (M365'ten gelen ad+email+firma)
+  const firmLabel = brand === 'assos' ? 'Assos' : 'İnventist';
+  document.getElementById('f-id-line').textContent =
+    `${firmLabel} · ${_portalMe.name || _portalMe.email} <${_portalMe.email}>`;
   ['f-subject','f-desc','f-anydesk'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-err').textContent='';
   // KB deflection — form girişinde oturum zaten var, direkt öneri açık
@@ -651,7 +640,6 @@ function openForm(b){
 /* v5.103 — Form-içi KB deflection: oturum zaten portal_firm'i kilitli;
    konu yazılınca eşleşen makaleler sessizce yüklenir. */
 let _fkbST=null;
-function formKbTryVerify(){ /* v5.103 — artık no-op (O365 oturumuyla eşik aşılır) */ }
 function formKbSuggestDebounced(){ clearTimeout(_fkbST); _fkbST=setTimeout(formKbSuggest,350); }
 async function formKbSuggest(){
   const box=document.getElementById('form-kb-suggest'), list=document.getElementById('fkb-list');
@@ -792,9 +780,6 @@ function openKb(firm){
   if(!firmAllowed(firm)) return;
   _kbFirm = _portalMe.firm === 'assos' ? 'assos' : 'inventist';
   document.getElementById('kb-branded').setAttribute('data-brand',_kbFirm);
-  document.getElementById('kb-firmtabs').innerHTML =
-    '<span class="kb-firmtab active" style="cursor:default">'+
-    (_kbFirm==='assos'?'Assos Pharma':'İnventist')+' Bilgi Bankası</span>';
   renderKbChips(); kbBackToList(); show('s-kb');
   kbSearch();
 }
