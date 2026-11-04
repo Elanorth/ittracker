@@ -3443,7 +3443,7 @@ def portal_kb_list():
     arts = query.order_by(KbArticle.view_count.desc(), KbArticle.updated_at.desc()).all()
     if q:
         ql = _tr_lower(q)
-        arts = [a for a in arts if ql in _tr_lower(f"{a.title} {a.body} {a.keywords}")]
+        arts = [a for a in arts if ql in _tr_lower(f"{a.title} {a.summary} {a.keywords}")]
     return jsonify([a.to_public_dict() for a in arts[:50]])
 
 
@@ -3549,13 +3549,21 @@ def kb_create():
     category = (data.get("category") or "genel").strip()
     if category not in _KB_CATEGORIES:
         category = "genel"
+    # v6.3 — publish için PDF zorunlu. Yeni makalede PDF henüz yüklenmemiş olacağı için
+    # published=True ilk oluşturmada reddedilir (önce Kaydet → PDF yükle → Yayınla akışı).
+    published = bool(data.get("published", False))
+    if published:
+        return jsonify({"error": "Yayınlamak için önce makaleyi kaydedin ve PDF yükleyin"}), 400
+    summary = (data.get("summary") or "").strip()
+    if len(summary) > 500:
+        return jsonify({"error": "Özet en fazla 500 karakter olabilir"}), 400
     art = KbArticle(
         title=title[:200],
-        body=(data.get("body") or "").strip(),
+        summary=summary,
         category=category,
         firm=firm,
         keywords=(data.get("keywords") or "").strip()[:300],
-        published=bool(data.get("published", False)),
+        published=False,
         author_id=me.id,
     )
     db.session.add(art)
@@ -3594,14 +3602,21 @@ def kb_modify(art_id):
     data = request.get_json() or {}
     if "title" in data and (data["title"] or "").strip():
         art.title = data["title"].strip()[:200]
-    if "body" in data:
-        art.body = (data["body"] or "").strip()
+    if "summary" in data:
+        s = (data["summary"] or "").strip()
+        if len(s) > 500:
+            return jsonify({"error": "Özet en fazla 500 karakter olabilir"}), 400
+        art.summary = s
     if "category" in data and data["category"] in _KB_CATEGORIES:
         art.category = data["category"]
     if "keywords" in data:
         art.keywords = (data["keywords"] or "").strip()[:300]
     if "published" in data:
-        art.published = bool(data["published"])
+        # v6.3 — Yayın için PDF zorunlu. PDF yoksa publish=True reddedilir.
+        want_pub = bool(data["published"])
+        if want_pub and not art.pdf_path:
+            return jsonify({"error": "Yayınlamak için önce PDF yükleyin"}), 400
+        art.published = want_pub
     if "firm" in data:
         new_firm = (data["firm"] or "").strip().lower()
         if _kb_scope_ok(me, new_firm):
@@ -3637,13 +3652,17 @@ def kb_pdf_manage(art_id):
             art.pdf_path = None
             art.pdf_filename = None
             art.pdf_size_bytes = None
+            # v6.3 — PDF yoksa makale yayınlanamaz; silinirse otomatik taslağa düşer.
+            was_published = art.published
+            if was_published:
+                art.published = False
             log_audit(
                 me,
                 "kb.pdf.delete",
                 entity_type="kb",
                 entity_id=art.id,
                 firm=art.firm,
-                summary=f"KB PDF kaldırıldı: {art.title[:80]}",
+                summary=f"KB PDF kaldırıldı: {art.title[:80]}" + (" (makale taslağa alındı)" if was_published else ""),
             )
             db.session.commit()
         return jsonify(art.to_dict())
