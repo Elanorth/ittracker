@@ -2968,7 +2968,15 @@ html[data-depth="on"] .unread-badge {
         <div id="kb-view-meta" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.8px;color:var(--text-muted);text-transform:uppercase"></div>
       </div>
     </div>
-    <div id="kb-view-body" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--text);max-height:50vh;overflow-y:auto"></div>
+    <div id="kb-view-summary" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--text);max-height:30vh;overflow-y:auto"></div>
+    <!-- v6.3 — Viewer PDF önizleme: ana içerik PDF; director olmayanlar da buradan okur -->
+    <div id="kb-view-pdf-wrap" class="hidden" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:11px;color:var(--text-muted)">
+        <span>📄 <span id="kb-view-pdf-name"></span></span>
+        <a id="kb-view-pdf-dl" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding:2px 10px;font-size:11px">İndir</a>
+      </div>
+      <iframe id="kb-view-pdf-frame" title="KB PDF" style="width:100%;height:55vh;min-height:360px;border:1px solid var(--border);border-radius:8px;background:#fff"></iframe>
+    </div>
     <div id="kb-view-keywords" style="margin-top:10px;font-size:11px;color:var(--text-muted);display:none">
       <span style="font-family:'IBM Plex Mono',monospace;letter-spacing:.5px">Anahtar kelimeler: </span><span id="kb-view-kw"></span>
     </div>
@@ -2995,11 +3003,16 @@ html[data-depth="on"] .unread-badge {
     </div>
     <div class="form-group" style="margin-bottom:12px"><label>Başlık</label><input class="form-control" id="kb-edit-title" placeholder="Ör. VPN (AnyConnect) nasıl kurulur?"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Anahtar Kelimeler (arama için, virgülle)</label><input class="form-control" id="kb-edit-keywords" placeholder="vpn, uzak erişim, anyconnect"></div>
-    <div class="form-group" style="margin-bottom:12px"><label>İçerik (çözüm adımları)</label><textarea class="form-control" id="kb-edit-body" style="min-height:180px;resize:vertical" placeholder="Adım adım çözüm…"></textarea></div>
-    <!-- v6.2 — PDF eki (ops.). Yeni makalede önce "Kaydet" sonra PDF seç.
-         Mevcut PDF varsa dosya adı + sil butonu görünür. 20 MB sınır, yalnız .pdf. -->
+    <!-- v6.3 — Eski uzun "İçerik" alanı kaldırıldı; yerine kısa "Özet" (max 500) +
+         zorunlu PDF. Özet arama/mobil önizleme için, PDF ana kılavuz içeriği. -->
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Özet <span style="color:var(--text-muted);font-weight:400;font-size:11px">(arama ve mobil önizleme için · max 500 karakter)</span></label>
+      <textarea class="form-control" id="kb-edit-summary" maxlength="500" data-input="kbSummaryCount" style="min-height:80px;resize:vertical" placeholder="Kısa açıklama: hangi sorun için, hangi kullanıcıya, ana adımlar bir-iki cümle…"></textarea>
+      <div style="display:flex;justify-content:flex-end;font-size:10px;color:var(--text-muted);margin-top:3px"><span id="kb-edit-summary-count">0</span>/500</div>
+    </div>
+    <!-- v6.3 — PDF ana içerik ve yayın için zorunlu. Yeni makalede önce Kaydet → PDF yükle → Yayınla. -->
     <div class="form-group" id="kb-edit-pdf-wrap" style="margin-bottom:10px">
-      <label>PDF Ek <span style="color:var(--text-muted);font-weight:400;font-size:11px">(opsiyonel · max 20 MB)</span></label>
+      <label>PDF Kılavuz <span style="color:#e36;font-weight:600;font-size:11px">* zorunlu (yayınlamak için)</span> <span style="color:var(--text-muted);font-weight:400;font-size:11px">· max 20 MB</span></label>
       <div id="kb-edit-pdf-current" class="hidden" style="display:flex;align-items:center;gap:10px;background:var(--surface2,#f3f6f9);border:1px solid var(--border,#dde3eb);border-radius:7px;padding:9px 12px;margin-bottom:8px;font-size:12px">
         <span>📄</span>
         <span id="kb-edit-pdf-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>

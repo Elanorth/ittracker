@@ -39,8 +39,11 @@ def _verify(client, email="calisan@inventist.com.tr"):
     return firm
 
 
-def _art(title="Yazıcı sıfırlama", firm="inventist", category="donanım", published=True, body="", keywords=""):
-    a = KbArticle(title=title, firm=firm, category=category, published=published, body=body, keywords=keywords)
+def _art(title="Yazıcı sıfırlama", firm="inventist", category="donanım", published=True, summary="", keywords=""):
+    # v6.3 — KbArticle modeli: body -> summary (max 500), PDF zorunlu publish için.
+    # Testlerde doğrudan kayıt kurulurken published=True ile oluşturabilmek için
+    # publish guard app endpoint'inde; fixture modeli bypass eder.
+    a = KbArticle(title=title, firm=firm, category=category, published=published, summary=summary, keywords=keywords)
     db.session.add(a)
     db.session.commit()
     return a
@@ -65,8 +68,8 @@ class TestPortalKb:
         assert client.get("/portal/api/kb?firm=inventist").get_json() == []
 
     def test_arama(self, db, client):
-        _art("VPN kurulumu", firm="inventist", body="AnyConnect adımları", keywords="uzak erişim")
-        _art("Yazıcı", firm="inventist", body="toner")
+        _art("VPN kurulumu", firm="inventist", summary="AnyConnect adımları", keywords="uzak erişim")
+        _art("Yazıcı", firm="inventist", summary="toner")
         r = client.get("/portal/api/kb?firm=inventist&q=anyconnect").get_json()
         assert len(r) == 1 and r[0]["title"] == "VPN kurulumu"
         # keyword üzerinden de bulunur
@@ -82,7 +85,7 @@ class TestPortalKb:
         a = _art("Makale", firm="inventist")
         assert a.view_count == 0
         d = client.get(f"/portal/api/kb/{a.id}").get_json()
-        assert "body" in d
+        assert "summary" in d
         assert db.session.get(KbArticle, a.id).view_count == 1
 
     def test_taslak_detay_404(self, db, client):
@@ -120,10 +123,18 @@ class TestKbCrud:
         login_as(sa)
         assert client.post("/api/kb", json={"title": "  ", "firm": "inventist"}).status_code == 400
 
-    def test_yayinla_ve_sil(self, db, client, user_factory, login_as):
+    def test_yayinla_ve_sil(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        # v6.3 — publish için PDF zorunlu → önce makale + PDF yükle, sonra yayınla
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
         sa = user_factory(username="kb_sa2", permission_level="super_admin", is_admin=True)
         login_as(sa)
         aid = client.post("/api/kb", json={"title": "M", "firm": "inventist"}).get_json()["id"]
+        # PDF yoksa publish reddedilir
+        r_fail = client.patch(f"/api/kb/{aid}", json={"published": True})
+        assert r_fail.status_code == 400
+        # PDF yükle → publish başarılı
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        assert client.post(f"/api/kb/{aid}/pdf", data=data, content_type="multipart/form-data").status_code == 200
         r = client.patch(f"/api/kb/{aid}", json={"published": True})
         assert r.status_code == 200 and r.get_json()["published"] is True
         # portalda görünür oldu (KB kapısı: önce doğrula)
@@ -162,12 +173,12 @@ class TestKbReadForAllRoles:
         assert client.post("/api/kb", json={"title": "X", "firm": "inventist"}).status_code == 403
 
     def test_operator_makale_detayi_okur(self, db, client, user_factory, login_as):
-        a = _art("Yazıcı kılavuzu", firm="inventist", published=True, body="Adım 1…")
+        a = _art("Yazıcı kılavuzu", firm="inventist", published=True, summary="Adım 1…")
         op = user_factory(username="kb_op", firm="inventist", permission_level="senior")
         login_as(op)
         r = client.get(f"/api/kb/{a.id}")
         assert r.status_code == 200
-        assert r.get_json()["body"] == "Adım 1…"
+        assert r.get_json()["summary"] == "Adım 1…"
 
     def test_operator_taslak_makale_404(self, db, client, user_factory, login_as):
         a = _art("Taslak", firm="inventist", published=False)
@@ -184,12 +195,12 @@ class TestKbReadForAllRoles:
         assert client.get(f"/api/kb/{a.id}").status_code == 404
 
     def test_director_taslak_detay_erisir(self, db, client, user_factory, login_as):
-        a = _art("Taslak inv", firm="inventist", published=False, body="wip")
+        a = _art("Taslak inv", firm="inventist", published=False, summary="wip")
         d = user_factory(username="kb_dr", firm="inventist", permission_level="it_director")
         login_as(d)
         r = client.get(f"/api/kb/{a.id}")
         assert r.status_code == 200
-        assert r.get_json()["body"] == "wip"
+        assert r.get_json()["summary"] == "wip"
 
 
 def _pdf_bytes(payload=b"test"):
@@ -334,3 +345,74 @@ class TestKbPdfUpload:
         d2 = client.get(f"/portal/api/kb/{a.id}").get_json()
         assert d2["has_pdf"] is True
         assert d2["pdf_filename"] == "k.pdf"
+
+
+class TestKbV63SummaryAndPublishGuard:
+    """v6.3 — Özet + Zorunlu PDF modeli.
+
+    - `summary` 500 karakter sınırına tâbi.
+    - Yayınlamak için PDF zorunlu (hem create hem patch).
+    - PDF silinirse makale otomatik taslağa düşer.
+    """
+
+    def test_create_published_true_reddedilir(self, db, client, user_factory, login_as):
+        """Yeni makale oluştururken published=True → PDF olmadığı için 400."""
+        sa = user_factory(username="kb_v63_a", permission_level="super_admin", is_admin=True)
+        login_as(sa)
+        r = client.post(
+            "/api/kb",
+            json={"title": "M", "firm": "inventist", "published": True},
+        )
+        assert r.status_code == 400
+
+    def test_create_summary_uzun_reddedilir(self, db, client, user_factory, login_as):
+        sa = user_factory(username="kb_v63_b", permission_level="super_admin", is_admin=True)
+        login_as(sa)
+        r = client.post(
+            "/api/kb",
+            json={"title": "M", "firm": "inventist", "summary": "x" * 501},
+        )
+        assert r.status_code == 400
+
+    def test_patch_summary_uzun_reddedilir(self, db, client, user_factory, login_as):
+        a = _art("M", firm="inventist", published=False)
+        sa = user_factory(username="kb_v63_c", permission_level="super_admin", is_admin=True)
+        login_as(sa)
+        r = client.patch(f"/api/kb/{a.id}", json={"summary": "y" * 501})
+        assert r.status_code == 400
+
+    def test_patch_published_pdfsiz_reddedilir(self, db, client, user_factory, login_as):
+        a = _art("M", firm="inventist", published=False)
+        d = user_factory(username="kb_v63_d", firm="inventist", permission_level="it_director")
+        login_as(d)
+        r = client.patch(f"/api/kb/{a.id}", json={"published": True})
+        assert r.status_code == 400
+        assert "PDF" in r.get_json()["error"]
+
+    def test_pdf_silme_sonrasi_taslaga_duser(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        """Yayınlanmış bir makalenin PDF'i silinirse makale otomatik taslak olur."""
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist", published=False)
+        d = user_factory(username="kb_v63_e", firm="inventist", permission_level="it_director")
+        login_as(d)
+        # PDF yükle → yayınla
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        assert client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data").status_code == 200
+        assert client.patch(f"/api/kb/{a.id}", json={"published": True}).status_code == 200
+        assert db.session.get(KbArticle, a.id).published is True
+        # PDF sil → published=False
+        assert client.delete(f"/api/kb/{a.id}/pdf").status_code == 200
+        art = db.session.get(KbArticle, a.id)
+        assert art.pdf_path is None
+        assert art.published is False
+
+    def test_summary_sinir_500_kabul(self, db, client, user_factory, login_as):
+        """Tam 500 karakterlik özet kabul edilir (sınır dahil)."""
+        sa = user_factory(username="kb_v63_f", permission_level="super_admin", is_admin=True)
+        login_as(sa)
+        r = client.post(
+            "/api/kb",
+            json={"title": "M", "firm": "inventist", "summary": "a" * 500},
+        )
+        assert r.status_code == 201
+        assert r.get_json()["summary"] == "a" * 500

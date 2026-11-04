@@ -1033,7 +1033,10 @@ class KbArticle(db.Model):
     __tablename__ = "kb_articles"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
-    body = db.Column(db.Text, default="")  # düz metin / basit markdown
+    # v6.3 — Eski `body` (uzun metin) kaldırıldı. Yerine kısa `summary` (max 500 char,
+    # arama/mobil önizleme için) ve zorunlu PDF ana içerik. Bkz. kb_create / kb_modify
+    # publish guard. Eski `body` sütunu migration'da `summary`'ye rename edilir.
+    summary = db.Column(db.String(500), default="")
     category = db.Column(db.String(30), default="genel")  # genel|ağ|donanım|yazılım|hesap|diğer
     firm = db.Column(db.String(50), default="", index=True)  # "" = tüm firmalar
     keywords = db.Column(db.String(300), default="")  # arama için ek anahtar kelimeler
@@ -1044,18 +1047,17 @@ class KbArticle(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    # v6.1 — İsteğe bağlı PDF eki (satır içi gösterilir). body alanı korunur:
-    # kısa açıklama/özet metinde kalır, uzun kılavuzlar PDF olarak eklenir.
+    # v6.1 — PDF eki (v6.3'ten itibaren publish için zorunlu — bkz. kb_modify).
     pdf_path = db.Column(db.String(500), nullable=True)
     pdf_filename = db.Column(db.String(255), nullable=True)
     pdf_size_bytes = db.Column(db.Integer, nullable=True)
 
     def _snippet(self, n=160):
-        b = (self.body or "").strip().replace("\n", " ")
+        b = (self.summary or "").strip().replace("\n", " ")
         return b[:n] + ("…" if len(b) > n else "")
 
     def to_public_dict(self, full=False):
-        """Portal — sayaç/taslak/yazar YOK; full=False liste snippet'i, True tam gövde."""
+        """Portal — sayaç/taslak/yazar YOK; full=False liste snippet'i, True tam özet+PDF."""
         d = {
             "id": self.id,
             "title": self.title,
@@ -1064,7 +1066,7 @@ class KbArticle(db.Model):
             "has_pdf": bool(self.pdf_path),
         }
         if full:
-            d["body"] = self.body or ""
+            d["summary"] = self.summary or ""
             if self.pdf_path:
                 d["pdf_filename"] = self.pdf_filename or ""
                 d["pdf_size_bytes"] = self.pdf_size_bytes or 0
@@ -1077,7 +1079,7 @@ class KbArticle(db.Model):
         return {
             "id": self.id,
             "title": self.title,
-            "body": self.body or "",
+            "summary": self.summary or "",
             "category": self.category or "genel",
             "firm": self.firm or "",
             "keywords": self.keywords or "",
@@ -1274,6 +1276,33 @@ def init_db():
     _add_column_race_safe("kb_articles", "pdf_path", "VARCHAR(500)")
     _add_column_race_safe("kb_articles", "pdf_filename", "VARCHAR(255)")
     _add_column_race_safe("kb_articles", "pdf_size_bytes", "INTEGER")
+
+    # v6.3 — KB içerik modeli: eski `body` (uzun metin) kaldırıldı; `summary` (max 500,
+    # arama/mobil özeti) + zorunlu PDF ana içerik. Eski veriler yedeklendi → tablo
+    # sıfırlanır ve body kolonu summary'ye rename edilir. Idempotent: ikinci koşuda
+    # body yoksa / summary varsa no-op.
+    kb_cols = {c["name"] for c in inspector.get_columns("kb_articles")}
+    if "body" in kb_cols and "summary" not in kb_cols:
+        try:
+            # Eski makaleleri temizle (Levent yedek aldı; yeni modele uymuyor)
+            db.session.execute(text("DELETE FROM kb_articles"))
+            db.session.commit()
+            print("Migration v6.3: kb_articles sifirlandi (yedek: Levent)")
+        except Exception:
+            db.session.rollback()
+        try:
+            # SQLite 3.25+ ve PostgreSQL destekler
+            db.session.execute(text("ALTER TABLE kb_articles RENAME COLUMN body TO summary"))
+            db.session.commit()
+            print("Migration v6.3: kb_articles.body -> summary")
+        except Exception:
+            db.session.rollback()
+            # Rename desteklenmiyorsa: yeni kolon ekle, eskisini birak (ileride el ile atlatirsin)
+            _add_column_race_safe("kb_articles", "summary", "VARCHAR(500) DEFAULT ''")
+            print("Migration v6.3: summary kolonu eklendi (body eski kolonu kaldi)")
+    elif "summary" not in kb_cols:
+        # Fresh tablo zaten summary ile create_all'da olusur; emniyet amaciyla
+        _add_column_race_safe("kb_articles", "summary", "VARCHAR(500) DEFAULT ''")
 
     # Migration: ADMIN_USERNAME kullanıcısı her zaman super_admin olmalı
     admin_uname = os.environ.get("ADMIN_USERNAME", "levent.can")
