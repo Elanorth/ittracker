@@ -27,6 +27,8 @@ onClick('kbPdfView',   () => kbPdfView());
 // v6.0 — arama + kategori/durum filtresi (data-input / data-change)
 onInput('kbSearchDebounced', () => kbSearchDebounced());
 onChange('renderKbList',     () => renderKbList());
+// v6.3 — Özet karakter sayacı
+onInput('kbSummaryCount',    () => _kbUpdateSummaryCount());
 
 const KB_CAT_LABELS = { genel:'Genel', 'ağ':'Ağ/İnternet', 'donanım':'Donanım', 'yazılım':'Yazılım', hesap:'Hesap/Erişim', 'diğer':'Diğer' };
 let _kbArticles = [];
@@ -69,7 +71,7 @@ export function renderKbList() {
     items = items.filter(a =>
       (a.title || '').toLowerCase().includes(q) ||
       (a.keywords || '').toLowerCase().includes(q) ||
-      (a.body || '').toLowerCase().includes(q)
+      (a.summary || '').toLowerCase().includes(q)
     );
   }
 
@@ -113,6 +115,7 @@ export function renderKbList() {
 
 // v6.0 — Salt-okunur viewer. Non-director'ün birincil okuma yolu; director da
 // "önce oku" davranışı için kullanabilir (rol UI'sında düzenle butonu görünür).
+// v6.3 — Ana içerik PDF; `summary` kısa özet olarak PDF'in üstünde gösterilir.
 export function openKbViewer(id) {
   const a = _kbArticles.find(x => x.id === id);
   if (!a) return;
@@ -121,7 +124,19 @@ export function openKbViewer(id) {
   document.getElementById('kb-view-title').textContent = a.title || '—';
   document.getElementById('kb-view-meta').textContent =
     `${KB_CAT_LABELS[a.category] || a.category} · ${firm} · 👁 ${a.view_count} · 👍 ${a.helpful_yes} 👎 ${a.helpful_no}`;
-  document.getElementById('kb-view-body').textContent = a.body || '(içerik boş)';
+  document.getElementById('kb-view-summary').textContent = a.summary || '(özet yok)';
+  const pdfWrap = document.getElementById('kb-view-pdf-wrap');
+  const pdfFrame = document.getElementById('kb-view-pdf-frame');
+  if (a.has_pdf) {
+    const url = `/api/kb/${id}/pdf`;
+    pdfFrame.src = url;
+    document.getElementById('kb-view-pdf-name').textContent = a.pdf_filename || 'kılavuz.pdf';
+    document.getElementById('kb-view-pdf-dl').href = url;
+    pdfWrap.classList.remove('hidden');
+  } else {
+    pdfFrame.src = 'about:blank';
+    pdfWrap.classList.add('hidden');
+  }
   const kwWrap = document.getElementById('kb-view-keywords');
   if (a.keywords) {
     document.getElementById('kb-view-kw').textContent = a.keywords;
@@ -134,6 +149,9 @@ export function openKbViewer(id) {
 
 export function editFromViewer() {
   if (_kbViewingId == null) return;
+  // v6.3 — Viewer kapanırken iframe'i boşalt (gereksiz PDF streaming'i kes)
+  const fr = document.getElementById('kb-view-pdf-frame');
+  if (fr) fr.src = 'about:blank';
   document.getElementById('kb-viewer-modal').classList.add('hidden');
   openKbEditor(_kbViewingId);
 }
@@ -166,7 +184,8 @@ export function openKbEditor(id) {
   document.getElementById('kb-edit-cat').value = a ? a.category : 'genel';
   document.getElementById('kb-edit-title').value = a ? a.title : '';
   document.getElementById('kb-edit-keywords').value = a ? a.keywords : '';
-  document.getElementById('kb-edit-body').value = a ? a.body : '';
+  document.getElementById('kb-edit-summary').value = a ? (a.summary || '') : '';
+  _kbUpdateSummaryCount();
   document.getElementById('kb-edit-published').checked = a ? a.published : false;
   document.getElementById('kb-edit-delete').style.display = editing ? '' : 'none';
   // v6.2 — PDF durumunu yansıt (mevcut varsa dosya adı/boyut + sil butonu)
@@ -174,13 +193,26 @@ export function openKbEditor(id) {
   document.getElementById('kb-editor-modal').classList.remove('hidden');
 }
 
+// v6.3 — Özet karakter sayacı (500 limitine yaklaşınca kırmızı)
+function _kbUpdateSummaryCount() {
+  const ta = document.getElementById('kb-edit-summary');
+  const cnt = document.getElementById('kb-edit-summary-count');
+  if (!ta || !cnt) return;
+  const n = (ta.value || '').length;
+  cnt.textContent = n;
+  cnt.style.color = n > 500 ? '#e36' : (n > 450 ? '#d97706' : 'var(--text-muted)');
+}
+
 // v6.2 — PDF state render (çağrılan yerler: openKbEditor + upload/delete sonrası)
+// v6.3 — Yayın zorunlu: PDF yoksa yayınla checkbox'ı kilitlenir.
 function _kbRenderPdfState(a) {
   const current = document.getElementById('kb-edit-pdf-current');
   const uploadRow = document.getElementById('kb-edit-pdf-upload-row');
   const hint = document.getElementById('kb-edit-pdf-hint');
+  const pubChk = document.getElementById('kb-edit-published');
   const hasId = !!document.getElementById('kb-edit-id').value;
-  if (a && a.has_pdf) {
+  const hasPdf = !!(a && a.has_pdf);
+  if (hasPdf) {
     document.getElementById('kb-edit-pdf-name').textContent = a.pdf_filename || 'kılavuz.pdf';
     const sz = a.pdf_size_bytes || 0;
     const szTxt = sz >= 1048576 ? (sz / 1048576).toFixed(1) + ' MB' : sz >= 1024 ? Math.round(sz / 1024) + ' KB' : sz + ' B';
@@ -192,8 +224,14 @@ function _kbRenderPdfState(a) {
     current.classList.add('hidden');
     uploadRow.style.display = 'flex';
     hint.textContent = hasId
-      ? 'PDF ekleyebilirsiniz (yalnız .pdf · max 20 MB).'
+      ? 'Bu makale için henüz PDF yok. Yayınlamak için PDF gerekli.'
       : 'Yeni makalede önce Kaydet deyin — makale oluşunca PDF yükleyebilirsiniz.';
+    hint.style.color = hasId ? '#e36' : 'var(--text-muted)';
+  }
+  // Yayınla checkbox'ı: PDF yoksa kilitli (backend de reddeder, UI önce uyarır)
+  if (pubChk) {
+    if (!hasPdf) { pubChk.checked = false; pubChk.disabled = true; pubChk.title = 'Yayınlamak için önce PDF yükleyin'; }
+    else { pubChk.disabled = false; pubChk.title = ''; }
   }
   // Dosya input'unu sıfırla
   const f = document.getElementById('kb-edit-pdf-file');
@@ -250,18 +288,20 @@ export async function saveKbArticle() {
   const id = document.getElementById('kb-edit-id').value;
   const title = document.getElementById('kb-edit-title').value.trim();
   if (!title) { showToast('err', 'Başlık boş olamaz'); return; }
-  const body = {
+  const summary = document.getElementById('kb-edit-summary').value;
+  if (summary.length > 500) { showToast('err', 'Özet en fazla 500 karakter olabilir'); return; }
+  const payload = {
     title,
     firm: document.getElementById('kb-edit-firm').value,
     category: document.getElementById('kb-edit-cat').value,
     keywords: document.getElementById('kb-edit-keywords').value.trim(),
-    body: document.getElementById('kb-edit-body').value,
+    summary,
     published: document.getElementById('kb-edit-published').checked,
   };
   try {
     const url = id ? `/api/kb/${id}` : '/api/kb';
     const method = id ? 'PATCH' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Kaydedilemedi');
     showToast('ok', id ? 'Makale güncellendi' : 'Makale eklendi');

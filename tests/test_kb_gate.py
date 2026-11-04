@@ -28,7 +28,7 @@ def _reset_limiters():
 
 
 def _art(title, firm, published=True):
-    a = KbArticle(title=title, firm=firm, category="genel", published=published, body="içerik")
+    a = KbArticle(title=title, firm=firm, category="genel", published=published, summary="içerik")
     db.session.add(a)
     db.session.commit()
     return a
