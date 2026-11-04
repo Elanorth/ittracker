@@ -32,6 +32,10 @@ services:
     volumes:
       - ./instance:/app/instance
       - backups:/srv/it_tracker/backups
+      # v6.3.2 — KB_DIR persistent volume. Bu mount OLMADAN yüklenen PDF'ler
+      # container filesystem'ine yazılıyor, her deploy'da container rebuild
+      # olunca kayboluyor (DB'de pdf_filename kalır ama endpoint 404 döner).
+      - kb:/srv/it_tracker/kb
       - ./.env:/app/.env
     depends_on:
       db:
@@ -63,4 +67,5 @@ services:
 
 volumes:
   backups:
+  kb:
   pgdata:

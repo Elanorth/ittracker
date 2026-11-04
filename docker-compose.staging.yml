@@ -33,6 +33,8 @@ services:
     volumes:
       - ./instance:/app/instance
       - staging_backups:/srv/it_tracker/backups
+      # v6.3.2 — KB_DIR persistent volume (bkz. docker-compose.yml notu)
+      - staging_kb:/srv/it_tracker/kb
       - ./.env.staging:/app/.env
     depends_on:
       db:
@@ -66,4 +68,5 @@ services:
 
 volumes:
   staging_backups:
+  staging_kb:
   staging_pgdata:
