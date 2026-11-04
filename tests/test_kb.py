@@ -416,3 +416,25 @@ class TestKbV63SummaryAndPublishGuard:
         )
         assert r.status_code == 201
         assert r.get_json()["summary"] == "a" * 500
+
+    def test_pdf_iframe_sameorigin_headers(self, db, client, user_factory, login_as, tmp_path, monkeypatch):
+        """PDF endpoint'i iframe gömülebilsin diye X-Frame-Options ve CSP frame-ancestors
+        SAMEORIGIN/self döner. Aksi hâlde Firefox/Safari iframe'i reddeder."""
+        monkeypatch.setattr("services.storage.KB_DIR", str(tmp_path))
+        a = _art("M", firm="inventist", published=True)
+        d = user_factory(username="kb_v63_hdr", firm="inventist", permission_level="it_director")
+        login_as(d)
+        data = {"pdf": (io.BytesIO(_pdf_bytes()), "k.pdf")}
+        assert client.post(f"/api/kb/{a.id}/pdf", data=data, content_type="multipart/form-data").status_code == 200
+        r = client.get(f"/api/kb/{a.id}/pdf")
+        assert r.status_code == 200
+        assert r.headers.get("X-Frame-Options") == "SAMEORIGIN"
+        assert "frame-ancestors 'self'" in r.headers.get("Content-Security-Policy", "")
+        # Portal tarafı da aynı
+        with client.session_transaction() as s:
+            s.clear()
+        _verify(client)
+        r2 = client.get(f"/portal/api/kb/{a.id}/pdf")
+        assert r2.status_code == 200
+        assert r2.headers.get("X-Frame-Options") == "SAMEORIGIN"
+        assert "frame-ancestors 'self'" in r2.headers.get("Content-Security-Policy", "")

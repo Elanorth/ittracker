@@ -3697,7 +3697,14 @@ def kb_pdf_manage(art_id):
 
 
 def _kb_pdf_response(art):
-    """Satır içi PDF stream (inline, attachment DEĞİL)."""
+    """Satır içi PDF stream (inline, attachment DEĞİL).
+
+    v6.3 fix: global _security_headers `X-Frame-Options: DENY` + CSP
+    `frame-ancestors 'none'` koyduğu için iframe görüntüleme Firefox/Safari'de
+    bloke oluyordu (`will not allow …`). KB makale sayfası aynı origin'de
+    çalıştığından SAMEORIGIN / `frame-ancestors 'self'` ile serbest bırakılır.
+    Explicit set: after_request `setdefault` kullandığından burası kazanır.
+    """
     if not art.pdf_path or not os.path.exists(art.pdf_path):
         return jsonify({"error": "PDF bulunamadı"}), 404
     resp = send_file(
@@ -3708,6 +3715,8 @@ def _kb_pdf_response(art):
     )
     # Tarayıcıda satır içi görüntüleme (iframe/object) için
     resp.headers["Content-Disposition"] = f'inline; filename="{art.pdf_filename or f"kb{art.id}.pdf"}"'
+    resp.headers["X-Frame-Options"] = "SAMEORIGIN"
+    resp.headers["Content-Security-Policy"] = "frame-ancestors 'self'"
     return resp
 
 
